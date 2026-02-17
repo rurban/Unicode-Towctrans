@@ -1,13 +1,14 @@
 require 5.012;
 use ExtUtils::MakeMaker;
 
+my $BIN = 'bin/gen_wctrans';
 my @cf;
 push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5..18;
 my $clean = {FILES => [ 't/towctrans', 'diffs', @cf ]};
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
 if (! -f "towctrans.h") {
     print STDERR "Making header file\n";
-    do './mkheader' or die;
+    do 'bin/gen_wctrans' or die;
 }
 
 WriteMakefile(
@@ -17,12 +18,10 @@ WriteMakefile(
     'INSTALLDIRS'       => ($] >= 5.007002 && $] < 5.011) ? 'perl' : 'site',
     'LICENSE'           => 'perl',
     'NAME'              => 'Unicode::Towctrans',
-    'VERSION_FROM'      => 'Towctrans.pm', # finds $VERSION
+    'VERSION_FROM'      => $BIN,
     'clean'             => $clean,
-     #'depend'            => { 'Towctrans.o' => '$(H_FILES)' },
     'PREREQ_PM'         => {
         Carp            => 0,
-        constant        => 0,
         strict          => 0,
         warnings        => 0,
     },
@@ -46,16 +45,16 @@ package MY;
 sub depend {
   '
 CaseFolding.txt:
-	./mkheader
+	 bin/gen_wctrans
 CaseFolding.txt.8 towctrans.h.8:
-	for v in `seq 5 18`; do ./mkheader --out towctrans.h.$$v -v $$v --cf CaseFolding.txt.$$v; done
-test-all : mkheader CaseFolding.txt.8
+	for v in `seq 5 18`; do $(FULLPERLRUN) bin/gen_wctrans --out towctrans.h.$$v -v $$v --cf CaseFolding.txt.$$v; done
+test-all : bin/gen_wctrans CaseFolding.txt.8
 	for v in `seq 5 18`; do \
-          $(FULLPERLRUN) mkheader --out towctrans.h -v $$v --cf CaseFolding.txt; \
+          $(FULLPERLRUN) bin/gen_wctrans --out towctrans.h -v $$v --cf CaseFolding.txt; \
           echo Unicode $$v; \
           $(FULLPERLRUN) -MExtUtils::Command::MM -MTest::Harness -e "test_harness(0)" t/*.t; \
         done
-diffs : mkheader CaseFolding.txt.8
+diffs : bin/gen_wctrans CaseFolding.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans.h.$$v towctrans.h.$$n; done
 '
 }
