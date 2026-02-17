@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <wctype.h>
 #include "towctrans.h"
-#define CFOLD "../CaseFolding.txt"
+#define CFOLD "CaseFolding.txt"
 
 uint32_t my_towlower(uint32_t wc) { return _towcase(wc, 1); }
 uint32_t my_towupper(uint32_t wc) { return _towcase(wc, 0); }
@@ -27,12 +27,12 @@ int main(void) {
 
     /*--------------------------------------------------*/
 
-    f = fopen(CFOLD, "r");
+    f = fopen("../" CFOLD, "r");
     if (!f) {
         char url[256];
         snprintf(url, 255,
-                 "wget https://www.unicode.org/Public/%d.0.0/ucd/%s",
-                 TOWCTRANS_UNICODE_VERSION, CFOLD);
+                 "wget -O ../%s https://www.unicode.org/Public/%d.0.0/ucd/%s",
+                 CFOLD, TOWCTRANS_UNICODE_VERSION, CFOLD);
         printf("downloading %s ...", CFOLD);
         fflush(stdout);
         if (system(url))
@@ -41,7 +41,7 @@ int main(void) {
             printf(" failed\n");
             return 0;
         }
-        f = fopen(CFOLD, "r");
+        f = fopen("../" CFOLD, "r");
         if (!f)
             return 0;
     }
