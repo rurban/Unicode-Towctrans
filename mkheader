@@ -45,7 +45,7 @@ my $out = "towctrans.h";
 GetOptions(
     "v=i"     => \$v,          # numeric
     "cf=s"    => \$cf,         # string
-    "out=s"   => \$out,        # string
+    "out|o=s" => \$out,        # string
     "verbose" => \$verbose,    # flag
     "help|h"  => \$help
   )                            # flag
@@ -240,8 +240,6 @@ EOF
 #     return wc;
 #   }
 
-my $file = "towctrans.h";
-
 # triple of base, to, last. offset is to - base, length is last - base + 1
 sub add_map {
     my ( $map, $base, $to ) = @_;
@@ -266,14 +264,20 @@ sub add_lace {
 
     # if it's the next cp
     if (   $lace->[-1]
-        && $lace->[-1][0] == $base - 1
-        && $lace->[-1][1] == $to - 1 )
+        && $lace->[-1][1] == $to - 2 )
     {
-        ++$lace->[-1][1];
+        warn "bump lace $lace->[-1][0] $to\n" if $verbose;
+        $lace->[-1][1] = $to;
     }
     else {
+        warn "new lace $base $to\n" if $verbose;
         push @$lace, [ $base, $to ];
     }
+}
+
+sub add_pair {
+    my ( $pair, $base, $to ) = @_;
+    push @$pair, [ $base, $to ];
 }
 
 # pair of first, last
@@ -297,7 +301,7 @@ if ( $v and -e !$cf ) {
     `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
 }
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
-my ( @map, @lace, @excl, $prev, $lc );
+my ( @map, @lace, @excl, @pair, $prev, $lc );
 while ( my $l = <$CF> ) {
     chomp $l;
     if ( !$v and $. == 1 ) {
@@ -314,23 +318,49 @@ while ( my $l = <$CF> ) {
 
     if ( !@excl ) {
         push @excl, [ 0, $cp - 1 ];
+        add_map( \@map, $cp, $mapping[0] );    # 'A' -> 'a'
     }
     else {
         # check status. only if C
-        if ( $cp - $prev == 1 ) {    # next cp
+        if ( $cp - $prev == 1 ) {              # next cp
             if ( $status ne 'C' ) {
-                warn "add_excl $cp for $status $mapping $name\n";
+                warn "add_excl $cp for $status $mapping $name\n" if $verbose;
                 add_excl( \@excl, $cp );
             }
             elsif ( scalar @mapping == 1 ) {
                 $lc = $mapping[0];
                 if ( $lc - $cp == 1 ) {
-                    warn "add_lace $cp $lc\n" if $verbose;
-                    add_lace( \@lace, $cp, $lc );
+
+                    # check if we can convert the previous pair to a lace
+                    if (    @pair
+                        and $pair[-1][0] == $cp - 1
+                        and $pair[-1][1] == $lc - 1 )
+                    {
+                        warn "convert old pair to lace $cp $lc\n" if $verbose;
+                        pop @pair;
+                        add_lace( \@lace, $cp - 1, $lc - 1 );
+                        add_lace( \@lace, $cp,     $lc );
+                    }
+                    else {
+                        #warn "add_lace $cp $lc\n" if $verbose;
+                        add_lace( \@lace, $cp, $lc );
+                    }
                 }
                 else {
-                    #warn "add_map $cp $lc\n" if $verbose;
-                    add_map( \@map, $cp, $lc );
+                    # check if we can convert the previous pair to a map
+                    if (    @pair
+                        and $pair[-1][0] == $cp - 1
+                        and $pair[-1][1] == $lc - 1 )
+                    {
+                        warn "convert old pair to map $cp $lc\n" if $verbose;
+                        pop @pair;
+                        add_map( \@map, $cp - 1, $lc - 1 );
+                        add_map( \@map, $cp,     $lc );
+                    }
+                    else {
+                        #warn "add_map $cp $lc\n" if $verbose;
+                        add_map( \@map, $cp, $lc );
+                    }
                 }
             }
             else {
@@ -339,9 +369,23 @@ while ( my $l = <$CF> ) {
                 add_excl( \@excl, $cp );
             }
         }
-        else {
-            warn "add_excl $cp for hole\n" if $verbose;
-            add_excl( \@excl, $cp );
+        else {    # not next cp, a hole
+            if ( $status eq 'C' and scalar @mapping == 1 ) {
+                my $to = $mapping[0];
+                if ( $to - $cp == 1 ) {
+
+                    #warn "add_lace $cp $to\n" if $verbose;
+                    add_lace( \@lace, $cp, $to );
+                }
+                else {
+                    warn "add_pair $cp $to\n" if $verbose;
+                    add_pair( \@pair, $cp, $to );
+                }
+            }
+            elsif ( !@excl or $excl[-1][1] != $cp ) {
+                warn "add_excl $cp for hole\n" if $verbose;
+                add_excl( \@excl, $cp );
+            }
         }
     }
     $prev = $cp;
@@ -352,9 +396,10 @@ $HDR =~ s/Unicode 17/Unicode $v/g;
 my $ucd_version = "$v.0.0";
 my @h_args      = ( $Unicode::Towctrans::VERSION, $ucd_version );
 
-open FH, ">:utf8", $file or croak "$PACKAGE: $file can't be written $!";
-select FH;
-
+if ( !-w $out ) {
+    chmod 0644, $out;
+}
+open FH, ">:utf8", $out or croak "$PACKAGE: $out can't be written $!";
 printf FH <<'EOF', @h_args;
 /* ex: set ro ft=c: -*- buffer-read-only: t -*-
  *
@@ -392,8 +437,8 @@ while ( defined($i) or defined($j) ) {
         }
         my $cmt = sprintf "\t/* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
           $m->[2];
-        printf FH "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0], $m->[1],
-          $m->[2], $cmt;
+        printf FH "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0], $m->[2],
+          $m->[1], $cmt;
         ( $i, $m ) = each @map;
     }
     elsif ( defined($j) ) {
@@ -402,15 +447,21 @@ while ( defined($i) or defined($j) ) {
             print FH "    {0, 0, 0}};\n";
             print FH $CASEL;
         }
-        my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $m->[0], $m->[1] );
-        printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1], $cmt;
+        my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $l->[0], $l->[1] - 1 );
+        printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
+          $cmt;
         ( $j, $l ) = each @lace;
     }
 }
 print FH "    {0, 0, 0}};\n";
-print FH "static const unsigned short pairs[][2] = {\n";
+print FH "static const unsigned short pairs[][2] = {\n"
+  . "    /* upper, lower */\n";
 
-# TODO process and print sorted pairs
+# TODO process pairs to enable reverse lookup
+for my $p (@pair) {
+    my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $p->[0], $p->[1] );
+    printf FH "    {0x%04x, 0x%04x},%s\n", $p->[0], $p->[1], $cmt;
+}
 print FH "    {0, 0}};\n";
 print FH "\n";
 print FH "uint32_t _towcase(uint32_t wc, int lower) {
@@ -427,7 +478,7 @@ for my $e (@excl) {
         printf FH "wc <= 0x%x", $e->[1];
     }
     elsif ( $e->[1] - $e->[0] > 32 ) {
-        printf "      || (unsigned)wc - 0x%x <= 0x%x - 0x%x\n", $e->[0],
+        printf FH "\n        || (unsigned)wc - 0x%x <= 0x%x - 0x%x", $e->[0],
           $e->[1], $e->[0];
     }
 }
@@ -467,6 +518,8 @@ print FH <<'EOF';
     return wc;
 }
 EOF
+close FH;
+chmod 0444, $out;
 
 __END__
 # Local Variables:
