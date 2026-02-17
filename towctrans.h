@@ -7,12 +7,12 @@
  * Any changes here will be lost!
  */
 /*
-Copyright Â© 2005-2014 Rich Felker, et al.
-Copyright Â© 2018,2020,2026 Reini Urban
+Copyright (c) 2005-2014 Rich Felker, et al.
+Copyright (c) 2018,2020,2026 Reini Urban
 
-------------------------------------------------------------------
-musl as a whole is licensed under the following standard MIT license:
----------------------------------------------------------------------
+--------------------------------------------------------------
+This code is licensed under the following standard MIT license
+--------------------------------------------------------------
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -280,7 +280,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO exclusion ranges. !iswalpha(wc) is broken on some platforms. */
+    /* TODO better exclusion ranges. !iswalpha(wc) is broken on some platforms. */
     if (wc <= 0x40
         || (unsigned)wc - 0x1f80 <= 0x1faf - 0x1f80)
         return wc;
@@ -291,7 +291,8 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if ((unsigned)wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            if (wc == 0xA64B) /* the only reverse fixup needed. Tested from Unicode 5 to 18. */
+            /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
+            if (wc == 0xA64B)
                 return 0xA64A;
             else
                 return wc + lmul * casemaps[i].lower;

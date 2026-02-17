@@ -43,7 +43,9 @@ WriteMakefile(
 
 package MY;
 sub depend {
-  '
+    '
+tidy:
+	perltidy -b bin/gen_wctrans
 CaseFolding.txt:
 	 bin/gen_wctrans
 CaseFolding.txt.8 towctrans.h.8:
@@ -56,6 +58,28 @@ test-all : bin/gen_wctrans CaseFolding.txt.8
         done
 diffs : bin/gen_wctrans CaseFolding.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans.h.$$v towctrans.h.$$n; done
+
+release-test : test dist
+	if test "$(shell git rev-parse --abbrev-ref HEAD)" != "master" || \
+           test "$(shell git diff --raw)" != "" || \
+           test "$(shell git diff --cached --raw)" != "" ; then \
+          echo "You are not on a clean master branch, aborting."; \
+          exit 1; \
+	fi
+	if test "$(shell git ls --show-signature -n 1 | head -n2 | tail -n1 | cut -c1-5)" != "gpg: " ; then \
+            echo "need git commit with -S"; \
+            exit 1; \
+	fi
+	if test "$(shell git ls --no-show-signature -n 1 | head -n5 | tail -n1 | cut -c5-11)" != "Release" ; then \
+            echo "need git commit with -m Release"; \
+            exit 1; \
+	fi
+
+release : release-test
+	-git tag -f $(VERSION)
+	cpan-upload $(DISTVNAME).tar$(SUFFIX)
+	git push
+	git push --tags
 '
 }
 

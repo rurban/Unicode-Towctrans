@@ -5,32 +5,37 @@ Unicode::Towctrans - Generate small casefolding tables
 
 SYNOPSIS
 
-    ./mkheader
-    ./mkheader -v 15
+    gen_wctrans
+    gen_wctrans -v 15
+    gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans.h.15
 
 DESCRIPTION
 
-mkheader generates a towctrans.h header file, which is used by musl and safeclib
-to generate small and efficient case folding tables, to build the libc towupper() and
-towlower() functions and its secure variants towupper_s() and towlower_s().
-It also will be used to generate the multi-byte foldings header file for towfc().
+mkheader generates a towctrans.h header file, which is used by musl
+and safeclib to generate small and efficient case folding tables, to
+build the libc towupper() and towlower() functions and its secure
+variants towupper_s() and towlower_s().
+
+TODO: It also will be used to generate the multi-byte foldings header
+file for towfc().
 
 INSTALLATION
 
 Perl 5.12 or later is required.
 
-This module does not need to be installed. running mkheader is enough.
-However for testing run this:
+This module does not need to be installed. running gen_wctrans is enough.
+However for full testing and global installation run this:
 
    perl Makefile.PL
    make
    make test
    make test-all
+   sudo make install
 
 DEPENDENCIES
 
-This module requires the CaseFolding.txt file from Unicode Character
-Database.
+This module requires a CaseFolding.txt file from Unicode Character
+Database, which is automatically downloaded via wget.
 
 COPYRIGHT AND LICENSE
 
@@ -38,5 +43,7 @@ Reini Urban <rurban@cpan.org>
 
 Copyright(C) 2026, Reini Urban. All rights reserved.
 
-This module is free software; you can redistribute it and/or
+This script is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
+
+The generated headers are MIT licensed.

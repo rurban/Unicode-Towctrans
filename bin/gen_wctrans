@@ -1,11 +1,12 @@
 #!/usr/bin/env perl
 #
-# This script creates a towctrans.h header file, musl old-style.
-# Used for building musl and safeclib for fast and small upper/lowercasing tables
-# for towlower() and towupper() and its secure variants towupper_s() and towlower_s().
-# Planned also for the multi-byte folding tables for towfc().
+# This script creates a towctrans.h header file, musl old-style. Used
+# for building musl and safeclib for fast and small upper/lowercasing
+# tables for towlower() and towupper() and its secure variants
+# towupper_s() and towlower_s(). Planned also for the multi-byte
+# folding tables for towfc().
 #
-# The generated tables are licensed under the MIT.
+# The generated code is licensed under the MIT.
 #
 # Usage:
 #    do 'mkheader' in perl, or
@@ -243,7 +244,7 @@ sub add_excl {
     }
 }
 
-if ( $v and ! -e $cf ) {
+if ( $v and !-e $cf ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
     `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
 }
@@ -359,12 +360,12 @@ EOF
 
 printf FH <<'EOF', ( $ucd_version, $v );
 /*
-Copyright © 2005-2014 Rich Felker, et al.
-Copyright © 2018,2020,2026 Reini Urban
+Copyright (c) 2005-2014 Rich Felker, et al.
+Copyright (c) 2018,2020,2026 Reini Urban
 
-------------------------------------------------------------------
-musl as a whole is licensed under the following standard MIT license:
----------------------------------------------------------------------
+--------------------------------------------------------------
+This code is licensed under the following standard MIT license
+--------------------------------------------------------------
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -462,7 +463,7 @@ print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO exclusion ranges. !iswalpha(wc) is broken on some platforms. */
+    /* TODO better exclusion ranges. !iswalpha(wc) is broken on some platforms. */
 ";
 
 # print larger exclusion ranges
@@ -485,7 +486,8 @@ print FH <<'EOF';
         if ((unsigned)wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            if (wc == 0xA64B) /* the only reverse fixup needed. Tested from Unicode 5 to 18. */
+            /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
+            if (wc == 0xA64B)
                 return 0xA64A;
             else
                 return wc + lmul * casemaps[i].lower;
