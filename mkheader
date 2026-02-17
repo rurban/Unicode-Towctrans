@@ -1,0 +1,462 @@
+#!/usr/bin/env perl
+#
+# This script creates a towctrans.h header file, musl old-style.
+# Used for building musl and safeclib for fast and small upper/lowercasing tables
+# for towlower() and towupper() and its secure variants towupper_s() and towlower_s().
+# Planned also for the multi-byte folding tables for towfc().
+#
+# The generated tables are licensed under the MIT.
+#
+# Usage:
+#    do 'mkheader' in perl, or
+#    perl mkheader [-v 17] [--cf CaseFolding.txt] on the command line
+#
+# Input files (will be downloaded if missing):
+#    CaseFolding.txt
+#
+# Output files:
+#    towctrans.h
+#    towfc.h
+
+use 5.008001;
+use strict;
+use warnings;
+use Carp;
+
+#use File::Spec;
+#use File::Copy;
+#use File::Compare;
+#use Config;
+
+BEGIN {
+    unless ( 'A' eq pack( 'U', 0x41 ) ) {
+        die "Unicode::Towctrans cannot stringify a Unicode code point\n";
+    }
+    unless ( 0x41 == unpack( 'U', 'A' ) ) {
+        die "Unicode::Towctrans cannot get Unicode code point\n";
+    }
+}
+our $PACKAGE = 'Unicode::Towctrans, mkheader';
+
+use Getopt::Long;
+my ( $v, $help, $verbose );
+my $cf  = "CaseFolding.txt";
+my $out = "towctrans.h";
+GetOptions(
+    "v=i"     => \$v,          # numeric
+    "cf=s"    => \$cf,         # string
+    "out=s"   => \$out,        # string
+    "verbose" => \$verbose,    # flag
+    "help|h"  => \$help
+  )                            # flag
+  or die("Error in command line arguments\n");
+
+if ( !$v and !-e $cf ) {
+    use Unicode::UCD;
+    my $full = Unicode::UCD::UnicodeVersion();
+    ($v) = $full =~ /^(\d+)\./;
+}
+$Unicode::Towctrans::VERSION = '0.01' unless $Unicode::Towctrans::VERSION;
+
+sub is_miniperl {
+    return !defined &DynaLoader::boot_DynaLoader;
+}
+
+########## helpers ##########
+
+## converts string "hhhh hhhh hhhh" to a numeric list
+## (hex digits separated by spaces)
+sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
+
+sub split_into_char {
+    use bytes;
+    my $uni = shift;
+    my $len = length($uni);
+    my @ary;
+    for ( my $i = 0 ; $i < $len ; ++$i ) {
+        push @ary, ord( substr( $uni, $i, 1 ) );
+    }
+    return @ary;
+}
+
+sub split_utf16 (@) {
+    my @v;
+    for (@_) {
+        if ( $_ < 0x10000 ) {
+            push @v, $_;
+        }
+        else {
+            my $cp = $_ - 0x10000;
+            my $d1 = 0xd800 + ( ( $cp >> 10 ) & 0x3ff );
+            my $d2 = 0xdc00 + ( $cp & 0x3ff );
+            push @v, $d1, $d2;
+        }
+    }
+    @v;
+}
+
+# lengths in units: uni/utf16: wchar_t, utf8: byte
+sub _utf8_len {
+    scalar split_into_char( pack_U(@_) );
+}
+
+sub _uni_len {
+    scalar @_;
+}
+
+sub _utf16_len {
+    scalar split_utf16 @_;
+}
+
+# UTF-8 char* string literal
+sub _utf8_stringify {
+    sprintf '"%s"', join '',
+      map sprintf( "\\x%02x", $_ ), split_into_char( pack_U(@_) );
+}
+
+# wchar_t* string literal
+sub _uni_stringify {
+    sprintf 'L"%s"', join '',
+      map sprintf( $_ > 34 && $_ < 127 && $_ != 92 ? "%c" : "\\x%04x", $_ ), @_;
+}
+
+# wchar_t UCS-16 string literal
+sub _utf16_stringify {
+    sprintf 'L"%s"', join ',',
+      map sprintf( $_ > 39 && $_ < 127 && $_ != 92 ? "%c" : "\\x%04x", $_ ),
+      split_utf16 @_;
+}
+
+# array of single wchar_t without \0
+sub _uni_ind_stringify {
+    sprintf '{%s}', join ',',
+      map sprintf(
+        $_ > 39 && $_ < 127 && $_ != 92 && $_ != 39 ? "L'%c'" : "L'\\x%04x'",
+        $_
+      ), @_;
+}
+
+# array of wchar_t UCS-16 characters without \0
+sub _utf16_ind_stringify {
+    sprintf '{%s}', join ',',
+      map
+      sprintf( $_ > 39 && $_ < 127 && $_ != 92 ? "L'%c'" : "L'\\x%04x'", $_ ),
+      split_utf16 @_;
+}
+
+# array of char without \0
+sub _utf8_ind_stringify {
+    sprintf '{%s}', join ',',
+      map sprintf(
+        $_ > 32 && $_ < 127 && $_ != 92 && $_ != 39 ? "'%c'" : "'\\x%02x'",
+        $_
+      ),
+      split_into_char( pack_U(@_) );
+}
+
+########## writing header files ##########
+
+my $HDR = <<'EOF';
+/*
+Copyright © 2005-2014 Rich Felker, et al.
+Copyright © 2018,2020,2026 Reini Urban
+
+------------------------------------------------------------------
+musl as a whole is licensed under the following standard MIT license:
+---------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+----------------------------------------------------------------------
+*/
+
+#include <stdint.h>
+#include <assert.h>
+
+/* map from upper until upper, to lower */
+#define CASEMAP(u1, u2, l) \
+    { (u1), (l) - (u1), (u2) - (u1) + 1 }
+/* map from upper until lower, with dist 1 */
+#define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
+
+/* Unicode 17.0.0 */
+
+static const struct {
+    unsigned short upper; /* base */
+    signed char lower; /* distance from upper to lower */
+    unsigned char len; /* how many */
+} casemaps[] = {
+    /* from, until, to */
+EOF
+
+#         from    until to (=lower of from)
+# CASEMAP(0x00c0, 0xd6, 0xe0), // 192 32 23
+# CASEMAP(0x00d8, 0xde, 0xf8), // 216 32 7
+# i.e. 100-101,102-103...12e-12f
+# CASELACE(0x0100, 0x12e), // 256 1 47
+# CASELACE(0x0132, 0x136), // 306 1 5
+# CASELACE(0x0139, 0x147), // 313 1 15
+# CASELACE(0x014a, 0x176), // 330 1 45
+# CASELACE(0x0179, 0x17d), // 377 1 5
+# CASELACE(0x01a0, 0x1a4), // 416 1 5 O WITH HORN - P WITH HOOK
+# CASELACE(0x01b3, 0x1b5), // 435 1 3
+# CASELACE(0x01cd, 0x1db), // 461 1 15
+
+# expr for larger ranges with no cases:
+# inline uint32_t _no_case(uint32_t wc) {
+#   if (wc < 0x41
+#       || wc - 0x0600 <= 0x0fff - 0x0600
+#       || wc - 0x2e00 <= 0xa63f - 0x2e00
+#       || wc - 0xa800 <= 0xab69 - 0xa800
+#       || wc - 0xabc0 <= 0xfeff - 0xabc0)
+#     return wc;
+#   }
+
+my $file = "towctrans.h";
+
+# triple of base, to, last. offset is to - base, length is last - base + 1
+sub add_map {
+    my ( $map, $base, $to ) = @_;
+
+    my $diff  = $to - $base;
+    my $odiff = $map->[-1] ? $map->[-1][1] - $map->[-1][0] : 0;
+
+    # if it's the next cp and has the same offset
+    if ( $map->[-1] and $map->[-1][2] == $base - 1 && $diff == $odiff ) {
+        ++$map->[-1][2];
+        warn "bump map [", join( " ", @{ $map->[-1] } ), "]\n" if $verbose;
+    }
+    else {
+        warn "new map [$base, $to, $base]\n" if $verbose;
+        push @$map, [ $base, $to, $base ];
+    }
+}
+
+# pair of base, last with lower offset of 1
+sub add_lace {
+    my ( $lace, $base, $to ) = @_;
+
+    # if it's the next cp
+    if (   $lace->[-1]
+        && $lace->[-1][0] == $base - 1
+        && $lace->[-1][1] == $to - 1 )
+    {
+        ++$lace->[-1][1];
+    }
+    else {
+        push @$lace, [ $base, $to ];
+    }
+}
+
+# pair of first, last
+sub add_excl {
+    my ( $excl, $base ) = @_;
+
+    # if it's the next cp
+    if ( $excl->[-1] && $excl->[-1][1] == $base - 1 ) {
+        ++$excl->[-1][1];    # extend range
+        warn "bump excl [", join( " ", @{ $excl->[-1] } ), "]\n" if $verbose;
+    }
+    else {
+        #my $first = $excl->[-1] ? $excl->[-1][0] : 0;
+        push @$excl, [ $base, $base ];    # new range
+        warn "new excl [$base, $base]\n" if $verbose;
+    }
+}
+
+if ( $v and -e !$cf ) {
+    my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
+    `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
+}
+open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
+my ( @map, @lace, @excl, $prev, $lc );
+while ( my $l = <$CF> ) {
+    chomp $l;
+    if ( !$v and $. == 1 ) {
+        $l =~ /CaseFolding-(\d+).0.0.txt/;
+        $v = $1;
+    }
+    next if $l =~ /^\s*#/;
+    next if $l =~ /^\s*$/;
+    my ( $cp, $status, $mapping, $name ) = split /;\s*/, $l;
+    my @cp = getHexArray($cp);
+    die "first column multiple codepoints" if @cp != 1;
+    $cp = $cp[0];
+    my @mapping = getHexArray($mapping);
+
+    if ( !@excl ) {
+        push @excl, [ 0, $cp - 1 ];
+    }
+    else {
+        # check status. only if C
+        if ( $cp - $prev == 1 ) {    # next cp
+            if ( $status ne 'C' ) {
+                warn "add_excl $cp for $status $mapping $name\n";
+                add_excl( \@excl, $cp );
+            }
+            elsif ( scalar @mapping == 1 ) {
+                $lc = $mapping[0];
+                if ( $lc - $cp == 1 ) {
+                    warn "add_lace $cp $lc\n" if $verbose;
+                    add_lace( \@lace, $cp, $lc );
+                }
+                else {
+                    #warn "add_map $cp $lc\n" if $verbose;
+                    add_map( \@map, $cp, $lc );
+                }
+            }
+            else {
+                warn "add_excl $cp ($status) for mult. mapping [@mapping]\n"
+                  if $verbose;
+                add_excl( \@excl, $cp );
+            }
+        }
+        else {
+            warn "add_excl $cp for hole\n" if $verbose;
+            add_excl( \@excl, $cp );
+        }
+    }
+    $prev = $cp;
+}
+close $CF;
+
+$HDR =~ s/Unicode 17/Unicode $v/g;
+my $ucd_version = "$v.0.0";
+my @h_args      = ( $Unicode::Towctrans::VERSION, $ucd_version );
+
+open FH, ">:utf8", $file or croak "$PACKAGE: $file can't be written $!";
+select FH;
+
+printf FH <<'EOF', @h_args;
+/* ex: set ro ft=c: -*- buffer-read-only: t -*-
+ *
+ * !!!!!!!   DO NOT EDIT THIS FILE   !!!!!!!
+ * This file is auto-generated by Unicode::Towctrans %s
+ * mkheader
+ * for Unicode %s
+ * Any changes here will be lost!
+ */
+EOF
+
+print FH $HDR;
+
+my $CASEL = <<'EOF';
+static const struct {
+    unsigned int upper; /* base */
+    int lower; /* distance from upper to lower */
+    unsigned short len; /* how many */
+} casemapsl[] = {
+    /* from, until, to */
+EOF
+
+# take next of @map and @lace
+my ( $i, $m ) = each @map;
+my ( $j, $l ) = each @lace;
+my $has_long;
+while ( defined($i) or defined($j) ) {
+
+    # short or long
+    if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
+        if ( !$has_long and $m->[2] > 0xffff ) {
+            $has_long++;
+            print FH "    {0, 0, 0}};\n";
+            print FH $CASEL;
+        }
+        my $cmt = sprintf "\t/* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
+          $m->[2];
+        printf FH "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0], $m->[1],
+          $m->[2], $cmt;
+        ( $i, $m ) = each @map;
+    }
+    elsif ( defined($j) ) {
+        if ( !$has_long and $l->[1] > 0xffff ) {
+            $has_long++;
+            print FH "    {0, 0, 0}};\n";
+            print FH $CASEL;
+        }
+        my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $m->[0], $m->[1] );
+        printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1], $cmt;
+        ( $j, $l ) = each @lace;
+    }
+}
+print FH "    {0, 0, 0}};\n";
+print FH "static const unsigned short pairs[][2] = {\n";
+
+# TODO process and print sorted pairs
+print FH "    {0, 0}};\n";
+print FH "\n";
+print FH "uint32_t _towcase(uint32_t wc, int lower) {
+    int i;
+    int lmul = 2 * lower - 1;
+    int lmask = lower - 1;
+    /* TODO exclusion ranges */
+";
+
+# print larger exclusion ranges
+print FH "    if (";
+for my $e (@excl) {
+    if ( !$e->[0] ) {
+        printf FH "wc <= 0x%x", $e->[1];
+    }
+    elsif ( $e->[1] - $e->[0] > 32 ) {
+        printf "      || (unsigned)wc - 0x%x <= 0x%x - 0x%x\n", $e->[0],
+          $e->[1], $e->[0];
+    }
+}
+print FH ")\n        return wc;\n";
+print FH <<'EOF';
+
+    for (i = 0; casemaps[i].len; i++) {
+        int base = casemaps[i].upper + (lmask & casemaps[i].lower);
+        assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
+        if ((unsigned)wc - base < casemaps[i].len) {
+            if (casemaps[i].lower == 1)
+                return wc + lower - ((wc - casemaps[i].upper) & 1);
+            return wc + lmul * casemaps[i].lower;
+        }
+        if (lower && casemaps[i].upper > wc)
+            break;
+    }
+    /* TODO */
+    for (i = 0; pairs[i][1 - lower]; i++) {
+        assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
+        if (pairs[i][1 - lower] == wc)
+            return pairs[i][lower];
+        if (lower && pairs[i][0] > wc)
+            break;
+    }
+    for (i = 0; casemapsl[i].len; i++) {
+        unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
+        assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
+        if ((unsigned)wc - base < casemapsl[i].len) {
+            if (casemapsl[i].lower == 1)
+                return wc + lower - ((wc - casemapsl[i].upper) & 1);
+            return wc + lmul * casemapsl[i].lower;
+        }
+        if (lower && casemaps[i].upper > wc)
+            break;
+    }
+    return wc;
+}
+EOF
+
+__END__
+# Local Variables:
+# perl-indent-level: 4
+# End:
