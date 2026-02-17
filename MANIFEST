@@ -5,5 +5,11 @@ MANIFEST	# MANIFEST for pure perl
 bin/gen_wctrans	# script to generate headers
 README		# README
 towctrans.h     # output for latest unicode
+examples/bench.c
+examples/casemap.h
+examples/Makefile
+examples/towctrans-musl-new.c
+examples/towctrans-musl-old.c
+examples/towctrans-my.c
 t/c.t
 t/towctrans.c   # test C source

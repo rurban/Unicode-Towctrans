@@ -19,6 +19,21 @@ variants towupper_s() and towlower_s().
 TODO: It also will be used to generate the multi-byte foldings header
 file for towfc().
 
+PERFORMANCE
+
+Currently it is un-optimized and too slow.
+But pretty small already. Should get to the musl-old size.
+
+    make -C examples
+    ./bench
+            my:       7214 [us]
+      musl-new:        157 [us]
+      musl-old:        174 [us]
+    wc -c towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o
+     5792 towctrans-my.o
+     7024 towctrans-musl-new.o
+     3464 towctrans-musl-old.o
+
 INSTALLATION
 
 Perl 5.12 or later is required.
