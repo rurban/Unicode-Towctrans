@@ -50,6 +50,18 @@ GetOptions(
     "help|h"  => \$help
   )                            # flag
   or die("Error in command line arguments\n");
+if ($help) {
+    print "mkheader [OPTIONS]\n";
+    print "Generate casefolding C header file\n";
+    print "OPTIONS:\n";
+    print "-v NUM                Unicode major version number\n";
+    print "--cf CaseFolding.txt  input filename. default: CaseFolding.txt."
+      . " Downloaded if not found.\n";
+    print "--out filename        default: towctrans.h\n";
+    print "--verbose\n";
+    print "--help\n";
+    exit;
+}
 
 if ( !$v and !-e $cf ) {
     use Unicode::UCD;
