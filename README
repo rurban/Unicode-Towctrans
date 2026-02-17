@@ -17,7 +17,7 @@ It also will be used to generate the multi-byte foldings header file for towfc()
 
 INSTALLATION
 
-Perl 5.8.1 or later is required.
+Perl 5.12 or later is required.
 
 This module does not need to be installed. running mkheader is enough.
 However for testing run this:
@@ -25,6 +25,7 @@ However for testing run this:
    perl Makefile.PL
    make
    make test
+   make test-all
 
 DEPENDENCIES
 

@@ -4,4 +4,7 @@ Makefile.PL
 MANIFEST	MANIFEST for pure perl
 mkheader	main script to generate headers
 README		# README
-t/test.t
+Towctrans.pm    # Dummy module
+towctrans.h     # output for latest unicode
+t/c.t
+t/towctrans.c   # test C source

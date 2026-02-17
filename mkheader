@@ -18,15 +18,10 @@
 #    towctrans.h
 #    towfc.h
 
-use 5.008001;
+use 5.012;
 use strict;
 use warnings;
 use Carp;
-
-#use File::Spec;
-#use File::Copy;
-#use File::Compare;
-#use Config;
 
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
@@ -168,55 +163,6 @@ sub _utf8_ind_stringify {
 
 ########## writing header files ##########
 
-my $HDR = <<'EOF';
-/*
-Copyright © 2005-2014 Rich Felker, et al.
-Copyright © 2018,2020,2026 Reini Urban
-
-------------------------------------------------------------------
-musl as a whole is licensed under the following standard MIT license:
----------------------------------------------------------------------
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-----------------------------------------------------------------------
-*/
-
-#include <stdint.h>
-#include <assert.h>
-
-/* map from upper until upper, to lower */
-#define CASEMAP(u1, u2, l) \
-    { (u1), (l) - (u1), (u2) - (u1) + 1 }
-/* map from upper until lower, with dist 1 */
-#define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
-
-/* Unicode 17.0.0 */
-
-static const struct {
-    unsigned short upper; /* base */
-    signed char lower; /* distance from upper to lower */
-    unsigned char len; /* how many */
-} casemaps[] = {
-    /* from, until, to */
-EOF
-
 #         from    until to (=lower of from)
 # CASEMAP(0x00c0, 0xd6, 0xe0), // 192 32 23
 # CASEMAP(0x00d8, 0xde, 0xf8), // 216 32 7
@@ -275,6 +221,7 @@ sub add_lace {
     }
 }
 
+# FIXME: check the reverse if deviating. upper(03BC) => 039C, not B5
 sub add_pair {
     my ( $pair, $base, $to ) = @_;
     push @$pair, [ $base, $to ];
@@ -296,7 +243,7 @@ sub add_excl {
     }
 }
 
-if ( $v and -e !$cf ) {
+if ( $v and ! -e $cf ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
     `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
 }
@@ -392,7 +339,6 @@ while ( my $l = <$CF> ) {
 }
 close $CF;
 
-$HDR =~ s/Unicode 17/Unicode $v/g;
 my $ucd_version = "$v.0.0";
 my @h_args      = ( $Unicode::Towctrans::VERSION, $ucd_version );
 
@@ -411,13 +357,61 @@ printf FH <<'EOF', @h_args;
  */
 EOF
 
-print FH $HDR;
+printf FH <<'EOF', ( $ucd_version, $v );
+/*
+Copyright © 2005-2014 Rich Felker, et al.
+Copyright © 2018,2020,2026 Reini Urban
+
+------------------------------------------------------------------
+musl as a whole is licensed under the following standard MIT license:
+---------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+----------------------------------------------------------------------
+*/
+
+#include <stdint.h>
+#include <assert.h>
+
+/* map from upper until upper, to lower */
+#define CASEMAP(u1, u2, l) \
+    { (u1), (l) - (u1), (u2) - (u1) + 1 }
+/* map from upper until lower, with dist 1 */
+#define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
+
+/* for Unicode %s */
+#define TOWCTRANS_UNICODE_VERSION %u
+
+static const struct {
+    uint16_t upper; /* base */
+    int lower; /* distance from upper to lower */
+    uint16_t len; /* how many */
+} casemaps[] = {
+    /* from, until, to */
+EOF
 
 my $CASEL = <<'EOF';
 static const struct {
-    unsigned int upper; /* base */
+    uint32_t upper; /* base */
     int lower; /* distance from upper to lower */
-    unsigned short len; /* how many */
+    uint16_t len; /* how many */
 } casemapsl[] = {
     /* from, until, to */
 EOF
@@ -457,7 +451,7 @@ print FH "    {0, 0, 0}};\n";
 print FH "static const unsigned short pairs[][2] = {\n"
   . "    /* upper, lower */\n";
 
-# TODO process pairs to enable reverse lookup
+# also fixup pairs to enable reverse lookup
 for my $p (@pair) {
     my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $p->[0], $p->[1] );
     printf FH "    {0x%04x, 0x%04x},%s\n", $p->[0], $p->[1], $cmt;
@@ -466,9 +460,9 @@ print FH "    {0, 0}};\n";
 print FH "\n";
 print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lmul = 2 * lower - 1;
-    int lmask = lower - 1;
-    /* TODO exclusion ranges */
+    int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* TODO exclusion ranges. !iswalpha(wc) is broken on some platforms. */
 ";
 
 # print larger exclusion ranges
@@ -491,12 +485,14 @@ print FH <<'EOF';
         if ((unsigned)wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            return wc + lmul * casemaps[i].lower;
+            if (wc == 0xA64B) /* the only reverse fixup needed. Tested from Unicode 5 to 18. */
+                return 0xA64A;
+            else
+                return wc + lmul * casemaps[i].lower;
         }
         if (lower && casemaps[i].upper > wc)
             break;
     }
-    /* TODO */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)

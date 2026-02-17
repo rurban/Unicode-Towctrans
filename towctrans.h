@@ -44,12 +44,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* map from upper until lower, with dist 1 */
 #define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
 
-/* Unicode 18.0.0 */
+/* for Unicode 18.0.0 */
+#define TOWCTRANS_UNICODE_VERSION 18
 
 static const struct {
-    unsigned short upper; /* base */
-    signed char lower; /* distance from upper to lower */
-    unsigned char len; /* how many */
+    uint16_t upper; /* base */
+    int lower; /* distance from upper to lower */
+    uint16_t len; /* how many */
 } casemaps[] = {
     /* from, until, to */
     CASEMAP(0x0041, 0x005a, 0x0061),	/* 'A' -> 'a' .. 'Z' */
@@ -194,9 +195,9 @@ static const struct {
     CASEMAP(0xff21, 0xff3a, 0xff41),	/* 'Ａ' -> 'ａ' .. 'Ｚ' */
     {0, 0, 0}};
 static const struct {
-    unsigned int upper; /* base */
+    uint32_t upper; /* base */
     int lower; /* distance from upper to lower */
-    unsigned short len; /* how many */
+    uint16_t len; /* how many */
 } casemapsl[] = {
     /* from, until, to */
     CASEMAP(0x10400, 0x10427, 0x10428),	/* '𐐀' -> '𐐨' .. '𐐧' */
@@ -219,6 +220,7 @@ static const struct {
     CASEMAP(0x1e900, 0x1e921, 0x1e922),	/* '𞤀' -> '𞤢' .. '𞤡' */
     {0, 0, 0}};
 static const unsigned short pairs[][2] = {
+    /* upper, lower */
     {0x00b5, 0x03bc},		/* 'µ' -> 'μ' */
     {0x0178, 0x00ff},		/* 'Ÿ' -> 'ÿ' */
     {0x017f, 0x0073},		/* 'ſ' -> 's' */
@@ -276,9 +278,9 @@ static const unsigned short pairs[][2] = {
 
 uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lmul = 2 * lower - 1;
-    int lmask = lower - 1;
-    /* TODO exclusion ranges */
+    int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* TODO exclusion ranges. !iswalpha(wc) is broken on some platforms. */
     if (wc <= 0x40
         || (unsigned)wc - 0x1f80 <= 0x1faf - 0x1f80)
         return wc;
@@ -289,12 +291,14 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if ((unsigned)wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            return wc + lmul * casemaps[i].lower;
+            if (wc == 0xA64B) /* the only reverse fixup needed. Tested from Unicode 5 to 18. */
+                return 0xA64A;
+            else
+                return wc + lmul * casemaps[i].lower;
         }
         if (lower && casemaps[i].upper > wc)
             break;
     }
-    /* TODO */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
