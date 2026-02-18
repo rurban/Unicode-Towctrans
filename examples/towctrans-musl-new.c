@@ -60,12 +60,12 @@ static int casemap(unsigned c, int dir)
 	return c0;
 }
 
-wint_t towlower(wint_t wc)
+wint_t musl_towlower(wint_t wc)
 {
 	return casemap(wc, 0);
 }
 
-wint_t towupper(wint_t wc)
+wint_t musl_towupper(wint_t wc)
 {
 	return casemap(wc, 1);
 }
