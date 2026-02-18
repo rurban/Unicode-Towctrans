@@ -66,9 +66,8 @@ if ( !$v and !-e $cf ) {
 }
 $Unicode::Towctrans::VERSION = '0.01' unless $Unicode::Towctrans::VERSION;
 
-sub is_miniperl {
-    return !defined &DynaLoader::boot_DynaLoader;
-}
+binmode *STDOUT, ':utf8';
+binmode *STDERR, ':utf8';
 
 ########## helpers ##########
 
@@ -187,21 +186,26 @@ sub _utf8_ind_stringify {
 #     return wc;
 #   }
 
-# triple of base, to, last. offset is to - base, length is last - base + 1
+# triple of base, last, to.
+# offset is to - base, length is last - base + 1
 sub add_map {
     my ( $map, $base, $to ) = @_;
 
     my $diff  = $to - $base;
-    my $odiff = $map->[-1] ? $map->[-1][1] - $map->[-1][0] : 0;
+    my $odiff = $map->[-1] ? $map->[-1][2] - $map->[-1][0] : 0;
 
     # if it's the next cp and has the same offset
-    if ( $map->[-1] and $map->[-1][2] == $base - 1 && $diff == $odiff ) {
-        ++$map->[-1][2];
-        warn "bump map [", join( " ", @{ $map->[-1] } ), "]\n" if $verbose;
+    if ( $map->[-1] and $map->[-1][1] == $base - 1 && $diff == $odiff ) {
+        ++$map->[-1][1];
+        if ($verbose) {
+            warn sprintf( "bump map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+        }
     }
     else {
-        warn "new map [$base, $to, $base]\n" if $verbose;
-        push @$map, [ $base, $to, $base ];
+        push @$map, [ $base, $base, $to ];
+        if ($verbose) {
+            warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+        }
     }
 }
 
@@ -213,12 +217,16 @@ sub add_lace {
     if (   $lace->[-1]
         && $lace->[-1][1] == $to - 2 )
     {
-        warn "bump lace $lace->[-1][0] $to\n" if $verbose;
         $lace->[-1][1] = $to;
+        if ($verbose) {
+            warn sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } );
+        }
     }
     else {
-        warn "new lace $base $to\n" if $verbose;
         push @$lace, [ $base, $to ];
+        if ($verbose) {
+            warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
+        }
     }
 }
 
@@ -235,12 +243,15 @@ sub add_excl {
     # if it's the next cp
     if ( $excl->[-1] && $excl->[-1][1] == $base - 1 ) {
         ++$excl->[-1][1];    # extend range
-        warn "bump excl [", join( " ", @{ $excl->[-1] } ), "]\n" if $verbose;
+        if ($verbose) {
+            warn sprintf( "bump excl [%04X, %04X]\n", @{ $excl->[-1] } );
+        }
     }
     else {
-        #my $first = $excl->[-1] ? $excl->[-1][0] : 0;
         push @$excl, [ $base, $base ];    # new range
-        warn "new excl [$base, $base]\n" if $verbose;
+        if ($verbose) {
+            warn sprintf( "new excl [%04X, %04X]\n", @{ $excl->[-1] } );
+        }
     }
 }
 
@@ -249,7 +260,7 @@ if ( $v and !-e $cf ) {
     `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
 }
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
-my ( @map, @lace, @excl, @pair, $prev, $lc );
+my ( @map, @lace, @excl, @pair, $prev, $lc, @CASEL );
 while ( my $l = <$CF> ) {
     chomp $l;
     if ( !$v and $. == 1 ) {
@@ -272,7 +283,10 @@ while ( my $l = <$CF> ) {
         # check status. only if C
         if ( $cp - $prev == 1 ) {              # next cp
             if ( $status ne 'C' ) {
-                warn "add_excl $cp for $status $mapping $name\n" if $verbose;
+                warn(
+                    sprintf( "add_excl %04X", $cp )
+                      . " for $status $mapping $name\n" )
+                  if $verbose;
                 add_excl( \@excl, $cp );
             }
             elsif ( scalar @mapping == 1 ) {
@@ -284,7 +298,12 @@ while ( my $l = <$CF> ) {
                         and $pair[-1][0] == $cp - 1
                         and $pair[-1][1] == $lc - 1 )
                     {
-                        warn "convert old pair to lace $cp $lc\n" if $verbose;
+                        warn(
+                            sprintf(
+                                "convert old pair to lace %04X %04X\n",
+                                $cp, $lc
+                            )
+                        ) if $verbose;
                         pop @pair;
                         add_lace( \@lace, $cp - 1, $lc - 1 );
                         add_lace( \@lace, $cp,     $lc );
@@ -300,7 +319,11 @@ while ( my $l = <$CF> ) {
                         and $pair[-1][0] == $cp - 1
                         and $pair[-1][1] == $lc - 1 )
                     {
-                        warn "convert old pair to map $cp $lc\n" if $verbose;
+                        if ($verbose) {
+                            warn
+                              sprintf( "convert old pair to map %04X, %04X\n",
+                                $cp, $lc );
+                        }
                         pop @pair;
                         add_map( \@map, $cp - 1, $lc - 1 );
                         add_map( \@map, $cp,     $lc );
@@ -312,8 +335,11 @@ while ( my $l = <$CF> ) {
                 }
             }
             else {
-                warn "add_excl $cp ($status) for mult. mapping [@mapping]\n"
-                  if $verbose;
+                if ($verbose) {
+                    warn sprintf(
+                        "add_excl %04X (%s) for mult. mapping [@mapping]\n",
+                        $cp, $status );
+                }
                 add_excl( \@excl, $cp );
             }
         }
@@ -326,12 +352,14 @@ while ( my $l = <$CF> ) {
                     add_lace( \@lace, $cp, $to );
                 }
                 else {
-                    warn "add_pair $cp $to\n" if $verbose;
+                    if ($verbose) {
+                        warn sprintf( "add_pair %04X, %04X\n", $cp, $to );
+                    }
                     add_pair( \@pair, $cp, $to );
                 }
             }
             elsif ( !@excl or $excl[-1][1] != $cp ) {
-                warn "add_excl $cp for hole\n" if $verbose;
+                warn( sprintf( "add_excl %04X for hole\n", $cp ) ) if $verbose;
                 add_excl( \@excl, $cp );
             }
         }
@@ -402,8 +430,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const struct {
     uint16_t upper; /* base */
-    int lower; /* distance from upper to lower */
-    uint16_t len; /* how many */
+    int8_t lower; /* distance from upper to lower */
+    uint8_t len; /* how many */
 } casemaps[] = {
     /* from, until, to */
 EOF
@@ -429,11 +457,27 @@ while ( defined($i) or defined($j) ) {
             $has_long++;
             print FH "    {0, 0, 0}};\n";
             print FH $CASEL;
+            print FH $_ for @CASEL;
         }
         my $cmt = sprintf "\t/* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
           $m->[2];
-        printf FH "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0], $m->[2],
-          $m->[1], $cmt;
+
+        # on overflow push to @CASEL instead
+        my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
+          $m->[1],
+          $m->[2], $cmt;
+        my $lower = $m->[2] - $m->[0];
+        my $len   = $m->[1] - $m->[0] + 1;
+        if ( $lower > 128 or $lower < -128 or $len > 255 ) {
+            my $s0 = sprintf "CASEMAP(0x%04x, 0x%04x, 0x%04x)", $m->[0],
+              $m->[1],
+              $m->[2];
+            warn "defer overflow $s0 to casemapl\n" if $verbose;
+            push @CASEL, $s;
+        }
+        else {
+            printf FH $s;
+        }
         ( $i, $m ) = each @map;
     }
     elsif ( defined($j) ) {
@@ -441,6 +485,7 @@ while ( defined($i) or defined($j) ) {
             $has_long++;
             print FH "    {0, 0, 0}};\n";
             print FH $CASEL;
+            print FH $_ for @CASEL;
         }
         my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $l->[0], $l->[1] - 1 );
         printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
