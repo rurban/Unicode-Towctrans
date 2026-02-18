@@ -4,7 +4,14 @@ use ExtUtils::MakeMaker qw( WriteMakefile );
 my $BIN = 'bin/gen_wctrans';
 my @cf;
 push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5 .. 18;
-my $clean  = { FILES => [ 't/towctrans', 'diffs', @cf ] };
+my $clean = {
+    FILES => [
+        't/towctrans',   'diffs',
+        @cf,             'examples/test-glibc',
+        glob('t/*.bak'), glob('examples/test-[0-9]*'),
+        glob('examples/tow*.o')
+    ]
+};
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
 if ( !-f "towctrans.h" ) {
     print STDERR "Making header file\n";
