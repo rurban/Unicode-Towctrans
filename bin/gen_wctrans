@@ -309,7 +309,7 @@ while ( my $l = <$CF> ) {
                     sprintf( "add_excl %04X", $cp )
                       . " for $status $mapping $name\n" )
                   if $verbose;
-                add_excl( \@excl, $cp );
+                #add_excl( \@excl, $cp );
             }
             elsif ( scalar @mapping == 1 ) {
                 $lc = $mapping[0];
@@ -362,7 +362,7 @@ while ( my $l = <$CF> ) {
                         "add_excl %04X (%s) for mult. mapping [@mapping]\n",
                         $cp, $status );
                 }
-                add_excl( \@excl, $cp );
+                #add_excl( \@excl, $cp );
             }
         }
         else {    # not next cp, a hole or lace
@@ -376,7 +376,7 @@ while ( my $l = <$CF> ) {
                     add_lace( \@lace, $cp, $to );
                 }
                 else { # add a hole
-                    add_excl( \@excl, $prev + 1 );
+                    #add_excl( \@excl, $prev + 1 );
                     $excl[-1][1] = $cp - 1;
                     warn( sprintf( "add_excl from %04X to %04X for hole, status=%s\n",
                                    $prev + 1, $cp - 1, $status ) )
@@ -389,7 +389,7 @@ while ( my $l = <$CF> ) {
             }
             elsif ( $prev != $cp and (!@excl or $excl[-1][1] != $cp - 1 )) {
                 # ie lace: 012E - 012F, 130 being T
-                add_excl( \@excl, $prev );
+                #add_excl( \@excl, $prev );
                 $excl[-1][1] = $cp;
                 warn( sprintf( "add_excl from %04X to %04X for hole, status=%s\n",
                                $prev, $cp, $status ) )
@@ -565,6 +565,20 @@ else {
     # TODO print larger exclusion ranges. iswalpha is useless with C.UTF-8
     print FH "    if (";
 }
+# generated the excl ranges here, because it is more stable
+my %alpha;
+$alpha{$_}++ for keys %lower;
+$alpha{$_}++ for keys %upper;
+my @sorted = sort {$a <=> $b } keys %alpha;
+my $first = $sorted[0];
+my $last = $sorted[-1];
+@excl = ([0, $first - 1]);
+for ($first+1 .. $last-1) {
+    if (!exists $alpha{$_}) {
+        add_excl(\@excl, $_);
+    }
+}
+
 for my $e (@excl) {
     if ( !$e->[0] ) {
         printf FH "wc <= 0x%x", $e->[1];

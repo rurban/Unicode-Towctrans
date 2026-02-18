@@ -320,8 +320,30 @@ uint32_t _towcase(uint32_t wc, int lower) {
     /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
        at least with glibc. */
     if (wc <= 0x40
+        || (unsigned)wc - 0x7b <= 0xb4 - 0x7b
+        || (unsigned)wc - 0x29f <= 0x344 - 0x29f
+        || (unsigned)wc - 0x346 <= 0x36f - 0x346
+        || (unsigned)wc - 0x588 <= 0x109f - 0x588
+        || (unsigned)wc - 0x1100 <= 0x139f - 0x1100
+        || (unsigned)wc - 0x13fe <= 0x1c7f - 0x13fe
+        || (unsigned)wc - 0x1cc0 <= 0x1d78 - 0x1cc0
+        || (unsigned)wc - 0x1d8f <= 0x1dff - 0x1d8f
         || (unsigned)wc - 0x1ffd <= 0x2125 - 0x1ffd
+        || (unsigned)wc - 0x2185 <= 0x24b5 - 0x2185
+        || (unsigned)wc - 0x24ea <= 0x2bff - 0x24ea
+        || (unsigned)wc - 0x2d2e <= 0xa63f - 0x2d2e
+        || (unsigned)wc - 0xa69c <= 0xa721 - 0xa69c
+        || (unsigned)wc - 0xa7f7 <= 0xab4a - 0xa7f7
+        || (unsigned)wc - 0xabc0 <= 0xfaff - 0xabc0
         || (unsigned)wc - 0xfb18 <= 0xff20 - 0xfb18
+        || (unsigned)wc - 0xff5b <= 0x103ff - 0xff5b
+        || (unsigned)wc - 0x10450 <= 0x104af - 0x10450
+        || (unsigned)wc - 0x104fc <= 0x1056f - 0x104fc
+        || (unsigned)wc - 0x105bd <= 0x10c7f - 0x105bd
+        || (unsigned)wc - 0x10cf3 <= 0x10d4f - 0x10cf3
+        || (unsigned)wc - 0x10d86 <= 0x1189f - 0x10d86
+        || (unsigned)wc - 0x118e0 <= 0x16e3f - 0x118e0
+        || (unsigned)wc - 0x16ed4 <= 0x1df3f - 0x16ed4
         || (unsigned)wc - 0x1df96 <= 0x1e8ff - 0x1df96)
         return wc;
 
