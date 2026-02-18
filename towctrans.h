@@ -315,35 +315,18 @@ static const unsigned int pairl[][2] = {
 
 uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
-    int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    int lmul;	/* 1 for lower, -1 for upper */
+    int lmask;  /* 0 for lower, -1/0xffff for upper */
     /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
        at least with glibc. */
     if (wc <= 0x40
-        || (unsigned)wc - 0x5a <= 0xbf - 0x5a
-        || (unsigned)wc - 0x24e <= 0x344 - 0x24e
-        || (unsigned)wc - 0x556 <= 0x587 - 0x556
-        || (unsigned)wc - 0x587 <= 0x109f - 0x587
-        || (unsigned)wc - 0x10c5 <= 0x13f7 - 0x10c5
-        || (unsigned)wc - 0x13fd <= 0x1c7f - 0x13fd
-        || (unsigned)wc - 0x1ffc <= 0x2129 - 0x1ffc
-        || (unsigned)wc - 0x212b <= 0x215f - 0x212b
-        || (unsigned)wc - 0x2183 <= 0x24b5 - 0x2183
-        || (unsigned)wc - 0x24cf <= 0x2bff - 0x24cf
-        || (unsigned)wc - 0xa7f5 <= 0xab6b - 0xa7f5
-        || (unsigned)wc - 0xabbf <= 0xfb06 - 0xabbf
-        || (unsigned)wc - 0xfb17 <= 0xff20 - 0xfb17
-        || (unsigned)wc - 0xff3a <= 0x103ff - 0xff3a
-        || (unsigned)wc - 0x10427 <= 0x104af - 0x10427
-        || (unsigned)wc - 0x104d3 <= 0x1056f - 0x104d3
-        || (unsigned)wc - 0x10595 <= 0x10c7f - 0x10595
-        || (unsigned)wc - 0x10cb2 <= 0x10d4f - 0x10cb2
-        || (unsigned)wc - 0x10d65 <= 0x1189f - 0x10d65
-        || (unsigned)wc - 0x118bf <= 0x16e3f - 0x118bf
-        || (unsigned)wc - 0x16e5f <= 0x16e9f - 0x16e5f
-        || (unsigned)wc - 0x1df95 <= 0x1e8ff - 0x1df95)
+        || (unsigned)wc - 0x1ffd <= 0x2125 - 0x1ffd
+        || (unsigned)wc - 0xfb18 <= 0xff20 - 0xfb18
+        || (unsigned)wc - 0x1df96 <= 0x1e8ff - 0x1df96)
         return wc;
 
+    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);

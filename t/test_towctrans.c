@@ -102,7 +102,7 @@ int main(void) {
               printf("ok %u towlower(U+%04X) => %s F %s\n", i++, wc, mapping,
                      name);
           }
-        } else if (*status == 'C') {
+        } else if (*status == 'C') { // TODO 'S' also?
           if (mp != lwr)
             printf("not ok %u Error towlower(U+%04X) => U+%04X != lower=%s "
                    "status=%s "

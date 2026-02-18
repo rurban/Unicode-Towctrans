@@ -71,6 +71,7 @@ if ( !$v and !-e $cf ) {
 
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
+my ( @map, @lace, @excl, @pair, $prev, $lc, %upper, %lower, @CASEL );
 
 ########## helpers ##########
 
@@ -239,22 +240,23 @@ sub add_pair {
     push @$pair, [ $base, $to ];
 }
 
-# pair of first, last
+# exclude a pair of first, last.
+# also observe the existing lhs cp and rhs lower mappings
 sub add_excl {
     my ( $excl, $base ) = @_;
 
+    if (exists $lower{$base} or exists $upper{$base}) {
+        warn(sprintf( "skip excl %04X\n", $base )) if $verbose;
+        return;
+    }
     # if it's the next cp
-    if ( $excl->[-1] && $excl->[-1][1] == $base - 1 ) {
+    if ( $excl->[-1] && $excl->[-1][1] == $base - 1) {
         ++$excl->[-1][1];    # extend range
-        if ($verbose) {
-            warn sprintf( "bump excl [%04X, %04X]\n", @{ $excl->[-1] } );
-        }
+        warn( sprintf( "bump excl [%04X, %04X]\n", @{ $excl->[-1] } )) if $verbose;
     }
     else {
         push @$excl, [ $base, $base ];    # new range
-        if ($verbose) {
-            warn sprintf( "new excl [%04X, %04X]\n", @{ $excl->[-1] } );
-        }
+        warn(sprintf( "new excl [%04X, %04X]\n", @{ $excl->[-1] } )) if $verbose;
     }
 }
 
@@ -263,13 +265,30 @@ if ( $v and !-e $cf ) {
     `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
 }
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
-my ( @map, @lace, @excl, @pair, $prev, $lc, @CASEL );
+# first scan to catch all rhs lower mappings
 while ( my $l = <$CF> ) {
     chomp $l;
     if ( !$v and $. == 1 ) {
         $l =~ /CaseFolding-(\d+).0.0.txt/;
         $v = $1;
     }
+    next if $l =~ /^\s*#/;
+    next if $l =~ /^\s*$/;
+    my ( $cp, $status, $mapping, $name ) = split /;\s*/, $l;
+    my @cp = getHexArray($cp);
+    die "first column multiple codepoints" if @cp != 1;
+    $cp = $cp[0];
+    my @mapping = getHexArray($mapping);
+    if ( @mapping == 1 ) {
+        $lower{$mapping[0]} = $cp;
+    }
+    $upper{$cp} = $mapping[0];
+}
+
+seek $CF, 0, 0;
+# 2nd scan, now process CP's in order.
+while ( my $l = <$CF> ) {
+    chomp $l;
     next if $l =~ /^\s*#/;
     next if $l =~ /^\s*$/;
     my ( $cp, $status, $mapping, $name ) = split /;\s*/, $l;
@@ -357,10 +376,10 @@ while ( my $l = <$CF> ) {
                     add_lace( \@lace, $cp, $to );
                 }
                 else { # add a hole
-                    add_excl( \@excl, $prev );
+                    add_excl( \@excl, $prev + 1 );
                     $excl[-1][1] = $cp - 1;
                     warn( sprintf( "add_excl from %04X to %04X for hole, status=%s\n",
-                                   $prev, $cp - 1, $status ) )
+                                   $prev + 1, $cp - 1, $status ) )
                         if $verbose;
 
                     warn( sprintf( "add_pair %04X, %04X\n", $cp, $to ) )
@@ -534,8 +553,8 @@ printf FH "#define PAIRL_SZ %u\n", $n_pairl if $n_pairl;
 print FH "\n";
 print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
-    int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    int lmul;	/* 1 for lower, -1 for upper */
+    int lmask;  /* 0 for lower, -1/0xffff for upper */
     /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
        at least with glibc. */
 ";
@@ -551,13 +570,26 @@ for my $e (@excl) {
         printf FH "wc <= 0x%x", $e->[1];
     }
     elsif ( $e->[1] - $e->[0] > 32 ) {
-        printf FH "\n        || (unsigned)wc - 0x%x <= 0x%x - 0x%x", $e->[0],
-          $e->[1], $e->[0];
+        my $skip;
+        # cross-check
+        for ($e->[0] .. $e->[1]) {
+            if (exists $lower{$_} or exists $upper{$_}) {
+                warn( sprintf( "wrong excl %04X skipped", $_));
+                $skip = 1;
+                last;
+            }
+        }
+        if (!$skip) {
+            printf FH "\n        || (unsigned)wc - 0x%x <= 0x%x - 0x%x", $e->[0],
+                $e->[1], $e->[0];
+        }
     }
 }
 print FH ")\n        return wc;\n";
 print FH <<'EOF';
 
+    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
