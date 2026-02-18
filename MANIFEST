@@ -1,6 +1,7 @@
 Changes
 LICENSE
 MANIFEST
+MANIFEST.SKIP
 Makefile.PL
 README
 bin/gen_wctrans
@@ -14,6 +15,15 @@ examples/towctrans-musl-new.c
 examples/towctrans-musl-old.c
 examples/towctrans-my.c
 examples/wchar-lookup.h
+t/c-asan.t
 t/c.t
+t/changes.t
+t/kwalitee.t
+t/manifest.t
+t/meta.t
+t/perl_minimum_version.t
+t/pod-spell-mistakes.t
+t/pod-spelling.t
+t/pod.t
 t/test_towctrans.c
 towctrans.h
