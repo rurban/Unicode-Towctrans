@@ -583,7 +583,7 @@ for my $e (@excl) {
     if ( !$e->[0] ) {
         printf FH "wc <= 0x%x", $e->[1];
     }
-    elsif ( $e->[1] - $e->[0] > 32 ) {
+    elsif ( $e->[1] - $e->[0] >= 128 ) {
         my $skip;
         # cross-check
         for ($e->[0] .. $e->[1]) {
@@ -594,8 +594,8 @@ for my $e (@excl) {
             }
         }
         if (!$skip) {
-            printf FH "\n        || (unsigned)wc - 0x%x <= 0x%x - 0x%x", $e->[0],
-                $e->[1], $e->[0];
+            printf FH "\n        || (unsigned)wc - 0x%x <= 0x%x - 0x%x\t"
+                . "/* %u */", $e->[0], $e->[1], $e->[0], $e->[1] - $e->[0];
         }
     }
 }
