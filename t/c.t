@@ -5,7 +5,7 @@ use Config qw( %Config );
 BEGIN {
     chdir "t" if -e "t/test_towctrans.c";
 }
-use Test::More ();
+use Test::More import => [qw( diag )];
 
 my $is_mswin = $^O eq 'MSWin32';
 my $cc       = $Config{cc};

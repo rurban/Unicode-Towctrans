@@ -346,24 +346,32 @@ while ( my $l = <$CF> ) {
                 add_excl( \@excl, $cp );
             }
         }
-        else {    # not next cp, a hole
+        else {    # not next cp, a hole or lace
             if ( $status eq 'C' and scalar @mapping == 1 ) {
                 my $to = $mapping[0];
                 if ( $to - $cp == 1 ) {
-
                     #warn "add_lace $cp $to\n" if $verbose;
                     add_lace( \@lace, $cp, $to );
                 }
-                else {
-                    if ($verbose) {
+                else { # add a hole
+                    add_excl( \@excl, $prev );
+                    $excl[-1][1] = $cp - 1;
+                    warn( sprintf( "add_excl from %04X to %04X for hole, status=%s\n",
+                                   $prev, $cp - 1, $status ) )
+                        if $verbose;
+
+                     if ($verbose) {
                         warn sprintf( "add_pair %04X, %04X\n", $cp, $to );
                     }
                     add_pair( \@pair, $cp, $to );
                 }
             }
-            elsif ( !@excl or $excl[-1][1] != $cp ) {
-                warn( sprintf( "add_excl %04X for hole\n", $cp ) ) if $verbose;
-                add_excl( \@excl, $cp );
+            elsif ( !@excl or $excl[-1][1] != $cp - 1 ) {
+                add_excl( \@excl, $prev );
+                $excl[-1][1] = $cp;
+                warn( sprintf( "add_excl from %04X to %04X for hole, status=%s\n",
+                               $prev, $cp, $status ) )
+                    if $verbose;
             }
         }
     }

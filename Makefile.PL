@@ -1,7 +1,21 @@
 require 5.012;
+use Config              qw( %Config );
 use ExtUtils::MakeMaker qw( WriteMakefile );
 
 my $BIN = 'bin/gen_wctrans';
+
+# Check if this iswalpha() works or is locale sensitive.
+if ( has_working_iswalpha() ) {
+
+    # we may want to change the default in bin/gen_wctrans
+    print "iswalpha() works, you can use $BIN with --with-iswalpha\n";
+}
+
+if ( !-f "towctrans.h" ) {
+    print STDERR "Making header file\n";
+    do 'bin/gen_wctrans' or die;
+}
+
 my @cf;
 push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5 .. 18;
 push @cf, "examples/test-$_" for 5 .. 18;
@@ -13,12 +27,6 @@ my $clean = {
     ]
 };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
-
-if ( !-f "towctrans.h" ) {
-    print STDERR "Making header file\n";
-    do 'bin/gen_wctrans' or die;
-}
-
 WriteMakefile(
     'AUTHOR'   => 'Reini Urban <rurban@cpan.org>',
     'ABSTRACT' => 'Generate Unicode Case Transformation Tables',
@@ -55,6 +63,21 @@ WriteMakefile(
         )
     ),
 );
+
+# i.e if it's musl it works, if it's glibc not.
+sub has_working_iswalpha {
+    my $is_mswin = $^O eq 'MSWin32';
+    my $exe = "examples/test-iswalpha" . ( $^O eq 'MSWin32' ? ".exe" : "" );
+    my $rc;
+    if ( !-x "$exe" ) {
+        my $cc     = $Config{cc};
+        my $prefix = $^O eq 'MSWin32' ? "" : "./";
+        my $file   = "examples/test-iswalpha.c";
+        my $args   = "$file -o $exe";
+        system("$cc $args") or return 0;
+    }
+    return system("$exe") == 0;
+}
 
 package MY;
 
