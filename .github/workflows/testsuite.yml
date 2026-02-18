@@ -27,7 +27,7 @@ jobs:
           sudo apt install -y libperl-dev wget
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
-      - run: make test
+      - run: make test || make test TEST_VERBOSE=1
 
   linux:
     name: "perl ${{ matrix.perl-version }}"
@@ -74,7 +74,7 @@ jobs:
           sudo apt install -y libperl-dev wget
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
-      - run: make test TEST_VERBOSE=1
+      - run: make test
 
   macOS:
     needs: [ubuntu]
@@ -96,7 +96,7 @@ jobs:
       - run: perl -V
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
-      - run: make test
+      - run: make test || make test TEST_VERBOSE=1
 
   windows:
     needs: [ubuntu]

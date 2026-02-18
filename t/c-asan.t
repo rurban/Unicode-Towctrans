@@ -24,5 +24,5 @@ print "running $prefix$exe\n" if $ENV{TEST_VERBOSE};
 system("$prefix$exe");
 
 END {
-    unlink($exe);
+    unlink($exe) unless $ENV{TEST_VERBOSE};
 }

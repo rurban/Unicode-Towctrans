@@ -155,6 +155,7 @@ static const struct {
     CASELACE(0xa7cc, 0xa7da),		/* 'Ꟍ' -> 'Ꟛ' */
     CASELACE(0xa7f5, 0xa7f5),		/* 'Ꟶ' -> 'Ꟶ' */
     CASEMAP(0xab6c, 0xab6d, 0xab4b),	/* '꭬' -> '꭭' .. 'ꭋ' */
+    CASELACE(0xfb05, 0xfb05),		/* 'ﬅ' -> 'ﬅ' */
     CASEMAP(0xff21, 0xff3a, 0xff41),	/* 'Ａ' -> 'Ｚ' .. 'ａ' */
     {0, 0, 0}};
 static const struct {
@@ -256,11 +257,41 @@ static const unsigned short pairs[][2] = {
     {0x10c7, 0x2d27},		/* 'Ⴧ' -> 'ⴧ' */
     {0x10cd, 0x2d2d},		/* 'Ⴭ' -> 'ⴭ' */
     {0x1c80, 0x0432},		/* 'ᲀ' -> 'в' */
+    {0x1e9e, 0x00df},		/* 'ẞ' -> 'ß' */
     {0x1f59, 0x1f51},		/* 'Ὑ' -> 'ὑ' */
     {0x1f5b, 0x1f53},		/* 'Ὓ' -> 'ὓ' */
     {0x1f5d, 0x1f55},		/* 'Ὕ' -> 'ὕ' */
     {0x1f5f, 0x1f57},		/* 'Ὗ' -> 'ὗ' */
+    {0x1f88, 0x1f80},		/* 'ᾈ' -> 'ᾀ' */
+    {0x1f89, 0x1f81},		/* 'ᾉ' -> 'ᾁ' */
+    {0x1f8a, 0x1f82},		/* 'ᾊ' -> 'ᾂ' */
+    {0x1f8b, 0x1f83},		/* 'ᾋ' -> 'ᾃ' */
+    {0x1f8c, 0x1f84},		/* 'ᾌ' -> 'ᾄ' */
+    {0x1f8d, 0x1f85},		/* 'ᾍ' -> 'ᾅ' */
+    {0x1f8e, 0x1f86},		/* 'ᾎ' -> 'ᾆ' */
+    {0x1f8f, 0x1f87},		/* 'ᾏ' -> 'ᾇ' */
+    {0x1f98, 0x1f90},		/* 'ᾘ' -> 'ᾐ' */
+    {0x1f99, 0x1f91},		/* 'ᾙ' -> 'ᾑ' */
+    {0x1f9a, 0x1f92},		/* 'ᾚ' -> 'ᾒ' */
+    {0x1f9b, 0x1f93},		/* 'ᾛ' -> 'ᾓ' */
+    {0x1f9c, 0x1f94},		/* 'ᾜ' -> 'ᾔ' */
+    {0x1f9d, 0x1f95},		/* 'ᾝ' -> 'ᾕ' */
+    {0x1f9e, 0x1f96},		/* 'ᾞ' -> 'ᾖ' */
+    {0x1f9f, 0x1f97},		/* 'ᾟ' -> 'ᾗ' */
+    {0x1fa8, 0x1fa0},		/* 'ᾨ' -> 'ᾠ' */
+    {0x1fa9, 0x1fa1},		/* 'ᾩ' -> 'ᾡ' */
+    {0x1faa, 0x1fa2},		/* 'ᾪ' -> 'ᾢ' */
+    {0x1fab, 0x1fa3},		/* 'ᾫ' -> 'ᾣ' */
+    {0x1fac, 0x1fa4},		/* 'ᾬ' -> 'ᾤ' */
+    {0x1fad, 0x1fa5},		/* 'ᾭ' -> 'ᾥ' */
+    {0x1fae, 0x1fa6},		/* 'ᾮ' -> 'ᾦ' */
+    {0x1faf, 0x1fa7},		/* 'ᾯ' -> 'ᾧ' */
+    {0x1fbc, 0x1fb3},		/* 'ᾼ' -> 'ᾳ' */
     {0x1fbe, 0x03b9},		/* 'ι' -> 'ι' */
+    {0x1fcc, 0x1fc3},		/* 'ῌ' -> 'ῃ' */
+    {0x1fd3, 0x0390},		/* 'ΐ' -> 'ΐ' */
+    {0x1fe3, 0x03b0},		/* 'ΰ' -> 'ΰ' */
+    {0x1ffc, 0x1ff3},		/* 'ῼ' -> 'ῳ' */
     {0x2126, 0x03c9},		/* 'Ω' -> 'ω' */
     {0x212a, 0x006b},		/* 'K' -> 'k' */
     {0x2132, 0x214e},		/* 'Ⅎ' -> 'ⅎ' */
@@ -275,6 +306,12 @@ static const unsigned short pairs[][2] = {
     {0xa7dc, 0x019b},		/* 'Ƛ' -> 'ƛ' */
     {0xa7e2, 0x027c},		/* '꟢' -> 'ɼ' */
     {0, 0}};
+#define HAVE_PAIRL
+static const unsigned int pairl[][2] = {
+    /* upper, lower */
+    {0x1df95, 0x00df},		/* '𝾕' -> 'ß' */
+    {0, 0}};
+#define PAIRL_SZ 1
 
 uint32_t _towcase(uint32_t wc, int lower) {
     int i;
@@ -283,7 +320,28 @@ uint32_t _towcase(uint32_t wc, int lower) {
     /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
        at least with glibc. */
     if (wc <= 0x40
-        || (unsigned)wc - 0x1f80 <= 0x1faf - 0x1f80)
+        || (unsigned)wc - 0x5a <= 0xbf - 0x5a
+        || (unsigned)wc - 0x24e <= 0x344 - 0x24e
+        || (unsigned)wc - 0x556 <= 0x587 - 0x556
+        || (unsigned)wc - 0x587 <= 0x109f - 0x587
+        || (unsigned)wc - 0x10c5 <= 0x13f7 - 0x10c5
+        || (unsigned)wc - 0x13fd <= 0x1c7f - 0x13fd
+        || (unsigned)wc - 0x1ffc <= 0x2129 - 0x1ffc
+        || (unsigned)wc - 0x212b <= 0x215f - 0x212b
+        || (unsigned)wc - 0x2183 <= 0x24b5 - 0x2183
+        || (unsigned)wc - 0x24cf <= 0x2bff - 0x24cf
+        || (unsigned)wc - 0xa7f5 <= 0xab6b - 0xa7f5
+        || (unsigned)wc - 0xabbf <= 0xfb06 - 0xabbf
+        || (unsigned)wc - 0xfb17 <= 0xff20 - 0xfb17
+        || (unsigned)wc - 0xff3a <= 0x103ff - 0xff3a
+        || (unsigned)wc - 0x10427 <= 0x104af - 0x10427
+        || (unsigned)wc - 0x104d3 <= 0x1056f - 0x104d3
+        || (unsigned)wc - 0x10595 <= 0x10c7f - 0x10595
+        || (unsigned)wc - 0x10cb2 <= 0x10d4f - 0x10cb2
+        || (unsigned)wc - 0x10d65 <= 0x1189f - 0x10d65
+        || (unsigned)wc - 0x118bf <= 0x16e3f - 0x118bf
+        || (unsigned)wc - 0x16e5f <= 0x16e9f - 0x16e5f
+        || (unsigned)wc - 0x1df95 <= 0x1e8ff - 0x1df95)
         return wc;
 
     for (i = 0; casemaps[i].len; i++) {
@@ -308,6 +366,20 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (lower && pairs[i][0] > wc)
             break;
     }
+#ifdef HAVE_PAIRL
+# if PAIRL_SZ == 1
+    if (pairl[0][1 - lower] == wc)
+          return pairs[0][lower];
+# else
+    for (i = 0; pairl[i][1 - lower]; i++) {
+        assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
+        if (pairl[i][1 - lower] == wc)
+            return pairs[i][lower];
+        if (lower && pairl[i][0] > wc)
+            break;
+    }
+# endif
+#endif
     for (i = 0; casemapsl[i].len; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);

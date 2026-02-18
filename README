@@ -32,7 +32,6 @@ PERFORMANCE
           musl-old:        195 [us]
              glibc:        115 [us]
 
-         strip towctrans-*.o
          wc -c towctrans-*.o
            3232 towctrans-my.o
            6024 towctrans-musl-new.o
