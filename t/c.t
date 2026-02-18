@@ -14,7 +14,12 @@ my $prefix   = $^O eq 'MSWin32' ? "" : "./";
 my $args     = "test_towctrans.c -I.. -o $exe";
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
-system("$cc $args");
+my $output = `$cc $args`;
+if ( $? != 0 ) {
+    diag $output;
+    print "1..0 # skip AddressSanitizer not supported by $cc\n";
+    exit 0;
+}
 print "running $prefix$exe\n" if $ENV{TEST_VERBOSE};
 system("$prefix$exe");
 
