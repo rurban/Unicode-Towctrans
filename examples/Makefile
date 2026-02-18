@@ -8,6 +8,7 @@ all: bench $(OBJ) $(TESTS)
 bench: bench.c $(OBJ) Makefile
 	cc -g -O2 -I. -o $@ bench.c $(OBJ)
 	./$@
+	strip $(OBJ)
 	wc -c $(OBJ)
 towctrans-15.h: ../$(GEN)
 	../$(GEN) -v 15 --out towctrans-15.h --cf ../CaseFolding.txt.15

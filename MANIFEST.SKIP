@@ -1,0 +1,5 @@
+.gitignore
+.github/workflows/testsuite.yml
+.pre-commit-config.yaml
+.gdbinit
+examples/.gdbinit

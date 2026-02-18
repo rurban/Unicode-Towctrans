@@ -9,9 +9,9 @@ use Test::More ();
 
 my $is_mswin = $^O eq 'MSWin32';
 my $cc       = $Config{cc};
-my $exe      = "t_towctrans" . ( $^O eq 'MSWin32' ? ".exe" : "" );
+my $exe      = "t_towctrans_asan" . ( $^O eq 'MSWin32' ? ".exe" : "" );
 my $prefix   = $^O eq 'MSWin32' ? "" : "./";
-my $args     = "test_towctrans.c -I.. -o $exe";
+my $args     = "-fsanitize=address -I.. -o $exe test_towctrans.c";
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
 system("$cc $args");

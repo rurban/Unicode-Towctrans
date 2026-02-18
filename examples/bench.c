@@ -1,20 +1,20 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <sys/time.h>
 #include <wchar.h>
 
-extern uint32_t _towcase(uint32_t wc, int lower);  /* towctrans-my */
+extern uint32_t _towcase(uint32_t wc, int lower); /* towctrans-my */
 extern wint_t my_towlower(wint_t wc);
 extern wint_t my_towupper(wint_t wc);
 extern wint_t musl_towupper(wint_t wc); /* towctrans-musl-new */
 extern wint_t musl_towlower(wint_t wc);
-extern wint_t old_towupper(wint_t wc);  /* towctrans-musl-old */
+extern wint_t old_towupper(wint_t wc); /* towctrans-musl-old */
 extern wint_t old_towlower(wint_t wc);
 // our workaround via locales does not work yet
-//#define glibc_towlower towlower
-//#define glibc_towupper towupper
-extern wint_t glibc_towupper(wint_t wc);  /* towctrans-glibc */
+// #define glibc_towlower towlower
+// #define glibc_towupper towupper
+extern wint_t glibc_towupper(wint_t wc); /* towctrans-glibc */
 extern wint_t glibc_towlower(wint_t wc);
 
 #define SZ(a) sizeof(a) / sizeof(*a)
@@ -42,7 +42,7 @@ int main(void) {
   // warmup
   ps = &ws[0];
   for (i = 0; i < SZ(ws); i++) {
-      (void)my_towlower(*ps++);
+    (void)my_towlower(*ps++);
   }
 
 #define BENCH(name, locasefn, upcasefn)                                        \

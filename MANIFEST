@@ -1,15 +1,19 @@
-Changes		# Changes
+Changes
 LICENSE
+MANIFEST
 Makefile.PL
-MANIFEST	# MANIFEST for pure perl
-bin/gen_wctrans	# script to generate headers
-README		# README
-towctrans.h     # output for latest unicode
+README
+bin/gen_wctrans
+examples/Makefile
 examples/bench.c
 examples/casemap.h
-examples/Makefile
+examples/test-glibc.c
+examples/test.c
+examples/towctrans-glibc.c
 examples/towctrans-musl-new.c
 examples/towctrans-musl-old.c
 examples/towctrans-my.c
+examples/wchar-lookup.h
 t/c.t
-t/towctrans.c   # test C source
+t/test_towctrans.c
+towctrans.h

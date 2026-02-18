@@ -1,23 +1,24 @@
 #!/usr/bin/env perl
 #
-# This script creates a towctrans.h header file, musl old-style. Used
-# for building musl and safeclib for fast and small upper/lowercasing
+# This script creates a towctrans.h header (or C source) file, musl old-style.
+# for simple casefolding as implemented in towlower() and towupper().
+# Used for building musl and safeclib for fast and small upper/lowercasing
 # tables for towlower() and towupper() and its secure variants
 # towupper_s() and towlower_s(). Planned also for the multi-byte
 # folding tables for towfc().
+# In work: Currently it passes all tests (more than glibc), but is way too slow.
 #
 # The generated code is licensed under the MIT.
 #
 # Usage:
-#    do 'mkheader' in perl, or
-#    perl mkheader [-v 17] [--cf CaseFolding.txt] on the command line
+#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt]
 #
 # Input files (will be downloaded if missing):
 #    CaseFolding.txt
 #
 # Output files:
-#    towctrans.h
-#    towfc.h
+#    towctrans.h or towctrans.c
+#    towfc.h (later)
 
 use 5.012;
 use strict;
@@ -32,7 +33,8 @@ BEGIN {
         die "Unicode::Towctrans cannot get Unicode code point\n";
     }
 }
-our $PACKAGE = 'Unicode::Towctrans, mkheader';
+our $PACKAGE = 'Unicode::Towctrans';
+$Unicode::Towctrans::VERSION = '0.02';
 
 use Getopt::Long;
 my ( $v, $help, $verbose );
@@ -64,7 +66,6 @@ if ( !$v and !-e $cf ) {
     my $full = Unicode::UCD::UnicodeVersion();
     ($v) = $full =~ /^(\d+)\./;
 }
-$Unicode::Towctrans::VERSION = '0.01' unless $Unicode::Towctrans::VERSION;
 
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
@@ -565,6 +566,97 @@ close FH;
 chmod 0444, $out;
 
 __END__
+
+=head1 NAME
+
+Unicode::Towctrans - Generate small casefolding tables
+
+=head1 SYNOPSIS
+
+    gen_wctrans
+    gen_wctrans -v 15
+    gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
+
+=head1 DESCRIPTION
+
+F<gen_wctrans> generates a F<towctrans.h> header file, which is used by C<musl>
+and C<safeclib> to generate small and efficient case folding tables, to
+build the libc C<towupper()> and C<towlower()> functions and its secure
+variants C<towupper_s()> and C<towlower_s()>.
+
+Planned also for the multi-byte folding tables for towfc().
+
+In work: Currently it passes all tests (more than glibc), but is way
+too slow.
+
+=head1 PERFORMANCE
+
+Currently it is un-optimized and too slow.
+But pretty small already. Should get down to the musl-old size.
+
+    make -C examples
+    ./bench
+            my:       5321 [us]
+      musl-new:        145 [us]
+      musl-old:        132 [us]
+         glibc:         84 [us]
+
+     strip towctrans-*.o
+     wc -c towctrans-*.o
+       3248 towctrans-my.o
+       6024 towctrans-musl-new.o
+       2520 towctrans-musl-old.o
+        896 towctrans-glibc.o (but there needs to be the locale tables added)
+
+=head1 INSTALLATION
+
+Perl 5.12 or later is required.
+
+This module does not need to be installed. running gen_wctrans is enough.
+However for full testing and global installation run this:
+
+   perl Makefile.PL
+   make
+   make test
+   make test-all
+   sudo make install
+
+=head1 DEPENDENCIES
+
+This module requires a CaseFolding.txt file from Unicode Character
+Database, which is automatically downloaded via wget.
+
+=head1 AUTHOR
+
+Reini Urban <rurban@cpan.org>
+
+Copyright(C) 2026 Reini Urban. All rights reserved
+
+=head1 COPYRIGHT AND LICENSE
+
+This module is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
+
+The generated files are MIT licensed. See the generated files headers.
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<https://www.unicode.org/reports/tr44/#Casemapping>
+
+=item L<https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c>
+
+=item L<https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c?id=e8aba58ab19a18f83d7f78e80d5e4f51e7e4e8a9>
+
+=item L<https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c>
+
+=item L<https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
+
+=back
+
+=cut
+
 # Local Variables:
 # perl-indent-level: 4
 # End:

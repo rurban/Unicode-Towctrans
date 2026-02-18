@@ -1,47 +1,55 @@
 require 5.012;
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker qw( WriteMakefile );
 
 my $BIN = 'bin/gen_wctrans';
 my @cf;
-push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5..18;
-my $clean = {FILES => [ 't/towctrans', 'diffs', @cf ]};
+push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5 .. 18;
+my $clean  = { FILES => [ 't/towctrans', 'diffs', @cf ] };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
-if (! -f "towctrans.h") {
+if ( !-f "towctrans.h" ) {
     print STDERR "Making header file\n";
     do 'bin/gen_wctrans' or die;
 }
 
 WriteMakefile(
-    'AUTHOR'            => 'Reini Urban <rurban@cpan.org>',
-    'ABSTRACT'          => 'Generate Unicode Case Transformation Tables',
+    'AUTHOR'   => 'Reini Urban <rurban@cpan.org>',
+    'ABSTRACT' => 'Generate Unicode Case Transformation Tables',
+
     # see perl5110delta, @INC reorganization
-    'INSTALLDIRS'       => ($] >= 5.007002 && $] < 5.011) ? 'perl' : 'site',
-    'LICENSE'           => 'perl',
-    'NAME'              => 'Unicode::Towctrans',
-    'VERSION_FROM'      => $BIN,
-    'clean'             => $clean,
-    'PREREQ_PM'         => {
-        Carp            => 0,
-        strict          => 0,
-        warnings        => 0,
+    'INSTALLDIRS'  => ( $] >= 5.007002 && $] < 5.011 ) ? 'perl' : 'site',
+    'LICENSE'      => 'perl',
+    'NAME'         => 'Unicode::Towctrans',
+    'VERSION_FROM' => $BIN,
+    'clean'        => $clean,
+    'PREREQ_PM'    => {
+        Carp     => 0,
+        strict   => 0,
+        warnings => 0,
     },
-    ($MM_VER < 6.48 ? () : MIN_PERL_VERSION => 5.6.0),
-    ($MM_VER < 6.46 ? () : (META_MERGE => {
-        'meta-spec' => { version => 2 },
-        resources       => {
-            repository    => {
-                url  => 'https://github.com/rurban/Unicode-Towctrans.git',
-                web  => 'https://github.com/rurban/Unicode-Towctrans',
-                type => 'git',
-            },
-            bugtracker    => {
-                web  => 'https://github.com/rurban/Unicode-Towctrans/issues',
-            },
-        },
-    })),
+    ( $MM_VER < 6.48 ? () : MIN_PERL_VERSION => 5.6.0 ),
+    (   $MM_VER < 6.46
+        ? ()
+        : ( META_MERGE => {
+                'meta-spec' => { version => 2 },
+                resources   => {
+                    repository => {
+                        url =>
+                            'https://github.com/rurban/Unicode-Towctrans.git',
+                        web  => 'https://github.com/rurban/Unicode-Towctrans',
+                        type => 'git',
+                    },
+                    bugtracker => {
+                        web =>
+                            'https://github.com/rurban/Unicode-Towctrans/issues',
+                    },
+                },
+            }
+        )
+    ),
 );
 
 package MY;
+
 sub depend {
     '
 tidy:
@@ -62,6 +70,8 @@ diffs : bin/gen_wctrans CaseFolding.txt.8
 towctrans-15.h:
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --cf CaseFolding.txt.15
 bench: towctrans-15.h
+	make -C examples bench
+examples:
 	make -C examples
 release-test : test dist
 	if test "$(shell git rev-parse --abbrev-ref HEAD)" != "master" || \
@@ -86,4 +96,3 @@ release : release-test
 	git push --tags
 '
 }
-

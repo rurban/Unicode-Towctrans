@@ -1,6 +1,6 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <wchar.h>
 
@@ -17,7 +17,9 @@ int main(int argc, char **argv) {
     exit(1);
   }
   int rc = sscanf(argv[1], "%X", &wc);
-  if (!rc) { goto err; }
+  if (!rc) {
+    goto err;
+  }
   if (argc > 2 && strcmp(argv[2], "-u") == 0)
     printf("%s towupper(U+%04x) => U+%04x\n", argv[0], wc, my_towupper(wc));
   else
