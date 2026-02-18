@@ -3,17 +3,20 @@ OBJ = towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
 TESTS = test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
-	test-15 test-16 test-17 test-18 test-glibc
+	test-15 test-16 test-17 test-18 test-glibc test-iswalpha
 all: bench $(OBJ) $(TESTS)
 bench: bench.c $(OBJ) Makefile
-	cc -g -O2 -I. -o $@ bench.c $(OBJ)
+	cc -O2 -I. -o $@ bench.c $(OBJ)
 	./$@
-	strip $(OBJ)
 	wc -c $(OBJ)
+.c.o:
+	cc -c -O2 -I. $<
 towctrans-15.h: ../$(GEN)
-	../$(GEN) -v 15 --out towctrans-15.h --cf ../CaseFolding.txt.15
+	../$(GEN) --with-iswalpha -v 15 --out towctrans-15.h --cf ../CaseFolding.txt.15
 towctrans-my.o: towctrans-15.h
 
+test-iswalpha: test-iswalpha.c
+	cc -g -O2 -I. -o $@ $^
 test-glibc: test-glibc.c towctrans-glibc.o
 	cc -g -O2 -I. -o $@ $^
 test-5: test.c towctrans-5.c
@@ -69,7 +72,5 @@ towctrans-17.c: ../$(GEN)
 towctrans-18.c: ../$(GEN)
 	cd .. && $(GEN) -v 18 --out examples/towctrans-18.c --cf CaseFolding.txt.18
 
-%.o: %.c
-	cc -c -g -O2 -I. $<
 clean:
-	rm -f bench $(OBJ) $(TESTS) towctrans-*.c
+	rm -f bench $(OBJ) $(TESTS) towctrans-[0-9][0-9]?.c

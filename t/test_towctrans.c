@@ -1,10 +1,12 @@
-#include "towctrans.h"
 #include <ctype.h>
+#include <locale.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
+
+#include "towctrans.h"
 #define CFOLD "CaseFolding.txt"
 
 uint32_t my_towlower(uint32_t wc) { return _towcase(wc, 1); }
@@ -24,6 +26,7 @@ int main(void) {
   int tests_c = 0;
 
   uint32_t wc, lwr;
+  setlocale(LC_ALL, "en_US.UTF-8");
 
   /*--------------------------------------------------*/
 

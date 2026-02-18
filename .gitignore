@@ -27,4 +27,5 @@ t/t_towctrans
 examples/bench
 examples/test-[0-9]*
 examples/test-glibc
-examples/towctrans-*.c
+examples/test-iswalpha
+examples/towctrans-[0-9]*.c

@@ -1,68 +1,76 @@
-Unicode-Towctrans version 0.02
-===================================
-
-Unicode::Towctrans - Generate small casefolding tables
+NAME
+    Unicode::Towctrans - Generate small casefolding tables
 
 SYNOPSIS
-
-    gen_wctrans
-    gen_wctrans -v 15
-    gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans.h.15
+        gen_wctrans
+        gen_wctrans -v 15
+        gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
 
 DESCRIPTION
+    gen_wctrans generates a towctrans.h header file, which is used by "musl"
+    and "safeclib" to generate small and efficient case folding tables, to
+    build the libc towupper() and towlower() functions and its secure
+    variants towupper_s() and towlower_s().
 
-gen_wctrans generates a F<towctrans.h> header file, which is used by musl
-and safeclib to generate small and efficient case folding tables, to
-build the libc towupper() and towlower() functions and its secure
-variants towupper_s() and towlower_s().
+    If you know that your iswalpha() works correctly (heavily locale
+    dependent, mostly not), then use "--with_iswalpha" to get a much faster
+    function. E.g. for benchmarking
 
-TODO: It also will be used to generate the multi-byte foldings header
-file for towfc().
+    Planned also for the multi-byte folding tables for towfc().
+
+    In work: Currently it passes all tests (more than glibc), but is way too
+    slow.
 
 PERFORMANCE
+    Currently it is still a bit un-optimized, but small and fast enough with
+    a working iswalpha().
 
-Currently it is still a bit un-optimized, but small and fast enough
-with a working iswalpha().
+        make -C examples
+        ./bench
+                my:        175 [us]
+          musl-new:        250 [us]
+          musl-old:        195 [us]
+             glibc:        115 [us]
 
-    make -C examples
-    ./bench
-            my:        175 [us]
-      musl-new:        250 [us]
-      musl-old:        195 [us]
-         glibc:        115 [us]
-
-     strip towctrans-*.o
-     wc -c towctrans-*.o
-       3248 towctrans-my.o
-       6024 towctrans-musl-new.o
-       2520 towctrans-musl-old.o
-        896 towctrans-glibc.o
+         strip towctrans-*.o
+         wc -c towctrans-*.o
+           3232 towctrans-my.o
+           6024 towctrans-musl-new.o
+           2520 towctrans-musl-old.o
+            896 towctrans-glibc.o (but there needs to be the locale tables added)
 
 INSTALLATION
+    Perl 5.12 or later is required.
 
-Perl 5.12 or later is required.
+    This module does not need to be installed. running gen_wctrans is
+    enough. However for full testing and global installation run this:
 
-This module does not need to be installed. running gen_wctrans is enough.
-However for full testing and global installation run this:
-
-   perl Makefile.PL
-   make
-   make test
-   make test-all
-   sudo make install
+       perl Makefile.PL
+       make
+       make test
+       make test-all
+       sudo make install
 
 DEPENDENCIES
+    This module requires a CaseFolding.txt file from Unicode Character
+    Database, which is automatically downloaded via wget.
 
-This module requires a CaseFolding.txt file from Unicode Character
-Database, which is automatically downloaded via wget.
+AUTHOR
+    Reini Urban <rurban@cpan.org>
+
+    Copyright(C) 2026 Reini Urban. All rights reserved
 
 COPYRIGHT AND LICENSE
+    This module is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
 
-Reini Urban <rurban@cpan.org>
+    The generated files are MIT licensed. See the generated files headers.
 
-Copyright(C) 2026, Reini Urban. All rights reserved.
-
-This script is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
-
-The generated headers are MIT licensed.
+SEE ALSO
+    <https://www.unicode.org/reports/tr44/#Casemapping>
+    <https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c>
+    <https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c?id=e8aba
+    58ab19a18f83d7f78e80d5e4f51e7e4e8a9>
+    <https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c
+    >
+    <https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>

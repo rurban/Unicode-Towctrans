@@ -39,13 +39,16 @@ use Getopt::Long;
 my ( $v, $help, $verbose );
 my $cf  = "CaseFolding.txt";
 my $out = "towctrans.h";
+my $with_iswalpha = 0;
+
 GetOptions(
     "v=i"     => \$v,          # numeric
     "cf=s"    => \$cf,         # string
     "out|o=s" => \$out,        # string
+    "with-iswalpha" => \$with_iswalpha, # flag
     "verbose" => \$verbose,    # flag
-    "help|h"  => \$help
-  )                            # flag
+    "help|h"  => \$help        # flag
+  )
   or die("Error in command line arguments\n");
 if ($help) {
     print "mkheader [OPTIONS]\n";
@@ -508,11 +511,16 @@ print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO better exclusion ranges. !iswalpha(wc) is broken on some platforms. */
+    /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
+       at least with glibc. */
 ";
-
-# print larger exclusion ranges
-print FH "    if (!iswalpha(wc) || ";
+if ($with_iswalpha) { # if we have a working iswalpha (not with glibc)
+    print FH "    if (!iswalpha(wc) || ";
+}
+else {
+    # TODO print larger exclusion ranges. iswalpha is useless with C.UTF-8
+    print FH "    if (";
+}
 for my $e (@excl) {
     if ( !$e->[0] ) {
         printf FH "wc <= 0x%x", $e->[1];
@@ -583,6 +591,10 @@ and C<safeclib> to generate small and efficient case folding tables, to
 build the libc C<towupper()> and C<towlower()> functions and its secure
 variants C<towupper_s()> and C<towlower_s()>.
 
+If you know that your C<iswalpha()> works correctly (heavily locale
+dependent, mostly not), then use C<--with_iswalpha> to get a much
+faster function. E.g. for benchmarking
+
 Planned also for the multi-byte folding tables for towfc().
 
 In work: Currently it passes all tests (more than glibc), but is way
@@ -600,7 +612,6 @@ with a working iswalpha().
       musl-old:        195 [us]
          glibc:        115 [us]
 
-     strip towctrans-*.o
      wc -c towctrans-*.o
        3232 towctrans-my.o
        6024 towctrans-musl-new.o

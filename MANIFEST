@@ -9,6 +9,7 @@ examples/Makefile
 examples/bench.c
 examples/casemap.h
 examples/test-glibc.c
+examples/test-iswalpha.c
 examples/test.c
 examples/towctrans-glibc.c
 examples/towctrans-musl-new.c

@@ -1,3 +1,4 @@
+#include <locale.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Usage: %s HEXNUMBER [-u]\n", argv[0]);
     exit(1);
   }
+  setlocale(LC_ALL, "en_US.UTF-8");
   int rc = sscanf(argv[1], "%X", &wc);
   if (!rc) {
     goto err;

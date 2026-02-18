@@ -280,8 +280,9 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     int lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO better exclusion ranges. !iswalpha(wc) is broken on some platforms. */
-    if (!iswalpha(wc) || wc <= 0x40
+    /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
+       at least with glibc. */
+    if (wc <= 0x40
         || (unsigned)wc - 0x1f80 <= 0x1faf - 0x1f80)
         return wc;
 
