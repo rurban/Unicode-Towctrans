@@ -1,4 +1,4 @@
-Unicode-Towctrans version 0.01
+Unicode-Towctrans version 0.02
 ===================================
 
 Unicode::Towctrans - Generate small casefolding tables
@@ -21,15 +21,16 @@ file for towfc().
 
 PERFORMANCE
 
-Currently it is un-optimized and too slow.
-But pretty small already. Should get to the musl-old size.
+Currently it is still a bit un-optimized, but small and fast enough
+with a working iswalpha().
 
     make -C examples
     ./bench
-            my:       5321 [us]
-      musl-new:        145 [us]
-      musl-old:        132 [us]
-         glibc:         84 [us]
+            my:        175 [us]
+      musl-new:        250 [us]
+      musl-old:        195 [us]
+         glibc:        115 [us]
+
      strip towctrans-*.o
      wc -c towctrans-*.o
        3248 towctrans-my.o

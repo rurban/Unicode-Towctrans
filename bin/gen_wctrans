@@ -6,7 +6,6 @@
 # tables for towlower() and towupper() and its secure variants
 # towupper_s() and towlower_s(). Planned also for the multi-byte
 # folding tables for towfc().
-# In work: Currently it passes all tests (more than glibc), but is way too slow.
 #
 # The generated code is licensed under the MIT.
 #
@@ -418,11 +417,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include <stdint.h>
+#include <wctype.h>
 #include <assert.h>
 
 /* map from upper until upper, to lower */
-#define CASEMAP(u1, u2, l) \
-    { (u1), (l) - (u1), (u2) - (u1) + 1 }
+#define CASEMAP(u1, u2, l) { (u1), (l) - (u1), (u2) - (u1) + 1 }
 /* map from upper until lower, with dist 1 */
 #define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
 
@@ -513,7 +512,7 @@ print FH "uint32_t _towcase(uint32_t wc, int lower) {
 ";
 
 # print larger exclusion ranges
-print FH "    if (";
+print FH "    if (!iswalpha(wc) || ";
 for my $e (@excl) {
     if ( !$e->[0] ) {
         printf FH "wc <= 0x%x", $e->[1];
@@ -591,19 +590,19 @@ too slow.
 
 =head1 PERFORMANCE
 
-Currently it is un-optimized and too slow.
-But pretty small already. Should get down to the musl-old size.
+Currently it is still a bit un-optimized, but small and fast enough
+with a working iswalpha().
 
     make -C examples
     ./bench
-            my:       5321 [us]
-      musl-new:        145 [us]
-      musl-old:        132 [us]
-         glibc:         84 [us]
+            my:        175 [us]
+      musl-new:        250 [us]
+      musl-old:        195 [us]
+         glibc:        115 [us]
 
      strip towctrans-*.o
      wc -c towctrans-*.o
-       3248 towctrans-my.o
+       3232 towctrans-my.o
        6024 towctrans-musl-new.o
        2520 towctrans-musl-old.o
         896 towctrans-glibc.o (but there needs to be the locale tables added)

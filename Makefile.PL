@@ -74,6 +74,8 @@ test-all : bin/gen_wctrans CaseFolding.txt.8 towctrans-8.h
         $(FULLPERLRUN) bin/gen_wctrans --out towctrans.h
 diffs : bin/gen_wctrans CaseFolding.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans-$$v.h towctrans-$$n.h; done
+towctrans.h: bin/gen_wctrans
+	$(FULLPERLRUN) bin/gen_wctrans
 towctrans-15.h:
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --cf CaseFolding.txt.15
 bench: towctrans-15.h
