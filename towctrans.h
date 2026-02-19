@@ -317,8 +317,8 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO better exclusion ranges. !iswalpha(wc) is broken on most locales,
-       at least with glibc. */
+    /* TODO: make it a tree (nested if's).
+       !iswalpha(wc) is broken on most locales, at least with glibc. */
     if (wc <= 0x40
         || (unsigned)wc - 0x29f <= 0x344 - 0x29f	/* 165 */
         || (unsigned)wc - 0x588 <= 0x109f - 0x588	/* 2839 */
@@ -343,6 +343,22 @@ uint32_t _towcase(uint32_t wc, int lower) {
 
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* check for the 2 turkish mappings if we have a turkish locale.
+    if ((lower && (wc == 0x49 || wc == 0x130)) ||
+        (!lower && (wc == 0x69 || wc == 0x131))) {
+        const char *loc = setlocale(LC_CTYPE, NULL);
+        if (locale && (!strncmp(locale, "tr", 2) || !strncmp(locale, "az", 2))) {
+            if (lower) {
+                if (wc == 0x49) return 0x131;
+                else return 0x69;
+            }
+            else {
+                if (wc == 0x69) return 0x130;
+                else return 0x49;
+            }
+        }
+    }
+    */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
