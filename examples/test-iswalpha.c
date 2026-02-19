@@ -5,6 +5,7 @@
 #include <wctype.h>
 
 int main(int argc, char **argv) {
+  (void)argc;
 #ifdef SET_LOCALE
   setlocale(LC_ALL, "en_US.UTF-8");
 #endif

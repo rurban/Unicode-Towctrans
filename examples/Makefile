@@ -1,7 +1,7 @@
 .PHONY: all clean
 CC = cc
 DEFINES = -DHAVE_LOCALE_TR
-CFLAGS_BENCH = -O2 -Wall -Wextra
+CFLAGS_BENCH = -O2
 CFLAGS = -g -O2 -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
@@ -14,10 +14,10 @@ bench: bench.c $(OBJ) Makefile
 	./$@
 	wc -c $(OBJ)
 .c.o:
-	$(CC) $(CFLAGS_BENCH) -I. $<
+	$(CC) -c $(CFLAGS_BENCH) -I. $<
 towctrans-15.h: ../$(GEN)
 	../$(GEN) --with-iswalpha -v 15 --out towctrans-15.h --cf ../CaseFolding.txt.15
-towctrans-my.o: towctrans-15.h
+towctrans-my.o: towctrans-my.c towctrans-15.h
 
 test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^

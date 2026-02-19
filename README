@@ -12,18 +12,23 @@ DESCRIPTION
     build the libc towupper() and towlower() functions and its secure
     variants towupper_s() and towlower_s().
 
-    If you know that your iswalpha() works correctly (heavily locale
-    dependent, mostly not), then use "--with_iswalpha" to get a much faster
-    function. E.g. for benchmarking
+    If the code may run on a system with the turkish or azeri locale, you
+    need to define "-DHAVE_LOCALE_TR" to check for the special turkish i
+    locale and mappings at run-time.
 
-    Planned also for the multi-byte folding tables for towfc().
+    If you know that your iswalpha() works correctly (only with musl), then
+    use "--with_iswalpha" to get a lightly faster function. E.g. for
+    benchmarking.
 
-    In work: Currently it passes all tests (more than glibc), but is way too
-    slow.
+    Planned also for the multi-byte folding tables for wcsfc_s() for
+    safeclib. As the single-byte "towupper" and "towlower" conversions are
+    meaningless for many multi-byte unicode mappings, those with status F -
+    folding. Use a proper string foldcasing function instead.
 
 PERFORMANCE
-    Currently it is still a bit un-optimized, but small and fast enough with
-    a working iswalpha().
+    Currently it is still a bit un-optimized, but small and fast enough
+    compared to the other implementations. And esp. correct compared to
+    glibc, which ignores characters from other locales.
 
         make -C examples
         ./bench
@@ -73,3 +78,4 @@ SEE ALSO
     <https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c
     >
     <https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
+

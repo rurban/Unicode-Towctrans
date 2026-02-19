@@ -14,9 +14,14 @@ all_pod_files_spelling_ok( 'bin', '.' );
 
 __DATA__
 Reini
+foldcasing
 CaseFolding
 casefolding
 libc
+safeclib
 musl
+turkish
+azeri
+unicode
 un
 wget

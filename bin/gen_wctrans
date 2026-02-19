@@ -33,10 +33,10 @@ BEGIN {
     }
 }
 our $PACKAGE = 'Unicode::Towctrans';
-$Unicode::Towctrans::VERSION = '0.02';
+$Unicode::Towctrans::VERSION = '0.03';
 
 use Getopt::Long;
-my ( $v, $help, $verbose );
+my ( $v, $help, $verbose, $safec, $musl );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $with_iswalpha = 0;
@@ -46,22 +46,37 @@ GetOptions(
     "cf=s"          => \$cf,               # string
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
+    "musl"          => \$musl,             # flag
+    "safec"         => \$safec,            # flag
     "verbose"       => \$verbose,          # flag
     "help|h"        => \$help              # flag
 ) or die("Error in command line arguments\n");
 if ($help) {
-    print "mkheader [OPTIONS]\n";
-    print "Generate casefolding C header file\n";
-    print "OPTIONS:\n";
-    print "-v NUM                Unicode major version number\n";
-    print "--cf CaseFolding.txt  input filename. default: CaseFolding.txt."
-      . " Downloaded if not found.\n";
-    print "--out filename        default: towctrans.h\n";
-    print "--verbose\n";
-    print "--help\n";
+    print <<'EOF';
+gen_wctrans [OPTIONS]
+Generate casefolding C header file
+OPTIONS
+-v NUM                Unicode major version number
+--cf CaseFolding.txt  input filename. default: CaseFolding.txt
+                      Downloaded if not found.
+--out filename        default: towctrans.h
+--with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
+--musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
+--safec               create towctrans.c for safeclib, with LOCALE_TR
+--verbose
+--help
+EOF
     exit;
 }
 
+if ($musl) {
+    $with_iswalpha = 1;
+    $out           = "towctrans.c" if $out eq "towctrans.h";
+}
+if ($safec) {
+    die "cannot use --sace and --musl together\n" if $musl;
+    $out = "towctrans.c"                          if $out eq "towctrans.h";
+}
 if ( !$v and !-e $cf ) {
     use Unicode::UCD;
     my $full = Unicode::UCD::UnicodeVersion();
@@ -353,6 +368,10 @@ printf FH <<'EOF', @h_args;
  */
 EOF
 
+if ( $musl or $safec ) {
+    print FH "#define HAVE_LOCALE_TR\n";
+}
+
 printf FH <<'EOF', ( $ucd_version, $v );
 /*
 Copyright (c) 2005-2014 Rich Felker, et al.
@@ -548,7 +567,7 @@ print FH <<'EOF';
     if ((lower && (wc == 0x49 || wc == 0x130)) ||
         (!lower && (wc == 0x69 || wc == 0x131))) {
         const char *loc = setlocale(LC_CTYPE, NULL);
-        if (locale && (!strncmp(locale, "tr", 2) || !strncmp(locale, "az", 2))) {
+        if (loc && (!strncmp(loc, "tr", 2) || !strncmp(loc, "az", 2))) {
             if (lower) {
                 if (wc == 0x49) return 0x131;
                 else return 0x69;
@@ -613,6 +632,56 @@ print FH <<'EOF';
     return wc;
 }
 EOF
+
+if ($musl) {
+
+    print FH <<'EOF';
+
+wint_t towupper(wint_t wc)
+{
+	return (unsigned)wc < 128 ? toupper(wc) : __towcase(wc, 0);
+}
+
+wint_t towlower(wint_t wc)
+{
+	return (unsigned)wc < 128 ? tolower(wc) : __towcase(wc, 1);
+}
+
+wint_t __towupper_l(wint_t c, locale_t l)
+{
+	return towupper(c);
+}
+
+wint_t __towlower_l(wint_t c, locale_t l)
+{
+	return towlower(c);
+}
+
+weak_alias(__towupper_l, towupper_l);
+weak_alias(__towlower_l, towlower_l);
+EOF
+}
+elsif ($safec) {
+
+    print FH <<'EOF';
+
+EXPORT uint32_t _towupper(uint32_t wc) {
+    return wc < 128 ? (uint32_t)toupper(wc) : _towcase(wc, 0);
+}
+#ifndef HAVE_TOWUPPER
+EXPORT uint32_t towupper(uint32_t wc) {
+    return wc < 128 ? (uint32_t)toupper(wc) : _towcase(wc, 0);
+}
+#endif
+
+#ifndef HAVE_TOWLOWER
+EXPORT uint32_t towlower(uint32_t wc) {
+    return (unsigned)wc < 128 ? (wint_t)tolower(wc) : _towcase(wc, 1);
+}
+#endif
+EOF
+}
+
 close FH;
 chmod 0444, $out;
 
@@ -635,19 +704,24 @@ and C<safeclib> to generate small and efficient case folding tables, to
 build the libc C<towupper()> and C<towlower()> functions and its secure
 variants C<towupper_s()> and C<towlower_s()>.
 
-If you know that your C<iswalpha()> works correctly (heavily locale
-dependent, mostly not), then use C<--with_iswalpha> to get a much
-faster function. E.g. for benchmarking
+If the code may run on a system with the turkish or azeri locale, you
+need to define C<-DHAVE_LOCALE_TR> to check for the special turkish i
+locale and mappings at run-time.
 
-Planned also for the multi-byte folding tables for towfc().
+If you know that your C<iswalpha()> works correctly (only with musl),
+then use C<--with_iswalpha> to get a lightly faster function. E.g. for
+benchmarking.
 
-In work: Currently it passes all tests (more than glibc), but is way
-too slow.
+Planned also for the multi-byte folding tables for C<wcsfc_s()> for
+safeclib. As the single-byte C<towupper> and C<towlower> conversions
+are meaningless for many multi-byte unicode mappings, those with
+status B<F> - folding. Use a proper string foldcasing function instead.
 
 =head1 PERFORMANCE
 
 Currently it is still a bit un-optimized, but small and fast enough
-with a working iswalpha().
+compared to the other implementations. And esp. correct compared to glibc,
+which ignores characters from other locales.
 
     make -C examples
     ./bench
