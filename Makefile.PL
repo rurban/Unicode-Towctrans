@@ -83,7 +83,19 @@ package MY;
 
 sub depend {
     '
+.PHONY: tidy test-all diffs examples release-test release
 all :: towctrans.h README
+' . (   $^O eq 'MSWin32'
+        ? ""
+        : '
+.PHONY: test-precommit
+test :: test-precommit
+test-precommit :
+	if command -v prek; then prek run -a; \
+	elif command -v pre-commit; then pre-commit run -a; \
+        fi
+'
+        ) . '
 README: bin/gen_wctrans
 	pod2text $< >$@
 tidy:

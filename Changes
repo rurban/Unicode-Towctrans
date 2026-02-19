@@ -1,9 +1,11 @@
 Revision history for the Perl package Unicode::Towctrans.
 
-0.02	Not Released
+0.02	2026-02-19
+    - massive performance and size improvements
+    - added benchmarks and iswalpha tests.
     - add conditional turkish locale check: add -DHAVE_LOCALE_TR
       if there's a chance the user will be on a turkish or azeri locale
       for the turkish i rule.
-    - more examples and benchmarks
+    - added pre-commit checks
 0.01	2026-02-17
     - first version; created from scratch
