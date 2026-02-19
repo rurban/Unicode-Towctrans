@@ -1,4 +1,8 @@
 .PHONY: all clean
+CC = cc
+DEFINES = -DHAVE_LOCALE_TR
+CFLAGS_BENCH = -O2 -Wall -Wextra
+CFLAGS = -g -O2 -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
@@ -6,45 +10,47 @@ TESTS = test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
 	test-15 test-16 test-17 test-18 test-glibc test-iswalpha
 all: bench $(OBJ) $(TESTS)
 bench: bench.c $(OBJ) Makefile
-	cc -O2 -I. -o $@ bench.c $(OBJ)
+	$(CC) $(CFLAGS_BENCH) -I. -o $@ bench.c $(OBJ)
 	./$@
 	wc -c $(OBJ)
 .c.o:
-	cc -c -O2 -I. $<
+	$(CC) $(CFLAGS_BENCH) -I. $<
 towctrans-15.h: ../$(GEN)
 	../$(GEN) --with-iswalpha -v 15 --out towctrans-15.h --cf ../CaseFolding.txt.15
 towctrans-my.o: towctrans-15.h
 
 test-iswalpha: test-iswalpha.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-glibc: test-glibc.c towctrans-glibc.o
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-5: test.c towctrans-5.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-6: test.c towctrans-6.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-7: test.c towctrans-7.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-8: test.c towctrans-8.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-9: test.c towctrans-9.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-10: test.c towctrans-10.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-11: test.c towctrans-11.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-12: test.c towctrans-12.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-13: test.c towctrans-13.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-15: test.c towctrans-15.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-16: test.c towctrans-16.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-17: test.c towctrans-17.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
 test-18: test.c towctrans-18.c
-	cc -g -O2 -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ $^
+test-asan: test.c towctrans-18.c
+	$(CC) $(CFLAGS) -DASAN -fsanitize=address,undefined -I. -o $@ $^
 towctrans-5.c: ../$(GEN)
 	cd .. && $(GEN) -v 7 --out examples/towctrans-5.c --cf CaseFolding.txt.5
 towctrans-6.c: ../$(GEN)

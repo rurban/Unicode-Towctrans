@@ -1,6 +1,9 @@
 Revision history for the Perl package Unicode::Towctrans.
 
 0.02	Not Released
+    - add conditional turkish locale check: add -DHAVE_LOCALE_TR
+      if there's a chance the user will be on a turkish or azeri locale
+      for the turkish i rule.
     - more examples and benchmarks
 0.01	2026-02-17
     - first version; created from scratch

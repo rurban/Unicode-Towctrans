@@ -26,6 +26,7 @@ t/t_towctrans
 /diffs.log
 examples/bench
 examples/test-[0-9]*
+examples/test-asan
 examples/test-glibc
 examples/test-iswalpha
 examples/towctrans-[0-9]*.c

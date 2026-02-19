@@ -38,6 +38,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <wctype.h>
 #include <assert.h>
+#ifdef HAVE_LOCALE_TR
+# include <string.h>
+# include <locale.h>
+#endif
 
 /* map from upper until upper, to lower */
 #define CASEMAP(u1, u2, l) { (u1), (l) - (u1), (u2) - (u1) + 1 }
@@ -317,33 +321,32 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO: make it a tree (nested if's).
+    /* TODO make it a tree (nested if's).
        !iswalpha(wc) is broken on most locales, at least with glibc. */
     if (wc <= 0x40
-        || (unsigned)wc - 0x29f <= 0x344 - 0x29f	/* 165 */
-        || (unsigned)wc - 0x588 <= 0x109f - 0x588	/* 2839 */
-        || (unsigned)wc - 0x1100 <= 0x139f - 0x1100	/* 671 */
-        || (unsigned)wc - 0x13fe <= 0x1c7f - 0x13fe	/* 2177 */
-        || (unsigned)wc - 0x1cc0 <= 0x1d78 - 0x1cc0	/* 184 */
-        || (unsigned)wc - 0x1ffd <= 0x2125 - 0x1ffd	/* 296 */
-        || (unsigned)wc - 0x2185 <= 0x24b5 - 0x2185	/* 816 */
-        || (unsigned)wc - 0x24ea <= 0x2bff - 0x24ea	/* 1813 */
-        || (unsigned)wc - 0x2d2e <= 0xa63f - 0x2d2e	/* 30993 */
-        || (unsigned)wc - 0xa69c <= 0xa721 - 0xa69c	/* 133 */
-        || (unsigned)wc - 0xa7f7 <= 0xab4a - 0xa7f7	/* 851 */
-        || (unsigned)wc - 0xabc0 <= 0xfaff - 0xabc0	/* 20287 */
-        || (unsigned)wc - 0xfb18 <= 0xff20 - 0xfb18	/* 1032 */
-        || (unsigned)wc - 0xff5b <= 0x103ff - 0xff5b	/* 1188 */
-        || (unsigned)wc - 0x105bd <= 0x10c7f - 0x105bd	/* 1730 */
-        || (unsigned)wc - 0x10d86 <= 0x1189f - 0x10d86	/* 2841 */
-        || (unsigned)wc - 0x118e0 <= 0x16e3f - 0x118e0	/* 21855 */
-        || (unsigned)wc - 0x16ed4 <= 0x1df3f - 0x16ed4	/* 28779 */
-        || (unsigned)wc - 0x1df96 <= 0x1e8ff - 0x1df96	/* 2409 */)
+        || wc - 0x29f <= 0x344 - 0x29f	/* 165 */
+        || wc - 0x588 <= 0x109f - 0x588	/* 2839 */
+        || wc - 0x1100 <= 0x139f - 0x1100	/* 671 */
+        || wc - 0x13fe <= 0x1c7f - 0x13fe	/* 2177 */
+        || wc - 0x1cc0 <= 0x1d78 - 0x1cc0	/* 184 */
+        || wc - 0x1ffd <= 0x2125 - 0x1ffd	/* 296 */
+        || wc - 0x2185 <= 0x24b5 - 0x2185	/* 816 */
+        || wc - 0x24ea <= 0x2bff - 0x24ea	/* 1813 */
+        || wc - 0x2d2e <= 0xa63f - 0x2d2e	/* 30993 */
+        || wc - 0xa69c <= 0xa721 - 0xa69c	/* 133 */
+        || wc - 0xa7f7 <= 0xab4a - 0xa7f7	/* 851 */
+        || wc - 0xabc0 <= 0xfaff - 0xabc0	/* 20287 */
+        || wc - 0xfb18 <= 0xff20 - 0xfb18	/* 1032 */
+        || wc - 0xff5b <= 0x103ff - 0xff5b	/* 1188 */
+        || wc - 0x105bd <= 0x10c7f - 0x105bd	/* 1730 */
+        || wc - 0x10d86 <= 0x1189f - 0x10d86	/* 2841 */
+        || wc - 0x118e0 <= 0x16e3f - 0x118e0	/* 21855 */
+        || wc - 0x16ed4 <= 0x1df3f - 0x16ed4	/* 28779 */
+        || wc - 0x1df96 <= 0x1e8ff - 0x1df96	/* 2409 */)
         return wc;
 
-    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
-    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* check for the 2 turkish mappings if we have a turkish locale.
+#ifdef HAVE_LOCALE_TR
+    /* check for the 2 turkish mappings if we have a turkish locale. */
     if ((lower && (wc == 0x49 || wc == 0x130)) ||
         (!lower && (wc == 0x69 || wc == 0x131))) {
         const char *loc = setlocale(LC_CTYPE, NULL);
@@ -358,11 +361,14 @@ uint32_t _towcase(uint32_t wc, int lower) {
             }
         }
     }
-    */
+#endif
+
+    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
-        if ((unsigned)wc - base < casemaps[i].len) {
+        if (wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
             /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
@@ -398,7 +404,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     for (i = 0; casemapsl[i].len; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
-        if ((unsigned)wc - base < casemapsl[i].len) {
+        if (wc - base < casemapsl[i].len) {
             if (casemapsl[i].lower == 1)
                 return wc + lower - ((wc - casemapsl[i].upper) & 1);
             return wc + lmul * casemapsl[i].lower;
