@@ -239,22 +239,13 @@ while ( my $l = <$CF> ) {
     $cp = $cp[0];
     my @mapping = getHexArray($mapping);
 
-    if ( !@excl ) {
-        push @excl, [ 0, $cp - 1 ];
+    if ( !@map ) {
         add_map( \@map, $cp, $mapping[0] );    # 'A' -> 'a'
     }
     else {
         # check status. only if C
         if ( $cp - $prev == 1 ) {              # next cp
-            if ( $status ne 'C' and $status ne 'S' ) {
-                warn(
-                    sprintf( "add_excl %04X", $cp )
-                      . " for $status $mapping $name\n" )
-                  if $verbose;
-
-                #add_excl( \@excl, $cp );
-            }
-            elsif ( scalar @mapping == 1 ) {
+            if ( ( $status eq 'C' or $status eq 'S') and scalar @mapping == 1 ) {
                 $lc = $mapping[0];
                 if ( $lc - $cp == 1 ) {
 
@@ -299,15 +290,6 @@ while ( my $l = <$CF> ) {
                     }
                 }
             }
-            else {
-                if ($verbose) {
-                    warn sprintf(
-                        "add_excl %04X (%s) for mult. mapping [@mapping]\n",
-                        $cp, $status );
-                }
-
-                #add_excl( \@excl, $cp );
-            }
         }
         else {    # not next cp, a hole or lace
             if ( $status eq 'T' ) {
@@ -323,31 +305,10 @@ while ( my $l = <$CF> ) {
                     add_lace( \@lace, $cp, $to );
                 }
                 else {    # add a hole
-                          #add_excl( \@excl, $prev + 1 );
-                    $excl[-1][1] = $cp - 1;
-                    warn(
-                        sprintf(
-                            "add_excl from %04X to %04X for hole, status=%s\n",
-                            $prev + 1, $cp - 1, $status
-                        )
-                    ) if $verbose;
-
                     warn( sprintf( "add_pair %04X, %04X\n", $cp, $to ) )
                       if $verbose;
                     add_pair( \@pair, $cp, $to );
                 }
-            }
-            elsif ( $prev != $cp and ( !@excl or $excl[-1][1] != $cp - 1 ) ) {
-
-                # ie lace: 012E - 012F, 130 being T
-                #add_excl( \@excl, $prev );
-                $excl[-1][1] = $cp;
-                warn(
-                    sprintf(
-                        "add_excl from %04X to %04X for hole, status=%s\n",
-                        $prev, $cp, $status
-                    )
-                ) if $verbose;
             }
         }
     }
