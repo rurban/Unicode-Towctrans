@@ -17,7 +17,7 @@ print "running $cc $args\n" if $ENV{TEST_VERBOSE};
 my $output = `$cc $args`;
 if ( $? != 0 ) {
     diag $output;
-    print "1..0 # skip AddressSanitizer not supported by $cc\n";
+    print "1..0 # $cc $args failed\n";
     exit 0;
 }
 print "running $prefix$exe\n" if $ENV{TEST_VERBOSE};

@@ -734,7 +734,7 @@ which ignores characters from other locales.
        5352 towctrans-my.o
        7128 towctrans-musl-new.o
        3464 towctrans-musl-old.o
-       1512 towctrans-glibc.o (but there needs to be the locale tables added)
+      97432 towctrans-glibc.o
 
 =head1 INSTALLATION
 
@@ -752,7 +752,7 @@ However for full testing and global installation run this:
 =head1 DEPENDENCIES
 
 This module requires a CaseFolding.txt file from Unicode Character
-Database, which is automatically downloaded via wget.
+Database, which is automatically downloaded via wget if missing.
 
 =head1 AUTHOR
 
