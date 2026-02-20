@@ -60,19 +60,21 @@ int main(void) {
     for (i = 0; i < SZ(ws); i++) {                                             \
       wint_t wc = ws[i];                                                       \
       wint_t n = locasefn(wc);                                                 \
-      if (n != lw[wc]) errs++;                                                 \
+      if (n != lw[wc])                                                         \
+        errs++;                                                                \
     }                                                                          \
   }                                                                            \
   for (int j = 0; j < RETRIES; j++) {                                          \
     for (i = 0; i < SZ(ws); i++) {                                             \
       wint_t wc = ws[i];                                                       \
       wint_t n = upcasefn(wc);                                                 \
-      if (n != up[wc]) errs++;                                                 \
+      if (n != up[wc])                                                         \
+        errs++;                                                                \
     }                                                                          \
   }                                                                            \
   t1 = TEST_TIME();                                                            \
   if (errs)                                                                    \
-    printf("%10s: %10ld [us]\t%u errors\n", name, t1 - t0, errs/RETRIES);      \
+    printf("%10s: %10ld [us]\t%u errors\n", name, t1 - t0, errs / RETRIES);    \
   else                                                                         \
     printf("%10s: %10ld [us]\n", name, t1 - t0)
 

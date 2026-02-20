@@ -15,8 +15,8 @@ repos:
       - id: clang-format
         entry: clang-format -i
         exclude: examples/.*\.h|examples/towctrans-musl-.*\.c|towctrans\.h
-  - repo: https://github.com/henryykt/pre-commit-perl
-    rev: v0.0.5
+  - repo: https://github.com/rurban/pre-commit-perl
+    rev: 3241a4ee6c5a0
     hooks:
     #- id: perlcritic
     - id: perltidy
