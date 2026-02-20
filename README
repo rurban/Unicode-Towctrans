@@ -32,16 +32,16 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                my:        175 [us]
-          musl-new:        250 [us]
-          musl-old:        195 [us]
-             glibc:        115 [us]
+                my:        288 [us]
+          musl-new:        312 [us]
+          musl-old:        286 [us]
+             glibc:        179 [us]
 
          wc -c towctrans-*.o
-           3232 towctrans-my.o
-           6024 towctrans-musl-new.o
-           2520 towctrans-musl-old.o
-            896 towctrans-glibc.o (but there needs to be the locale tables added)
+           5352 towctrans-my.o
+           7128 towctrans-musl-new.o
+           3464 towctrans-musl-old.o
+          97432 towctrans-glibc.o
 
 INSTALLATION
     Perl 5.12 or later is required.
@@ -57,7 +57,7 @@ INSTALLATION
 
 DEPENDENCIES
     This module requires a CaseFolding.txt file from Unicode Character
-    Database, which is automatically downloaded via wget.
+    Database, which is automatically downloaded via wget if missing.
 
 AUTHOR
     Reini Urban <rurban@cpan.org>
