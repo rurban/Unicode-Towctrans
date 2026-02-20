@@ -25,9 +25,9 @@ use warnings;
 use Carp;
 
 # Minimum size of and excluded range. The more ranges we have, the slower.
-# The larger the ranges, the more misses in holes we might have, going through all checks.
-# musl has ~1024. I tested 128 to be better
-use constant MIN_ECXL => 128;
+# The larger the ranges, the more misses in holes we might have, going through
+# all checks. musl-old had ~1024. Tested via bench
+use constant MIN_ECXL => 5000;
 
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
@@ -112,19 +112,6 @@ sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
 # CASELACE(0x01a0, 0x1a4), // 416 1 5 O WITH HORN - P WITH HOOK
 # CASELACE(0x01b3, 0x1b5), // 435 1 3
 # CASELACE(0x01cd, 0x1db), // 461 1 15
-
-# excl: expr for larger ranges with no cases.
-# TODO => nested if's
-# inline uint32_t _no_case(uint32_t wc) {
-#   if (wc < 0x41
-#       || wc - 0x0600 <= 0x0fff - 0x0600
-#       || wc - 0x2e00 <= 0xa63f - 0x2e00
-#       || wc - 0xa800 <= 0xab69 - 0xa800
-#       || wc - 0xabc0 <= 0xfeff - 0xabc0)
-#       return wc;
-#   else
-#       return 0;
-#   }
 
 # triple of base, last, to.
 # offset is to - base, length is last - base + 1
@@ -478,8 +465,7 @@ print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO make it a binary sesarch (nested if's). GH #2.
-       !iswalpha(wc) is broken on most locales, at least with glibc. */
+    /* !iswalpha(wc) is broken on most locales, at least with glibc. */
 ";
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
     print FH "    if (!iswalpha(wc) || ";
@@ -504,29 +490,90 @@ for ( $first + 1 .. $last - 1 ) {
     }
 }
 
-for my $e (@excl) {
-    if ( !$e->[0] ) {
-        printf FH "wc <= 0x%x", $e->[1];
-    }
-    elsif ( $e->[1] - $e->[0] >= MIN_ECXL ) {
-        my $skip;
+# 0 is already processed first
+sub binary_search_indices {
+    my ($n) = @_;
+    return () if $n <= 1;
 
-        # cross-check
-        for ( $e->[0] .. $e->[1] ) {
-            if ( exists $lower{$_} or exists $upper{$_} ) {
-                warn( sprintf( "wrong excl %04X skipped", $_ ) );
-                $skip = 1;
-                last;
+    my @indices;
+    my @queue = ([1, $n - 1]);
+
+    while (@queue) {
+        my ($lo, $hi) = @{ shift @queue };
+        my $mid = int(($lo + $hi) / 2);
+        push @indices, $mid;
+
+        push @queue, [$lo, $mid - 1] if $lo < $mid;
+        push @queue, [$mid + 1, $hi] if $mid < $hi;
+    }
+
+    return @indices;
+}
+
+if (0) {
+    print FH "/* TODO make it a binary search (nested if's). GH #2.\n";
+    for my $e (@excl) {
+        if ( !$e->[0] ) {
+            printf FH "wc <= 0x%x", $e->[1];
+        }
+        elsif ( $e->[1] - $e->[0] >= MIN_ECXL ) {
+            my $skip;
+
+            # cross-check
+            for ( $e->[0] .. $e->[1] ) {
+                if ( exists $lower{$_} or exists $upper{$_} ) {
+                    warn( sprintf( "wrong excl %04X skipped", $_ ) );
+                    $skip = 1;
+                    last;
+                }
+            }
+            if ( !$skip ) {
+                # TODO make it a binary search via nested if's. GH #2
+                printf FH "\n        || wc - 0x%x <= 0x%x - 0x%x\t" . "/* %u */",
+                    $e->[0], $e->[1], $e->[0], $e->[1] - $e->[0];
             }
         }
-        if ( !$skip ) {
-            # TODO make it a binary search via nested if's. GH #2
-            printf FH "\n        || wc - 0x%x <= 0x%x - 0x%x\t" . "/* %u */",
-              $e->[0], $e->[1], $e->[0], $e->[1] - $e->[0];
+    }
+} else {
+    # print FH "/* binary search (nested if's). GH #2. */\n";
+    # first purge all too small ranges
+    my @new_excl = ( $excl[0] );
+    for my $i (1 .. $#excl) {
+        my $e = $excl[$i];
+        my $skip;
+        if ( $e->[1] - $e->[0] >= MIN_ECXL ) {
+            # cross-check
+            for ( $e->[0] .. $e->[1] ) {
+                if ( exists $lower{$_} or exists $upper{$_} ) {
+                    warn( sprintf( "wrong excl %04X skipped", $_ ) );
+                    $skip = 1;
+                    last;
+                }
+            }
+            push @new_excl, $e unless $skip;
         }
     }
+
+    # indices 0, e/2
+    printf FH "wc <= 0x%x ||\n        (\n", $excl[0]->[1];
+    my $j = 0;
+    for my $i (binary_search_indices( scalar @new_excl )) {
+        my $e = $new_excl[$i];
+        printf FH "          wc - 0x%x <= 0x%x - 0x%x",
+            $e->[0], $e->[1], $e->[0];
+        if ( $j == $#new_excl - 1 ) {
+            print FH " : 0" if $j % 2;
+        } elsif ( $j % 2 ) {
+            print FH " :";
+        } else {
+            print FH " ?";
+        }
+        $j++;
+        printf FH "\t" . "/* [%u] %u */\n", $i, $e->[1] - $e->[0];
+    }
+    print FH "\n        ))\n";
 }
-print FH ")\n        return wc;\n";
+print FH "        return wc;\n";
 print FH <<'EOF';
 
 #ifdef HAVE_LOCALE_TR
@@ -694,10 +741,10 @@ which ignores characters from other locales.
 
     make -C examples
     ./bench
-            my:        288 [us]
-      musl-new:        312 [us]
-      musl-old:        286 [us]
-         glibc:        179 [us]
+            my:        264 [us]
+      musl-new:        392 [us]
+      musl-old:        280 [us]
+         glibc:        206 [us]
 
      wc -c towctrans-*.o
        5352 towctrans-my.o

@@ -32,10 +32,10 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                my:        288 [us]
-          musl-new:        312 [us]
-          musl-old:        286 [us]
-             glibc:        179 [us]
+                my:        264 [us]
+          musl-new:        392 [us]
+          musl-old:        280 [us]
+             glibc:        206 [us]
 
          wc -c towctrans-*.o
            5352 towctrans-my.o
@@ -78,3 +78,4 @@ SEE ALSO
     <https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c
     >
     <https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
+

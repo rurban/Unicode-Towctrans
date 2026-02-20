@@ -22,6 +22,7 @@ t/changes.t
 t/kwalitee.t
 t/manifest.t
 t/meta.t
+t/nested-ifs.t
 t/perl_minimum_version.t
 t/pod-spell-mistakes.t
 t/pod-spelling.t

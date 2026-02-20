@@ -321,28 +321,15 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO make it a binary sesarch (nested if's). GH #2.
-       !iswalpha(wc) is broken on most locales, at least with glibc. */
-    if (wc <= 0x40
-        || wc - 0x29f <= 0x344 - 0x29f	/* 165 */
-        || wc - 0x588 <= 0x109f - 0x588	/* 2839 */
-        || wc - 0x1100 <= 0x139f - 0x1100	/* 671 */
-        || wc - 0x13fe <= 0x1c7f - 0x13fe	/* 2177 */
-        || wc - 0x1cc0 <= 0x1d78 - 0x1cc0	/* 184 */
-        || wc - 0x1ffd <= 0x2125 - 0x1ffd	/* 296 */
-        || wc - 0x2185 <= 0x24b5 - 0x2185	/* 816 */
-        || wc - 0x24ea <= 0x2bff - 0x24ea	/* 1813 */
-        || wc - 0x2d2e <= 0xa63f - 0x2d2e	/* 30993 */
-        || wc - 0xa69c <= 0xa721 - 0xa69c	/* 133 */
-        || wc - 0xa7f7 <= 0xab4a - 0xa7f7	/* 851 */
-        || wc - 0xabc0 <= 0xfaff - 0xabc0	/* 20287 */
-        || wc - 0xfb18 <= 0xff20 - 0xfb18	/* 1032 */
-        || wc - 0xff5b <= 0x103ff - 0xff5b	/* 1188 */
-        || wc - 0x105bd <= 0x10c7f - 0x105bd	/* 1730 */
-        || wc - 0x10d86 <= 0x1189f - 0x10d86	/* 2841 */
-        || wc - 0x118e0 <= 0x16e3f - 0x118e0	/* 21855 */
-        || wc - 0x16ed4 <= 0x1df3f - 0x16ed4	/* 28779 */
-        || wc - 0x1df96 <= 0x1e8ff - 0x1df96	/* 2409 */)
+    /* !iswalpha(wc) is broken on most locales, at least with glibc. */
+    if (wc <= 0x40 ||
+        (
+          wc - 0xabc0 <= 0xfaff - 0xabc0 ?	/* [2] 20287 */
+          wc - 0x2d2e <= 0xa63f - 0x2d2e :	/* [1] 30993 */
+          wc - 0x118e0 <= 0x16e3f - 0x118e0 ?	/* [3] 21855 */
+          wc - 0x16ed4 <= 0x1df3f - 0x16ed4 : 0	/* [4] 28779 */
+
+        ))
         return wc;
 
 #ifdef HAVE_LOCALE_TR
