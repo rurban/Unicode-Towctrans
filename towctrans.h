@@ -321,7 +321,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO make it a tree (nested if's).
+    /* TODO make it a binary sesarch (nested if's). GH #2.
        !iswalpha(wc) is broken on most locales, at least with glibc. */
     if (wc <= 0x40
         || wc - 0x29f <= 0x344 - 0x29f	/* 165 */
@@ -365,6 +365,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
 
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* TODO: make it a binary search. GH #4 */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
@@ -380,6 +381,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (lower && casemaps[i].upper > wc)
             break;
     }
+    /* TODO: make it a binary search. GH #3 */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)

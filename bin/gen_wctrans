@@ -24,6 +24,11 @@ use strict;
 use warnings;
 use Carp;
 
+# Minimum size of and excluded range. The more ranges we have, the slower.
+# The larger the ranges, the more misses in holes we might have, going through all checks.
+# musl has ~1024. I tested 128 to be better
+use constant MIN_ECXL => 128;
+
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
         die "Unicode::Towctrans cannot stringify a Unicode code point\n";
@@ -512,14 +517,14 @@ print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* TODO make it a tree (nested if's).
+    /* TODO make it a binary sesarch (nested if's). GH #2.
        !iswalpha(wc) is broken on most locales, at least with glibc. */
 ";
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
     print FH "    if (!iswalpha(wc) || ";
 }
 else {
-    # TODO print larger exclusion ranges. iswalpha is useless with C.UTF-8
+    # print larger exclusion ranges. iswalpha is useless with glibc
     print FH "    if (";
 }
 
@@ -542,7 +547,7 @@ for my $e (@excl) {
     if ( !$e->[0] ) {
         printf FH "wc <= 0x%x", $e->[1];
     }
-    elsif ( $e->[1] - $e->[0] >= 128 ) {
+    elsif ( $e->[1] - $e->[0] >= MIN_ECXL ) {
         my $skip;
 
         # cross-check
@@ -554,6 +559,7 @@ for my $e (@excl) {
             }
         }
         if ( !$skip ) {
+            # TODO make it a binary search via nested if's. GH #2
             printf FH "\n        || wc - 0x%x <= 0x%x - 0x%x\t" . "/* %u */",
               $e->[0], $e->[1], $e->[0], $e->[1] - $e->[0];
         }
@@ -582,6 +588,7 @@ print FH <<'EOF';
 
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* TODO: make it a binary search. GH #4 */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
@@ -597,6 +604,7 @@ print FH <<'EOF';
         if (lower && casemaps[i].upper > wc)
             break;
     }
+    /* TODO: make it a binary search. GH #3 */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
