@@ -35,16 +35,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ----------------------------------------------------------------------
 */
 
+#include <assert.h>
 #include <stdint.h>
 #include <wctype.h>
-#include <assert.h>
 #ifdef HAVE_LOCALE_TR
-# include <string.h>
-# include <locale.h>
+#include <locale.h>
+#include <string.h>
 #endif
 
 /* map from upper until upper, to lower */
-#define CASEMAP(u1, u2, l) { (u1), (l) - (u1), (u2) - (u1) + 1 }
+#define CASEMAP(u1, u2, l) {(u1), (l) - (u1), (u2) - (u1) + 1}
 /* map from upper until lower, with dist 1 */
 #define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
 
@@ -52,354 +52,357 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TOWCTRANS_UNICODE_VERSION 18
 
 static const struct {
-    uint16_t upper; /* base */
-    int8_t lower; /* distance from upper to lower */
-    uint8_t len; /* how many */
+  uint16_t upper; /* base */
+  int8_t lower;   /* distance from upper to lower */
+  uint8_t len;    /* how many */
 } casemaps[] = {
     /* from, until, to */
-    CASEMAP(0x0041, 0x005a, 0x0061),	/* 'A' -> 'Z' .. 'a' */
-    CASEMAP(0x00c0, 0x00d6, 0x00e0),	/* 'À' -> 'Ö' .. 'à' */
-    CASEMAP(0x00d8, 0x00de, 0x00f8),	/* 'Ø' -> 'Þ' .. 'ø' */
-    CASELACE(0x0100, 0x012e),		/* 'Ā' -> 'Į' */
-    CASELACE(0x0132, 0x0136),		/* 'Ĳ' -> 'Ķ' */
-    CASELACE(0x0139, 0x0147),		/* 'Ĺ' -> 'Ň' */
-    CASELACE(0x014a, 0x0176),		/* 'Ŋ' -> 'Ŷ' */
-    CASELACE(0x0179, 0x017d),		/* 'Ź' -> 'Ž' */
-    CASELACE(0x0182, 0x0184),		/* 'Ƃ' -> 'Ƅ' */
-    CASELACE(0x0187, 0x0187),		/* 'Ƈ' -> 'Ƈ' */
-    CASELACE(0x018b, 0x018b),		/* 'Ƌ' -> 'Ƌ' */
-    CASELACE(0x0191, 0x0191),		/* 'Ƒ' -> 'Ƒ' */
-    CASELACE(0x0198, 0x0198),		/* 'Ƙ' -> 'Ƙ' */
-    CASELACE(0x01a0, 0x01a4),		/* 'Ơ' -> 'Ƥ' */
-    CASELACE(0x01a7, 0x01a7),		/* 'Ƨ' -> 'Ƨ' */
-    CASELACE(0x01ac, 0x01ac),		/* 'Ƭ' -> 'Ƭ' */
-    CASELACE(0x01af, 0x01af),		/* 'Ư' -> 'Ư' */
-    CASELACE(0x01b3, 0x01b5),		/* 'Ƴ' -> 'Ƶ' */
-    CASELACE(0x01b8, 0x01b8),		/* 'Ƹ' -> 'Ƹ' */
-    CASELACE(0x01bc, 0x01bc),		/* 'Ƽ' -> 'Ƽ' */
-    CASELACE(0x01c5, 0x01c5),		/* 'ǅ' -> 'ǅ' */
-    CASELACE(0x01c8, 0x01c8),		/* 'ǈ' -> 'ǈ' */
-    CASELACE(0x01cb, 0x01db),		/* 'ǋ' -> 'Ǜ' */
-    CASELACE(0x01de, 0x01ee),		/* 'Ǟ' -> 'Ǯ' */
-    CASEMAP(0x01f1, 0x01f1, 0x01f3),	/* 'Ǳ' -> 'Ǳ' .. 'ǳ' */
-    CASELACE(0x01f2, 0x01f4),		/* 'ǲ' -> 'Ǵ' */
-    CASEMAP(0x01f7, 0x01f7, 0x01bf),	/* 'Ƿ' -> 'Ƿ' .. 'ƿ' */
-    CASELACE(0x01f8, 0x021e),		/* 'Ǹ' -> 'Ȟ' */
-    CASELACE(0x0222, 0x0232),		/* 'Ȣ' -> 'Ȳ' */
-    CASELACE(0x023b, 0x023b),		/* 'Ȼ' -> 'Ȼ' */
-    CASELACE(0x0241, 0x0241),		/* 'Ɂ' -> 'Ɂ' */
-    CASEMAP(0x0244, 0x0244, 0x0289),	/* 'Ʉ' -> 'Ʉ' .. 'ʉ' */
-    CASEMAP(0x0245, 0x0245, 0x028c),	/* 'Ʌ' -> 'Ʌ' .. 'ʌ' */
-    CASELACE(0x0246, 0x024e),		/* 'Ɇ' -> 'Ɏ' */
-    CASELACE(0x0370, 0x0372),		/* 'Ͱ' -> 'Ͳ' */
-    CASELACE(0x0376, 0x0376),		/* 'Ͷ' -> 'Ͷ' */
-    CASEMAP(0x0388, 0x038a, 0x03ad),	/* 'Έ' -> 'Ί' .. 'έ' */
-    CASEMAP(0x038e, 0x038f, 0x03cd),	/* 'Ύ' -> 'Ώ' .. 'ύ' */
-    CASEMAP(0x0391, 0x03a1, 0x03b1),	/* 'Α' -> 'Ρ' .. 'α' */
-    CASEMAP(0x03a3, 0x03ab, 0x03c3),	/* 'Σ' -> 'Ϋ' .. 'σ' */
-    CASELACE(0x03c2, 0x03c2),		/* 'ς' -> 'ς' */
-    CASEMAP(0x03d0, 0x03d0, 0x03b2),	/* 'ϐ' -> 'ϐ' .. 'β' */
-    CASEMAP(0x03d1, 0x03d1, 0x03b8),	/* 'ϑ' -> 'ϑ' .. 'θ' */
-    CASEMAP(0x03d6, 0x03d6, 0x03c0),	/* 'ϖ' -> 'ϖ' .. 'π' */
-    CASELACE(0x03d8, 0x03ee),		/* 'Ϙ' -> 'Ϯ' */
-    CASEMAP(0x03f1, 0x03f1, 0x03c1),	/* 'ϱ' -> 'ϱ' .. 'ρ' */
-    CASEMAP(0x03f5, 0x03f5, 0x03b5),	/* 'ϵ' -> 'ϵ' .. 'ε' */
-    CASELACE(0x03f7, 0x03f7),		/* 'Ϸ' -> 'Ϸ' */
-    CASELACE(0x03fa, 0x03fa),		/* 'Ϻ' -> 'Ϻ' */
-    CASEMAP(0x0400, 0x040f, 0x0450),	/* 'Ѐ' -> 'Џ' .. 'ѐ' */
-    CASEMAP(0x0410, 0x042f, 0x0430),	/* 'А' -> 'Я' .. 'а' */
-    CASELACE(0x0460, 0x0480),		/* 'Ѡ' -> 'Ҁ' */
-    CASELACE(0x048a, 0x04be),		/* 'Ҋ' -> 'Ҿ' */
-    CASELACE(0x04c1, 0x04cd),		/* 'Ӂ' -> 'Ӎ' */
-    CASELACE(0x04d0, 0x052e),		/* 'Ӑ' -> 'Ԯ' */
-    CASEMAP(0x0531, 0x0556, 0x0561),	/* 'Ա' -> 'Ֆ' .. 'ա' */
-    CASEMAP(0x13f8, 0x13fd, 0x13f0),	/* 'ᏸ' -> 'ᏽ' .. 'Ᏸ' */
-    CASELACE(0x1c89, 0x1c89),		/* 'Ᲊ' -> 'Ᲊ' */
-    CASELACE(0x1e00, 0x1e94),		/* 'Ḁ' -> 'Ẕ' */
-    CASEMAP(0x1e9b, 0x1e9b, 0x1e61),	/* 'ẛ' -> 'ẛ' .. 'ṡ' */
-    CASELACE(0x1ea0, 0x1efe),		/* 'Ạ' -> 'Ỿ' */
-    CASEMAP(0x1f08, 0x1f0f, 0x1f00),	/* 'Ἀ' -> 'Ἇ' .. 'ἀ' */
-    CASEMAP(0x1f18, 0x1f1d, 0x1f10),	/* 'Ἐ' -> 'Ἕ' .. 'ἐ' */
-    CASEMAP(0x1f28, 0x1f2f, 0x1f20),	/* 'Ἠ' -> 'Ἧ' .. 'ἠ' */
-    CASEMAP(0x1f38, 0x1f3f, 0x1f30),	/* 'Ἰ' -> 'Ἷ' .. 'ἰ' */
-    CASEMAP(0x1f48, 0x1f4d, 0x1f40),	/* 'Ὀ' -> 'Ὅ' .. 'ὀ' */
-    CASEMAP(0x1f68, 0x1f6f, 0x1f60),	/* 'Ὠ' -> 'Ὧ' .. 'ὠ' */
-    CASEMAP(0x1fb8, 0x1fb9, 0x1fb0),	/* 'Ᾰ' -> 'Ᾱ' .. 'ᾰ' */
-    CASEMAP(0x1fba, 0x1fbb, 0x1f70),	/* 'Ὰ' -> 'Ά' .. 'ὰ' */
-    CASEMAP(0x1fc8, 0x1fcb, 0x1f72),	/* 'Ὲ' -> 'Ή' .. 'ὲ' */
-    CASEMAP(0x1fd8, 0x1fd9, 0x1fd0),	/* 'Ῐ' -> 'Ῑ' .. 'ῐ' */
-    CASEMAP(0x1fda, 0x1fdb, 0x1f76),	/* 'Ὶ' -> 'Ί' .. 'ὶ' */
-    CASEMAP(0x1fe8, 0x1fe9, 0x1fe0),	/* 'Ῠ' -> 'Ῡ' .. 'ῠ' */
-    CASEMAP(0x1fea, 0x1feb, 0x1f7a),	/* 'Ὺ' -> 'Ύ' .. 'ὺ' */
-    CASEMAP(0x1fec, 0x1fec, 0x1fe5),	/* 'Ῥ' -> 'Ῥ' .. 'ῥ' */
-    CASEMAP(0x1ff8, 0x1ff9, 0x1f78),	/* 'Ὸ' -> 'Ό' .. 'ὸ' */
-    CASEMAP(0x1ffa, 0x1ffb, 0x1f7c),	/* 'Ὼ' -> 'Ώ' .. 'ὼ' */
-    CASEMAP(0x2160, 0x216f, 0x2170),	/* 'Ⅰ' -> 'Ⅿ' .. 'ⅰ' */
-    CASELACE(0x2183, 0x2183),		/* 'Ↄ' -> 'Ↄ' */
-    CASEMAP(0x24b6, 0x24cf, 0x24d0),	/* 'Ⓐ' -> 'Ⓩ' .. 'ⓐ' */
-    CASEMAP(0x2c00, 0x2c2f, 0x2c30),	/* 'Ⰰ' -> 'Ⱟ' .. 'ⰰ' */
-    CASELACE(0x2c60, 0x2c60),		/* 'Ⱡ' -> 'Ⱡ' */
-    CASELACE(0x2c67, 0x2c6b),		/* 'Ⱨ' -> 'Ⱬ' */
-    CASELACE(0x2c72, 0x2c72),		/* 'Ⱳ' -> 'Ⱳ' */
-    CASELACE(0x2c75, 0x2c75),		/* 'Ⱶ' -> 'Ⱶ' */
-    CASELACE(0x2c80, 0x2ce2),		/* 'Ⲁ' -> 'Ⳣ' */
-    CASELACE(0x2ceb, 0x2ced),		/* 'Ⳬ' -> 'Ⳮ' */
-    CASELACE(0x2cf2, 0x2cf2),		/* 'Ⳳ' -> 'Ⳳ' */
-    CASELACE(0xa640, 0xa66c),		/* 'Ꙁ' -> 'Ꙭ' */
-    CASELACE(0xa680, 0xa69a),		/* 'Ꚁ' -> 'Ꚛ' */
-    CASELACE(0xa722, 0xa72e),		/* 'Ꜣ' -> 'Ꜯ' */
-    CASELACE(0xa732, 0xa76e),		/* 'Ꜳ' -> 'Ꝯ' */
-    CASELACE(0xa779, 0xa77b),		/* 'Ꝺ' -> 'Ꝼ' */
-    CASELACE(0xa77e, 0xa786),		/* 'Ꝿ' -> 'Ꞇ' */
-    CASELACE(0xa78b, 0xa78b),		/* 'Ꞌ' -> 'Ꞌ' */
-    CASELACE(0xa790, 0xa792),		/* 'Ꞑ' -> 'Ꞓ' */
-    CASELACE(0xa796, 0xa7a8),		/* 'Ꞗ' -> 'Ꞩ' */
-    CASELACE(0xa7b4, 0xa7c2),		/* 'Ꞵ' -> 'Ꟃ' */
-    CASELACE(0xa7c7, 0xa7c9),		/* 'Ꟈ' -> 'Ꟊ' */
-    CASELACE(0xa7cc, 0xa7da),		/* 'Ꟍ' -> 'Ꟛ' */
-    CASELACE(0xa7f5, 0xa7f5),		/* 'Ꟶ' -> 'Ꟶ' */
-    CASEMAP(0xab6c, 0xab6d, 0xab4b),	/* '꭬' -> '꭭' .. 'ꭋ' */
-    CASELACE(0xfb05, 0xfb05),		/* 'ﬅ' -> 'ﬅ' */
-    CASEMAP(0xff21, 0xff3a, 0xff41),	/* 'Ａ' -> 'Ｚ' .. 'ａ' */
+    CASEMAP(0x0041, 0x005a, 0x0061), /* 'A' -> 'Z' .. 'a' */
+    CASEMAP(0x00c0, 0x00d6, 0x00e0), /* 'À' -> 'Ö' .. 'à' */
+    CASEMAP(0x00d8, 0x00de, 0x00f8), /* 'Ø' -> 'Þ' .. 'ø' */
+    CASELACE(0x0100, 0x012e),        /* 'Ā' -> 'Į' */
+    CASELACE(0x0132, 0x0136),        /* 'Ĳ' -> 'Ķ' */
+    CASELACE(0x0139, 0x0147),        /* 'Ĺ' -> 'Ň' */
+    CASELACE(0x014a, 0x0176),        /* 'Ŋ' -> 'Ŷ' */
+    CASELACE(0x0179, 0x017d),        /* 'Ź' -> 'Ž' */
+    CASELACE(0x0182, 0x0184),        /* 'Ƃ' -> 'Ƅ' */
+    CASELACE(0x0187, 0x0187),        /* 'Ƈ' -> 'Ƈ' */
+    CASELACE(0x018b, 0x018b),        /* 'Ƌ' -> 'Ƌ' */
+    CASELACE(0x0191, 0x0191),        /* 'Ƒ' -> 'Ƒ' */
+    CASELACE(0x0198, 0x0198),        /* 'Ƙ' -> 'Ƙ' */
+    CASELACE(0x01a0, 0x01a4),        /* 'Ơ' -> 'Ƥ' */
+    CASELACE(0x01a7, 0x01a7),        /* 'Ƨ' -> 'Ƨ' */
+    CASELACE(0x01ac, 0x01ac),        /* 'Ƭ' -> 'Ƭ' */
+    CASELACE(0x01af, 0x01af),        /* 'Ư' -> 'Ư' */
+    CASELACE(0x01b3, 0x01b5),        /* 'Ƴ' -> 'Ƶ' */
+    CASELACE(0x01b8, 0x01b8),        /* 'Ƹ' -> 'Ƹ' */
+    CASELACE(0x01bc, 0x01bc),        /* 'Ƽ' -> 'Ƽ' */
+    CASELACE(0x01c5, 0x01c5),        /* 'ǅ' -> 'ǅ' */
+    CASELACE(0x01c8, 0x01c8),        /* 'ǈ' -> 'ǈ' */
+    CASELACE(0x01cb, 0x01db),        /* 'ǋ' -> 'Ǜ' */
+    CASELACE(0x01de, 0x01ee),        /* 'Ǟ' -> 'Ǯ' */
+    CASEMAP(0x01f1, 0x01f1, 0x01f3), /* 'Ǳ' -> 'Ǳ' .. 'ǳ' */
+    CASELACE(0x01f2, 0x01f4),        /* 'ǲ' -> 'Ǵ' */
+    CASEMAP(0x01f7, 0x01f7, 0x01bf), /* 'Ƿ' -> 'Ƿ' .. 'ƿ' */
+    CASELACE(0x01f8, 0x021e),        /* 'Ǹ' -> 'Ȟ' */
+    CASELACE(0x0222, 0x0232),        /* 'Ȣ' -> 'Ȳ' */
+    CASELACE(0x023b, 0x023b),        /* 'Ȼ' -> 'Ȼ' */
+    CASELACE(0x0241, 0x0241),        /* 'Ɂ' -> 'Ɂ' */
+    CASEMAP(0x0244, 0x0244, 0x0289), /* 'Ʉ' -> 'Ʉ' .. 'ʉ' */
+    CASEMAP(0x0245, 0x0245, 0x028c), /* 'Ʌ' -> 'Ʌ' .. 'ʌ' */
+    CASELACE(0x0246, 0x024e),        /* 'Ɇ' -> 'Ɏ' */
+    CASELACE(0x0370, 0x0372),        /* 'Ͱ' -> 'Ͳ' */
+    CASELACE(0x0376, 0x0376),        /* 'Ͷ' -> 'Ͷ' */
+    CASEMAP(0x0388, 0x038a, 0x03ad), /* 'Έ' -> 'Ί' .. 'έ' */
+    CASEMAP(0x038e, 0x038f, 0x03cd), /* 'Ύ' -> 'Ώ' .. 'ύ' */
+    CASEMAP(0x0391, 0x03a1, 0x03b1), /* 'Α' -> 'Ρ' .. 'α' */
+    CASEMAP(0x03a3, 0x03ab, 0x03c3), /* 'Σ' -> 'Ϋ' .. 'σ' */
+    CASELACE(0x03c2, 0x03c2),        /* 'ς' -> 'ς' */
+    CASEMAP(0x03d0, 0x03d0, 0x03b2), /* 'ϐ' -> 'ϐ' .. 'β' */
+    CASEMAP(0x03d1, 0x03d1, 0x03b8), /* 'ϑ' -> 'ϑ' .. 'θ' */
+    CASEMAP(0x03d6, 0x03d6, 0x03c0), /* 'ϖ' -> 'ϖ' .. 'π' */
+    CASELACE(0x03d8, 0x03ee),        /* 'Ϙ' -> 'Ϯ' */
+    CASEMAP(0x03f1, 0x03f1, 0x03c1), /* 'ϱ' -> 'ϱ' .. 'ρ' */
+    CASEMAP(0x03f5, 0x03f5, 0x03b5), /* 'ϵ' -> 'ϵ' .. 'ε' */
+    CASELACE(0x03f7, 0x03f7),        /* 'Ϸ' -> 'Ϸ' */
+    CASELACE(0x03fa, 0x03fa),        /* 'Ϻ' -> 'Ϻ' */
+    CASEMAP(0x0400, 0x040f, 0x0450), /* 'Ѐ' -> 'Џ' .. 'ѐ' */
+    CASEMAP(0x0410, 0x042f, 0x0430), /* 'А' -> 'Я' .. 'а' */
+    CASELACE(0x0460, 0x0480),        /* 'Ѡ' -> 'Ҁ' */
+    CASELACE(0x048a, 0x04be),        /* 'Ҋ' -> 'Ҿ' */
+    CASELACE(0x04c1, 0x04cd),        /* 'Ӂ' -> 'Ӎ' */
+    CASELACE(0x04d0, 0x052e),        /* 'Ӑ' -> 'Ԯ' */
+    CASEMAP(0x0531, 0x0556, 0x0561), /* 'Ա' -> 'Ֆ' .. 'ա' */
+    CASEMAP(0x13f8, 0x13fd, 0x13f0), /* 'ᏸ' -> 'ᏽ' .. 'Ᏸ' */
+    CASELACE(0x1c89, 0x1c89),        /* 'Ᲊ' -> 'Ᲊ' */
+    CASELACE(0x1e00, 0x1e94),        /* 'Ḁ' -> 'Ẕ' */
+    CASEMAP(0x1e9b, 0x1e9b, 0x1e61), /* 'ẛ' -> 'ẛ' .. 'ṡ' */
+    CASELACE(0x1ea0, 0x1efe),        /* 'Ạ' -> 'Ỿ' */
+    CASEMAP(0x1f08, 0x1f0f, 0x1f00), /* 'Ἀ' -> 'Ἇ' .. 'ἀ' */
+    CASEMAP(0x1f18, 0x1f1d, 0x1f10), /* 'Ἐ' -> 'Ἕ' .. 'ἐ' */
+    CASEMAP(0x1f28, 0x1f2f, 0x1f20), /* 'Ἠ' -> 'Ἧ' .. 'ἠ' */
+    CASEMAP(0x1f38, 0x1f3f, 0x1f30), /* 'Ἰ' -> 'Ἷ' .. 'ἰ' */
+    CASEMAP(0x1f48, 0x1f4d, 0x1f40), /* 'Ὀ' -> 'Ὅ' .. 'ὀ' */
+    CASEMAP(0x1f68, 0x1f6f, 0x1f60), /* 'Ὠ' -> 'Ὧ' .. 'ὠ' */
+    CASEMAP(0x1fb8, 0x1fb9, 0x1fb0), /* 'Ᾰ' -> 'Ᾱ' .. 'ᾰ' */
+    CASEMAP(0x1fba, 0x1fbb, 0x1f70), /* 'Ὰ' -> 'Ά' .. 'ὰ' */
+    CASEMAP(0x1fc8, 0x1fcb, 0x1f72), /* 'Ὲ' -> 'Ή' .. 'ὲ' */
+    CASEMAP(0x1fd8, 0x1fd9, 0x1fd0), /* 'Ῐ' -> 'Ῑ' .. 'ῐ' */
+    CASEMAP(0x1fda, 0x1fdb, 0x1f76), /* 'Ὶ' -> 'Ί' .. 'ὶ' */
+    CASEMAP(0x1fe8, 0x1fe9, 0x1fe0), /* 'Ῠ' -> 'Ῡ' .. 'ῠ' */
+    CASEMAP(0x1fea, 0x1feb, 0x1f7a), /* 'Ὺ' -> 'Ύ' .. 'ὺ' */
+    CASEMAP(0x1fec, 0x1fec, 0x1fe5), /* 'Ῥ' -> 'Ῥ' .. 'ῥ' */
+    CASEMAP(0x1ff8, 0x1ff9, 0x1f78), /* 'Ὸ' -> 'Ό' .. 'ὸ' */
+    CASEMAP(0x1ffa, 0x1ffb, 0x1f7c), /* 'Ὼ' -> 'Ώ' .. 'ὼ' */
+    CASEMAP(0x2160, 0x216f, 0x2170), /* 'Ⅰ' -> 'Ⅿ' .. 'ⅰ' */
+    CASELACE(0x2183, 0x2183),        /* 'Ↄ' -> 'Ↄ' */
+    CASEMAP(0x24b6, 0x24cf, 0x24d0), /* 'Ⓐ' -> 'Ⓩ' .. 'ⓐ' */
+    CASEMAP(0x2c00, 0x2c2f, 0x2c30), /* 'Ⰰ' -> 'Ⱟ' .. 'ⰰ' */
+    CASELACE(0x2c60, 0x2c60),        /* 'Ⱡ' -> 'Ⱡ' */
+    CASELACE(0x2c67, 0x2c6b),        /* 'Ⱨ' -> 'Ⱬ' */
+    CASELACE(0x2c72, 0x2c72),        /* 'Ⱳ' -> 'Ⱳ' */
+    CASELACE(0x2c75, 0x2c75),        /* 'Ⱶ' -> 'Ⱶ' */
+    CASELACE(0x2c80, 0x2ce2),        /* 'Ⲁ' -> 'Ⳣ' */
+    CASELACE(0x2ceb, 0x2ced),        /* 'Ⳬ' -> 'Ⳮ' */
+    CASELACE(0x2cf2, 0x2cf2),        /* 'Ⳳ' -> 'Ⳳ' */
+    CASELACE(0xa640, 0xa66c),        /* 'Ꙁ' -> 'Ꙭ' */
+    CASELACE(0xa680, 0xa69a),        /* 'Ꚁ' -> 'Ꚛ' */
+    CASELACE(0xa722, 0xa72e),        /* 'Ꜣ' -> 'Ꜯ' */
+    CASELACE(0xa732, 0xa76e),        /* 'Ꜳ' -> 'Ꝯ' */
+    CASELACE(0xa779, 0xa77b),        /* 'Ꝺ' -> 'Ꝼ' */
+    CASELACE(0xa77e, 0xa786),        /* 'Ꝿ' -> 'Ꞇ' */
+    CASELACE(0xa78b, 0xa78b),        /* 'Ꞌ' -> 'Ꞌ' */
+    CASELACE(0xa790, 0xa792),        /* 'Ꞑ' -> 'Ꞓ' */
+    CASELACE(0xa796, 0xa7a8),        /* 'Ꞗ' -> 'Ꞩ' */
+    CASELACE(0xa7b4, 0xa7c2),        /* 'Ꞵ' -> 'Ꟃ' */
+    CASELACE(0xa7c7, 0xa7c9),        /* 'Ꟈ' -> 'Ꟊ' */
+    CASELACE(0xa7cc, 0xa7da),        /* 'Ꟍ' -> 'Ꟛ' */
+    CASELACE(0xa7f5, 0xa7f5),        /* 'Ꟶ' -> 'Ꟶ' */
+    CASEMAP(0xab6c, 0xab6d, 0xab4b), /* '꭬' -> '꭭' .. 'ꭋ' */
+    CASELACE(0xfb05, 0xfb05),        /* 'ﬅ' -> 'ﬅ' */
+    CASEMAP(0xff21, 0xff3a, 0xff41), /* 'Ａ' -> 'Ｚ' .. 'ａ' */
     {0, 0, 0}};
 static const struct {
-    uint32_t upper; /* base */
-    int lower; /* distance from upper to lower */
-    uint16_t len; /* how many */
+  uint32_t upper; /* base */
+  int lower;      /* distance from upper to lower */
+  uint16_t len;   /* how many */
 } casemapsl[] = {
     /* from, until, to */
-    CASEMAP(0x0189, 0x018a, 0x0256),	/* 'Ɖ' -> 'Ɗ' .. 'ɖ' */
-    CASEMAP(0x018f, 0x018f, 0x0259),	/* 'Ə' -> 'Ə' .. 'ə' */
-    CASEMAP(0x0190, 0x0190, 0x025b),	/* 'Ɛ' -> 'Ɛ' .. 'ɛ' */
-    CASEMAP(0x0194, 0x0194, 0x0263),	/* 'Ɣ' -> 'Ɣ' .. 'ɣ' */
-    CASEMAP(0x0197, 0x0197, 0x0268),	/* 'Ɨ' -> 'Ɨ' .. 'ɨ' */
-    CASEMAP(0x019d, 0x019d, 0x0272),	/* 'Ɲ' -> 'Ɲ' .. 'ɲ' */
-    CASEMAP(0x01b1, 0x01b2, 0x028a),	/* 'Ʊ' -> 'Ʋ' .. 'ʊ' */
-    CASEMAP(0x023e, 0x023e, 0x2c66),	/* 'Ⱦ' -> 'Ⱦ' .. 'ⱦ' */
-    CASEMAP(0x03fd, 0x03ff, 0x037b),	/* 'Ͻ' -> 'Ͽ' .. 'ͻ' */
-    CASEMAP(0x10a0, 0x10c5, 0x2d00),	/* 'Ⴀ' -> 'Ⴥ' .. 'ⴀ' */
-    CASEMAP(0x1c81, 0x1c81, 0x0434),	/* 'ᲁ' -> 'ᲁ' .. 'д' */
-    CASEMAP(0x1c82, 0x1c82, 0x043e),	/* 'ᲂ' -> 'ᲂ' .. 'о' */
-    CASEMAP(0x1c83, 0x1c84, 0x0441),	/* 'ᲃ' -> 'ᲄ' .. 'с' */
-    CASEMAP(0x1c85, 0x1c85, 0x0442),	/* 'ᲅ' -> 'ᲅ' .. 'т' */
-    CASEMAP(0x1c86, 0x1c86, 0x044a),	/* 'ᲆ' -> 'ᲆ' .. 'ъ' */
-    CASEMAP(0x1c87, 0x1c87, 0x0463),	/* 'ᲇ' -> 'ᲇ' .. 'ѣ' */
-    CASEMAP(0x1c88, 0x1c88, 0xa64b),	/* 'ᲈ' -> 'ᲈ' .. 'ꙋ' */
-    CASEMAP(0x1c90, 0x1cba, 0x10d0),	/* 'Ა' -> 'Ჺ' .. 'ა' */
-    CASEMAP(0x1cbd, 0x1cbf, 0x10fd),	/* 'Ჽ' -> 'Ჿ' .. 'ჽ' */
-    CASEMAP(0x212b, 0x212b, 0x00e5),	/* 'Å' -> 'Å' .. 'å' */
-    CASEMAP(0x2c63, 0x2c63, 0x1d7d),	/* 'Ᵽ' -> 'Ᵽ' .. 'ᵽ' */
-    CASEMAP(0x2c64, 0x2c64, 0x027d),	/* 'Ɽ' -> 'Ɽ' .. 'ɽ' */
-    CASEMAP(0x2c6e, 0x2c6e, 0x0271),	/* 'Ɱ' -> 'Ɱ' .. 'ɱ' */
-    CASEMAP(0x2c6f, 0x2c6f, 0x0250),	/* 'Ɐ' -> 'Ɐ' .. 'ɐ' */
-    CASEMAP(0x2c70, 0x2c70, 0x0252),	/* 'Ɒ' -> 'Ɒ' .. 'ɒ' */
-    CASEMAP(0x2c7e, 0x2c7f, 0x023f),	/* 'Ȿ' -> 'Ɀ' .. 'ȿ' */
-    CASEMAP(0xa7ab, 0xa7ab, 0x025c),	/* 'Ɜ' -> 'Ɜ' .. 'ɜ' */
-    CASEMAP(0xa7ac, 0xa7ac, 0x0261),	/* 'Ɡ' -> 'Ɡ' .. 'ɡ' */
-    CASEMAP(0xa7ad, 0xa7ad, 0x026c),	/* 'Ɬ' -> 'Ɬ' .. 'ɬ' */
-    CASEMAP(0xa7ae, 0xa7ae, 0x026a),	/* 'Ɪ' -> 'Ɪ' .. 'ɪ' */
-    CASEMAP(0xa7b1, 0xa7b1, 0x0287),	/* 'Ʇ' -> 'Ʇ' .. 'ʇ' */
-    CASEMAP(0xa7b2, 0xa7b2, 0x029d),	/* 'Ʝ' -> 'Ʝ' .. 'ʝ' */
-    CASEMAP(0xa7b3, 0xa7b3, 0xab53),	/* 'Ꭓ' -> 'Ꭓ' .. 'ꭓ' */
-    CASEMAP(0xa7c5, 0xa7c5, 0x0282),	/* 'Ʂ' -> 'Ʂ' .. 'ʂ' */
-    CASEMAP(0xa7c6, 0xa7c6, 0x1d8e),	/* 'Ᶎ' -> 'Ᶎ' .. 'ᶎ' */
-    CASEMAP(0xa7dd, 0xa7dd, 0x0277),	/* '꟝' -> '꟝' .. 'ɷ' */
-    CASEMAP(0xab70, 0xabbf, 0x13a0),	/* 'ꭰ' -> 'ꮿ' .. 'Ꭰ' */
-    CASEMAP(0x10400, 0x10427, 0x10428),	/* '𐐀' -> '𐐧' .. '𐐨' */
-    CASEMAP(0x104b0, 0x104d3, 0x104d8),	/* '𐒰' -> '𐓓' .. '𐓘' */
-    CASEMAP(0x10570, 0x1057a, 0x10597),	/* '𐕰' -> '𐕺' .. '𐖗' */
-    CASEMAP(0x1057c, 0x1058a, 0x105a3),	/* '𐕼' -> '𐖊' .. '𐖣' */
-    CASEMAP(0x1058c, 0x10592, 0x105b3),	/* '𐖌' -> '𐖒' .. '𐖳' */
-    CASEMAP(0x10594, 0x10595, 0x105bb),	/* '𐖔' -> '𐖕' .. '𐖻' */
-    CASEMAP(0x10c80, 0x10cb2, 0x10cc0),	/* '𐲀' -> '𐲲' .. '𐳀' */
-    CASEMAP(0x10d50, 0x10d65, 0x10d70),	/* '𐵐' -> '𐵥' .. '𐵰' */
-    CASEMAP(0x118a0, 0x118bf, 0x118c0),	/* '𑢠' -> '𑢿' .. '𑣀' */
-    CASEMAP(0x16e40, 0x16e5f, 0x16e60),	/* '𖹀' -> '𖹟' .. '𖹠' */
-    CASEMAP(0x16ea0, 0x16eb8, 0x16ebb),	/* '𖺠' -> '𖺸' .. '𖺻' */
-    CASELACE(0x1df40, 0x1df40),		/* '𝽀' -> '𝽀' */
-    CASELACE(0x1df48, 0x1df4a),		/* '𝽈' -> '𝽊' */
-    CASELACE(0x1df4d, 0x1df4d),		/* '𝽍' -> '𝽍' */
-    CASELACE(0x1df51, 0x1df51),		/* '𝽑' -> '𝽑' */
-    CASELACE(0x1df68, 0x1df6e),		/* '𝽨' -> '𝽮' */
-    CASELACE(0x1df72, 0x1df7e),		/* '𝽲' -> '𝽾' */
-    CASEMAP(0x1e900, 0x1e921, 0x1e922),	/* '𞤀' -> '𞤡' .. '𞤢' */
+    CASEMAP(0x0189, 0x018a, 0x0256),    /* 'Ɖ' -> 'Ɗ' .. 'ɖ' */
+    CASEMAP(0x018f, 0x018f, 0x0259),    /* 'Ə' -> 'Ə' .. 'ə' */
+    CASEMAP(0x0190, 0x0190, 0x025b),    /* 'Ɛ' -> 'Ɛ' .. 'ɛ' */
+    CASEMAP(0x0194, 0x0194, 0x0263),    /* 'Ɣ' -> 'Ɣ' .. 'ɣ' */
+    CASEMAP(0x0197, 0x0197, 0x0268),    /* 'Ɨ' -> 'Ɨ' .. 'ɨ' */
+    CASEMAP(0x019d, 0x019d, 0x0272),    /* 'Ɲ' -> 'Ɲ' .. 'ɲ' */
+    CASEMAP(0x01b1, 0x01b2, 0x028a),    /* 'Ʊ' -> 'Ʋ' .. 'ʊ' */
+    CASEMAP(0x023e, 0x023e, 0x2c66),    /* 'Ⱦ' -> 'Ⱦ' .. 'ⱦ' */
+    CASEMAP(0x03fd, 0x03ff, 0x037b),    /* 'Ͻ' -> 'Ͽ' .. 'ͻ' */
+    CASEMAP(0x10a0, 0x10c5, 0x2d00),    /* 'Ⴀ' -> 'Ⴥ' .. 'ⴀ' */
+    CASEMAP(0x1c81, 0x1c81, 0x0434),    /* 'ᲁ' -> 'ᲁ' .. 'д' */
+    CASEMAP(0x1c82, 0x1c82, 0x043e),    /* 'ᲂ' -> 'ᲂ' .. 'о' */
+    CASEMAP(0x1c83, 0x1c84, 0x0441),    /* 'ᲃ' -> 'ᲄ' .. 'с' */
+    CASEMAP(0x1c85, 0x1c85, 0x0442),    /* 'ᲅ' -> 'ᲅ' .. 'т' */
+    CASEMAP(0x1c86, 0x1c86, 0x044a),    /* 'ᲆ' -> 'ᲆ' .. 'ъ' */
+    CASEMAP(0x1c87, 0x1c87, 0x0463),    /* 'ᲇ' -> 'ᲇ' .. 'ѣ' */
+    CASEMAP(0x1c88, 0x1c88, 0xa64b),    /* 'ᲈ' -> 'ᲈ' .. 'ꙋ' */
+    CASEMAP(0x1c90, 0x1cba, 0x10d0),    /* 'Ა' -> 'Ჺ' .. 'ა' */
+    CASEMAP(0x1cbd, 0x1cbf, 0x10fd),    /* 'Ჽ' -> 'Ჿ' .. 'ჽ' */
+    CASEMAP(0x212b, 0x212b, 0x00e5),    /* 'Å' -> 'Å' .. 'å' */
+    CASEMAP(0x2c63, 0x2c63, 0x1d7d),    /* 'Ᵽ' -> 'Ᵽ' .. 'ᵽ' */
+    CASEMAP(0x2c64, 0x2c64, 0x027d),    /* 'Ɽ' -> 'Ɽ' .. 'ɽ' */
+    CASEMAP(0x2c6e, 0x2c6e, 0x0271),    /* 'Ɱ' -> 'Ɱ' .. 'ɱ' */
+    CASEMAP(0x2c6f, 0x2c6f, 0x0250),    /* 'Ɐ' -> 'Ɐ' .. 'ɐ' */
+    CASEMAP(0x2c70, 0x2c70, 0x0252),    /* 'Ɒ' -> 'Ɒ' .. 'ɒ' */
+    CASEMAP(0x2c7e, 0x2c7f, 0x023f),    /* 'Ȿ' -> 'Ɀ' .. 'ȿ' */
+    CASEMAP(0xa7ab, 0xa7ab, 0x025c),    /* 'Ɜ' -> 'Ɜ' .. 'ɜ' */
+    CASEMAP(0xa7ac, 0xa7ac, 0x0261),    /* 'Ɡ' -> 'Ɡ' .. 'ɡ' */
+    CASEMAP(0xa7ad, 0xa7ad, 0x026c),    /* 'Ɬ' -> 'Ɬ' .. 'ɬ' */
+    CASEMAP(0xa7ae, 0xa7ae, 0x026a),    /* 'Ɪ' -> 'Ɪ' .. 'ɪ' */
+    CASEMAP(0xa7b1, 0xa7b1, 0x0287),    /* 'Ʇ' -> 'Ʇ' .. 'ʇ' */
+    CASEMAP(0xa7b2, 0xa7b2, 0x029d),    /* 'Ʝ' -> 'Ʝ' .. 'ʝ' */
+    CASEMAP(0xa7b3, 0xa7b3, 0xab53),    /* 'Ꭓ' -> 'Ꭓ' .. 'ꭓ' */
+    CASEMAP(0xa7c5, 0xa7c5, 0x0282),    /* 'Ʂ' -> 'Ʂ' .. 'ʂ' */
+    CASEMAP(0xa7c6, 0xa7c6, 0x1d8e),    /* 'Ᶎ' -> 'Ᶎ' .. 'ᶎ' */
+    CASEMAP(0xa7dd, 0xa7dd, 0x0277),    /* '꟝' -> '꟝' .. 'ɷ' */
+    CASEMAP(0xab70, 0xabbf, 0x13a0),    /* 'ꭰ' -> 'ꮿ' .. 'Ꭰ' */
+    CASEMAP(0x10400, 0x10427, 0x10428), /* '𐐀' -> '𐐧' .. '𐐨' */
+    CASEMAP(0x104b0, 0x104d3, 0x104d8), /* '𐒰' -> '𐓓' .. '𐓘' */
+    CASEMAP(0x10570, 0x1057a, 0x10597), /* '𐕰' -> '𐕺' .. '𐖗' */
+    CASEMAP(0x1057c, 0x1058a, 0x105a3), /* '𐕼' -> '𐖊' .. '𐖣' */
+    CASEMAP(0x1058c, 0x10592, 0x105b3), /* '𐖌' -> '𐖒' .. '𐖳' */
+    CASEMAP(0x10594, 0x10595, 0x105bb), /* '𐖔' -> '𐖕' .. '𐖻' */
+    CASEMAP(0x10c80, 0x10cb2, 0x10cc0), /* '𐲀' -> '𐲲' .. '𐳀' */
+    CASEMAP(0x10d50, 0x10d65, 0x10d70), /* '𐵐' -> '𐵥' .. '𐵰' */
+    CASEMAP(0x118a0, 0x118bf, 0x118c0), /* '𑢠' -> '𑢿' .. '𑣀' */
+    CASEMAP(0x16e40, 0x16e5f, 0x16e60), /* '𖹀' -> '𖹟' .. '𖹠' */
+    CASEMAP(0x16ea0, 0x16eb8, 0x16ebb), /* '𖺠' -> '𖺸' .. '𖺻' */
+    CASELACE(0x1df40, 0x1df40),         /* '𝽀' -> '𝽀' */
+    CASELACE(0x1df48, 0x1df4a),         /* '𝽈' -> '𝽊' */
+    CASELACE(0x1df4d, 0x1df4d),         /* '𝽍' -> '𝽍' */
+    CASELACE(0x1df51, 0x1df51),         /* '𝽑' -> '𝽑' */
+    CASELACE(0x1df68, 0x1df6e),         /* '𝽨' -> '𝽮' */
+    CASELACE(0x1df72, 0x1df7e),         /* '𝽲' -> '𝽾' */
+    CASEMAP(0x1e900, 0x1e921, 0x1e922), /* '𞤀' -> '𞤡' .. '𞤢' */
     {0, 0, 0}};
 static const unsigned short pairs[][2] = {
     /* upper, lower */
-    {0x00b5, 0x03bc},		/* 'µ' -> 'μ' */
-    {0x0178, 0x00ff},		/* 'Ÿ' -> 'ÿ' */
-    {0x017f, 0x0073},		/* 'ſ' -> 's' */
-    {0x0181, 0x0253},		/* 'Ɓ' -> 'ɓ' */
-    {0x0186, 0x0254},		/* 'Ɔ' -> 'ɔ' */
-    {0x018e, 0x01dd},		/* 'Ǝ' -> 'ǝ' */
-    {0x0193, 0x0260},		/* 'Ɠ' -> 'ɠ' */
-    {0x0196, 0x0269},		/* 'Ɩ' -> 'ɩ' */
-    {0x019c, 0x026f},		/* 'Ɯ' -> 'ɯ' */
-    {0x019f, 0x0275},		/* 'Ɵ' -> 'ɵ' */
-    {0x01a6, 0x0280},		/* 'Ʀ' -> 'ʀ' */
-    {0x01a9, 0x0283},		/* 'Ʃ' -> 'ʃ' */
-    {0x01ae, 0x0288},		/* 'Ʈ' -> 'ʈ' */
-    {0x01b7, 0x0292},		/* 'Ʒ' -> 'ʒ' */
-    {0x01c4, 0x01c6},		/* 'Ǆ' -> 'ǆ' */
-    {0x01c7, 0x01c9},		/* 'Ǉ' -> 'ǉ' */
-    {0x01ca, 0x01cc},		/* 'Ǌ' -> 'ǌ' */
-    {0x01f6, 0x0195},		/* 'Ƕ' -> 'ƕ' */
-    {0x0220, 0x019e},		/* 'Ƞ' -> 'ƞ' */
-    {0x023a, 0x2c65},		/* 'Ⱥ' -> 'ⱥ' */
-    {0x023d, 0x019a},		/* 'Ƚ' -> 'ƚ' */
-    {0x0243, 0x0180},		/* 'Ƀ' -> 'ƀ' */
-    {0x0345, 0x03b9},		/* 'ͅ' -> 'ι' */
-    {0x037f, 0x03f3},		/* 'Ϳ' -> 'ϳ' */
-    {0x0386, 0x03ac},		/* 'Ά' -> 'ά' */
-    {0x038c, 0x03cc},		/* 'Ό' -> 'ό' */
-    {0x03cf, 0x03d7},		/* 'Ϗ' -> 'ϗ' */
-    {0x03d5, 0x03c6},		/* 'ϕ' -> 'φ' */
-    {0x03f0, 0x03ba},		/* 'ϰ' -> 'κ' */
-    {0x03f4, 0x03b8},		/* 'ϴ' -> 'θ' */
-    {0x03f9, 0x03f2},		/* 'Ϲ' -> 'ϲ' */
-    {0x04c0, 0x04cf},		/* 'Ӏ' -> 'ӏ' */
-    {0x10c7, 0x2d27},		/* 'Ⴧ' -> 'ⴧ' */
-    {0x10cd, 0x2d2d},		/* 'Ⴭ' -> 'ⴭ' */
-    {0x1c80, 0x0432},		/* 'ᲀ' -> 'в' */
-    {0x1e9e, 0x00df},		/* 'ẞ' -> 'ß' */
-    {0x1f59, 0x1f51},		/* 'Ὑ' -> 'ὑ' */
-    {0x1f5b, 0x1f53},		/* 'Ὓ' -> 'ὓ' */
-    {0x1f5d, 0x1f55},		/* 'Ὕ' -> 'ὕ' */
-    {0x1f5f, 0x1f57},		/* 'Ὗ' -> 'ὗ' */
-    {0x1f88, 0x1f80},		/* 'ᾈ' -> 'ᾀ' */
-    {0x1f89, 0x1f81},		/* 'ᾉ' -> 'ᾁ' */
-    {0x1f8a, 0x1f82},		/* 'ᾊ' -> 'ᾂ' */
-    {0x1f8b, 0x1f83},		/* 'ᾋ' -> 'ᾃ' */
-    {0x1f8c, 0x1f84},		/* 'ᾌ' -> 'ᾄ' */
-    {0x1f8d, 0x1f85},		/* 'ᾍ' -> 'ᾅ' */
-    {0x1f8e, 0x1f86},		/* 'ᾎ' -> 'ᾆ' */
-    {0x1f8f, 0x1f87},		/* 'ᾏ' -> 'ᾇ' */
-    {0x1f98, 0x1f90},		/* 'ᾘ' -> 'ᾐ' */
-    {0x1f99, 0x1f91},		/* 'ᾙ' -> 'ᾑ' */
-    {0x1f9a, 0x1f92},		/* 'ᾚ' -> 'ᾒ' */
-    {0x1f9b, 0x1f93},		/* 'ᾛ' -> 'ᾓ' */
-    {0x1f9c, 0x1f94},		/* 'ᾜ' -> 'ᾔ' */
-    {0x1f9d, 0x1f95},		/* 'ᾝ' -> 'ᾕ' */
-    {0x1f9e, 0x1f96},		/* 'ᾞ' -> 'ᾖ' */
-    {0x1f9f, 0x1f97},		/* 'ᾟ' -> 'ᾗ' */
-    {0x1fa8, 0x1fa0},		/* 'ᾨ' -> 'ᾠ' */
-    {0x1fa9, 0x1fa1},		/* 'ᾩ' -> 'ᾡ' */
-    {0x1faa, 0x1fa2},		/* 'ᾪ' -> 'ᾢ' */
-    {0x1fab, 0x1fa3},		/* 'ᾫ' -> 'ᾣ' */
-    {0x1fac, 0x1fa4},		/* 'ᾬ' -> 'ᾤ' */
-    {0x1fad, 0x1fa5},		/* 'ᾭ' -> 'ᾥ' */
-    {0x1fae, 0x1fa6},		/* 'ᾮ' -> 'ᾦ' */
-    {0x1faf, 0x1fa7},		/* 'ᾯ' -> 'ᾧ' */
-    {0x1fbc, 0x1fb3},		/* 'ᾼ' -> 'ᾳ' */
-    {0x1fbe, 0x03b9},		/* 'ι' -> 'ι' */
-    {0x1fcc, 0x1fc3},		/* 'ῌ' -> 'ῃ' */
-    {0x1fd3, 0x0390},		/* 'ΐ' -> 'ΐ' */
-    {0x1fe3, 0x03b0},		/* 'ΰ' -> 'ΰ' */
-    {0x1ffc, 0x1ff3},		/* 'ῼ' -> 'ῳ' */
-    {0x2126, 0x03c9},		/* 'Ω' -> 'ω' */
-    {0x212a, 0x006b},		/* 'K' -> 'k' */
-    {0x2132, 0x214e},		/* 'Ⅎ' -> 'ⅎ' */
-    {0x2c62, 0x026b},		/* 'Ɫ' -> 'ɫ' */
-    {0x2c6d, 0x0251},		/* 'Ɑ' -> 'ɑ' */
-    {0xa77d, 0x1d79},		/* 'Ᵹ' -> 'ᵹ' */
-    {0xa78d, 0x0265},		/* 'Ɥ' -> 'ɥ' */
-    {0xa7aa, 0x0266},		/* 'Ɦ' -> 'ɦ' */
-    {0xa7b0, 0x029e},		/* 'Ʞ' -> 'ʞ' */
-    {0xa7c4, 0xa794},		/* 'Ꞔ' -> 'ꞔ' */
-    {0xa7cb, 0x0264},		/* 'Ɤ' -> 'ɤ' */
-    {0xa7dc, 0x019b},		/* 'Ƛ' -> 'ƛ' */
-    {0xa7e2, 0x027c},		/* '꟢' -> 'ɼ' */
+    {0x00b5, 0x03bc}, /* 'µ' -> 'μ' */
+    {0x0178, 0x00ff}, /* 'Ÿ' -> 'ÿ' */
+    {0x017f, 0x0073}, /* 'ſ' -> 's' */
+    {0x0181, 0x0253}, /* 'Ɓ' -> 'ɓ' */
+    {0x0186, 0x0254}, /* 'Ɔ' -> 'ɔ' */
+    {0x018e, 0x01dd}, /* 'Ǝ' -> 'ǝ' */
+    {0x0193, 0x0260}, /* 'Ɠ' -> 'ɠ' */
+    {0x0196, 0x0269}, /* 'Ɩ' -> 'ɩ' */
+    {0x019c, 0x026f}, /* 'Ɯ' -> 'ɯ' */
+    {0x019f, 0x0275}, /* 'Ɵ' -> 'ɵ' */
+    {0x01a6, 0x0280}, /* 'Ʀ' -> 'ʀ' */
+    {0x01a9, 0x0283}, /* 'Ʃ' -> 'ʃ' */
+    {0x01ae, 0x0288}, /* 'Ʈ' -> 'ʈ' */
+    {0x01b7, 0x0292}, /* 'Ʒ' -> 'ʒ' */
+    {0x01c4, 0x01c6}, /* 'Ǆ' -> 'ǆ' */
+    {0x01c7, 0x01c9}, /* 'Ǉ' -> 'ǉ' */
+    {0x01ca, 0x01cc}, /* 'Ǌ' -> 'ǌ' */
+    {0x01f6, 0x0195}, /* 'Ƕ' -> 'ƕ' */
+    {0x0220, 0x019e}, /* 'Ƞ' -> 'ƞ' */
+    {0x023a, 0x2c65}, /* 'Ⱥ' -> 'ⱥ' */
+    {0x023d, 0x019a}, /* 'Ƚ' -> 'ƚ' */
+    {0x0243, 0x0180}, /* 'Ƀ' -> 'ƀ' */
+    {0x0345, 0x03b9}, /* 'ͅ' -> 'ι' */
+    {0x037f, 0x03f3}, /* 'Ϳ' -> 'ϳ' */
+    {0x0386, 0x03ac}, /* 'Ά' -> 'ά' */
+    {0x038c, 0x03cc}, /* 'Ό' -> 'ό' */
+    {0x03cf, 0x03d7}, /* 'Ϗ' -> 'ϗ' */
+    {0x03d5, 0x03c6}, /* 'ϕ' -> 'φ' */
+    {0x03f0, 0x03ba}, /* 'ϰ' -> 'κ' */
+    {0x03f4, 0x03b8}, /* 'ϴ' -> 'θ' */
+    {0x03f9, 0x03f2}, /* 'Ϲ' -> 'ϲ' */
+    {0x04c0, 0x04cf}, /* 'Ӏ' -> 'ӏ' */
+    {0x10c7, 0x2d27}, /* 'Ⴧ' -> 'ⴧ' */
+    {0x10cd, 0x2d2d}, /* 'Ⴭ' -> 'ⴭ' */
+    {0x1c80, 0x0432}, /* 'ᲀ' -> 'в' */
+    {0x1e9e, 0x00df}, /* 'ẞ' -> 'ß' */
+    {0x1f59, 0x1f51}, /* 'Ὑ' -> 'ὑ' */
+    {0x1f5b, 0x1f53}, /* 'Ὓ' -> 'ὓ' */
+    {0x1f5d, 0x1f55}, /* 'Ὕ' -> 'ὕ' */
+    {0x1f5f, 0x1f57}, /* 'Ὗ' -> 'ὗ' */
+    {0x1f88, 0x1f80}, /* 'ᾈ' -> 'ᾀ' */
+    {0x1f89, 0x1f81}, /* 'ᾉ' -> 'ᾁ' */
+    {0x1f8a, 0x1f82}, /* 'ᾊ' -> 'ᾂ' */
+    {0x1f8b, 0x1f83}, /* 'ᾋ' -> 'ᾃ' */
+    {0x1f8c, 0x1f84}, /* 'ᾌ' -> 'ᾄ' */
+    {0x1f8d, 0x1f85}, /* 'ᾍ' -> 'ᾅ' */
+    {0x1f8e, 0x1f86}, /* 'ᾎ' -> 'ᾆ' */
+    {0x1f8f, 0x1f87}, /* 'ᾏ' -> 'ᾇ' */
+    {0x1f98, 0x1f90}, /* 'ᾘ' -> 'ᾐ' */
+    {0x1f99, 0x1f91}, /* 'ᾙ' -> 'ᾑ' */
+    {0x1f9a, 0x1f92}, /* 'ᾚ' -> 'ᾒ' */
+    {0x1f9b, 0x1f93}, /* 'ᾛ' -> 'ᾓ' */
+    {0x1f9c, 0x1f94}, /* 'ᾜ' -> 'ᾔ' */
+    {0x1f9d, 0x1f95}, /* 'ᾝ' -> 'ᾕ' */
+    {0x1f9e, 0x1f96}, /* 'ᾞ' -> 'ᾖ' */
+    {0x1f9f, 0x1f97}, /* 'ᾟ' -> 'ᾗ' */
+    {0x1fa8, 0x1fa0}, /* 'ᾨ' -> 'ᾠ' */
+    {0x1fa9, 0x1fa1}, /* 'ᾩ' -> 'ᾡ' */
+    {0x1faa, 0x1fa2}, /* 'ᾪ' -> 'ᾢ' */
+    {0x1fab, 0x1fa3}, /* 'ᾫ' -> 'ᾣ' */
+    {0x1fac, 0x1fa4}, /* 'ᾬ' -> 'ᾤ' */
+    {0x1fad, 0x1fa5}, /* 'ᾭ' -> 'ᾥ' */
+    {0x1fae, 0x1fa6}, /* 'ᾮ' -> 'ᾦ' */
+    {0x1faf, 0x1fa7}, /* 'ᾯ' -> 'ᾧ' */
+    {0x1fbc, 0x1fb3}, /* 'ᾼ' -> 'ᾳ' */
+    {0x1fbe, 0x03b9}, /* 'ι' -> 'ι' */
+    {0x1fcc, 0x1fc3}, /* 'ῌ' -> 'ῃ' */
+    {0x1fd3, 0x0390}, /* 'ΐ' -> 'ΐ' */
+    {0x1fe3, 0x03b0}, /* 'ΰ' -> 'ΰ' */
+    {0x1ffc, 0x1ff3}, /* 'ῼ' -> 'ῳ' */
+    {0x2126, 0x03c9}, /* 'Ω' -> 'ω' */
+    {0x212a, 0x006b}, /* 'K' -> 'k' */
+    {0x2132, 0x214e}, /* 'Ⅎ' -> 'ⅎ' */
+    {0x2c62, 0x026b}, /* 'Ɫ' -> 'ɫ' */
+    {0x2c6d, 0x0251}, /* 'Ɑ' -> 'ɑ' */
+    {0xa77d, 0x1d79}, /* 'Ᵹ' -> 'ᵹ' */
+    {0xa78d, 0x0265}, /* 'Ɥ' -> 'ɥ' */
+    {0xa7aa, 0x0266}, /* 'Ɦ' -> 'ɦ' */
+    {0xa7b0, 0x029e}, /* 'Ʞ' -> 'ʞ' */
+    {0xa7c4, 0xa794}, /* 'Ꞔ' -> 'ꞔ' */
+    {0xa7cb, 0x0264}, /* 'Ɤ' -> 'ɤ' */
+    {0xa7dc, 0x019b}, /* 'Ƛ' -> 'ƛ' */
+    {0xa7e2, 0x027c}, /* '꟢' -> 'ɼ' */
     {0, 0}};
 #define HAVE_PAIRL
 static const unsigned int pairl[][2] = {
     /* upper, lower */
-    {0x1df95, 0x00df},		/* '𝾕' -> 'ß' */
+    {0x1df95, 0x00df}, /* '𝾕' -> 'ß' */
     {0, 0}};
 #define PAIRL_SZ 1
 
 uint32_t _towcase(uint32_t wc, int lower) {
-    int i;
-    int lmul;	/* 1 for lower, -1 for upper */
-    int lmask;  /* 0 for lower, -1/0xffff for upper */
-    /* !iswalpha(wc) is broken on most locales, at least with glibc. */
-    if (wc <= 0x40				/* 64 */
-        || wc - 0x2d2e <= 0xa63f - 0x2d2e	/* 30994 */
-        || wc - 0x16ed4 <= 0x1df3f - 0x16ed4	/* 28780 */
-        || wc - 0x118e0 <= 0x16e3f - 0x118e0	/* 21856 */
-        || wc - 0xabc0 <= 0xfaff - 0xabc0	/* 20288 */
-        )
-        return wc;
+  int i;
+  int lmul;  /* 1 for lower, -1 for upper */
+  int lmask; /* 0 for lower, -1/0xffff for upper */
+  /* !iswalpha(wc) is broken on most locales, at least with glibc. */
+  if (wc <= 0x40                           /* 64 */
+      || wc - 0x2d2e <= 0xa63f - 0x2d2e    /* 30994 */
+      || wc - 0x16ed4 <= 0x1df3f - 0x16ed4 /* 28780 */
+      || wc - 0x118e0 <= 0x16e3f - 0x118e0 /* 21856 */
+      || wc - 0xabc0 <= 0xfaff - 0xabc0    /* 20288 */
+  )
+    return wc;
 
 #ifdef HAVE_LOCALE_TR
-    /* check for the 2 turkish mappings if we have a turkish locale. */
-    if ((lower && (wc == 0x49 || wc == 0x130)) ||
-        (!lower && (wc == 0x69 || wc == 0x131))) {
-        const char *loc = setlocale(LC_CTYPE, NULL);
-        if (loc && (!strncmp(loc, "tr", 2) || !strncmp(loc, "az", 2))) {
-            if (lower) {
-                if (wc == 0x49) return 0x131;
-                else return 0x69;
-            }
-            else {
-                if (wc == 0x69) return 0x130;
-                else return 0x49;
-            }
-        }
+  /* check for the 2 turkish mappings if we have a turkish locale. */
+  if ((lower && (wc == 0x49 || wc == 0x130)) ||
+      (!lower && (wc == 0x69 || wc == 0x131))) {
+    const char *loc = setlocale(LC_CTYPE, NULL);
+    if (loc && (!strncmp(loc, "tr", 2) || !strncmp(loc, "az", 2))) {
+      if (lower) {
+        if (wc == 0x49)
+          return 0x131;
+        else
+          return 0x69;
+      } else {
+        if (wc == 0x69)
+          return 0x130;
+        else
+          return 0x49;
+      }
     }
+  }
 #endif
 
-    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
-    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO: binary search the ranges. GH #4 */
-    for (i = 0; casemaps[i].len; i++) {
-        int base = casemaps[i].upper + (lmask & casemaps[i].lower);
-        assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
-        if (wc - base < casemaps[i].len) {
-            if (casemaps[i].lower == 1)
-                return wc + lower - ((wc - casemaps[i].upper) & 1);
-            /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
-            if (wc == 0xA64B)
-                return 0xA64A;
-            else
-                return wc + lmul * casemaps[i].lower;
-        }
-        if (lower && casemaps[i].upper > wc)
-            break;
+  lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+  lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+  /* TODO: binary search the ranges. GH #4 */
+  for (i = 0; casemaps[i].len; i++) {
+    int base = casemaps[i].upper + (lmask & casemaps[i].lower);
+    assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
+    if (wc - base < casemaps[i].len) {
+      if (casemaps[i].lower == 1)
+        return wc + lower - ((wc - casemaps[i].upper) & 1);
+      /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
+      if (wc == 0xA64B)
+        return 0xA64A;
+      else
+        return wc + lmul * casemaps[i].lower;
     }
-    /* TODO: binary search the pairs. GH #3 */
-    for (i = 0; pairs[i][1 - lower]; i++) {
-        assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
-        if (pairs[i][1 - lower] == wc)
-            return pairs[i][lower];
-        if (lower && pairs[i][0] > wc)
-            break;
-    }
+    if (lower && casemaps[i].upper > wc)
+      break;
+  }
+  /* TODO: binary search the pairs. GH #3 */
+  for (i = 0; pairs[i][1 - lower]; i++) {
+    assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
+    if (pairs[i][1 - lower] == wc)
+      return pairs[i][lower];
+    if (lower && pairs[i][0] > wc)
+      break;
+  }
 #ifdef HAVE_PAIRL
-# if PAIRL_SZ == 1
-    if (pairl[0][1 - lower] == wc)
-          return pairs[0][lower];
-# else
-    /* TODO: binary search the pairs. GH #3 */
-    for (i = 0; pairl[i][1 - lower]; i++) {
-        assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
-        if (pairl[i][1 - lower] == wc)
-            return pairs[i][lower];
-        if (lower && pairl[i][0] > wc)
-            break;
-    }
-# endif
+#if PAIRL_SZ == 1
+  if (pairl[0][1 - lower] == wc)
+    return pairs[0][lower];
+#else
+  /* TODO: binary search the pairs. GH #3 */
+  for (i = 0; pairl[i][1 - lower]; i++) {
+    assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
+    if (pairl[i][1 - lower] == wc)
+      return pairs[i][lower];
+    if (lower && pairl[i][0] > wc)
+      break;
+  }
 #endif
-    /* TODO: binary search the ranges. GH #4 */
-    for (i = 0; casemapsl[i].len; i++) {
-        unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
-        assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
-        if (wc - base < casemapsl[i].len) {
-            if (casemapsl[i].lower == 1)
-                return wc + lower - ((wc - casemapsl[i].upper) & 1);
-            return wc + lmul * casemapsl[i].lower;
-        }
-        if (lower && casemaps[i].upper > wc)
-            break;
+#endif
+  /* TODO: binary search the ranges. GH #4 */
+  for (i = 0; casemapsl[i].len; i++) {
+    unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
+    assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
+    if (wc - base < casemapsl[i].len) {
+      if (casemapsl[i].lower == 1)
+        return wc + lower - ((wc - casemapsl[i].upper) & 1);
+      return wc + lmul * casemapsl[i].lower;
     }
-    return wc;
+    if (lower && casemaps[i].upper > wc)
+      break;
+  }
+  return wc;
 }
