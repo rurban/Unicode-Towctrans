@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <wchar.h>
 
-#define ARRAY_SZ(a) (sizeof(a) / sizeof(*a))
 #ifdef HAVE_PAIRL
 #define PAIRL_SZ ARRAY_SZ(pairl)
 #else

@@ -16,6 +16,7 @@ my $cc       = $Config{cc};
 my $exe      = "t_low16" . ( $^O eq 'MSWin32' ? ".exe" : "" );
 my $prefix   = $^O eq 'MSWin32' ? "" : "./";
 my $args     = "-DLOW16 test_towctrans.c -I.. -o $exe";
+$args .= " -g" if $ENV{TEST_VERBOSE};
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
 my $output = `$cc $args`;

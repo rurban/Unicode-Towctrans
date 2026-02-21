@@ -12,6 +12,7 @@ my $cc       = $Config{cc};
 my $exe      = "t_towctrans" . ( $^O eq 'MSWin32' ? ".exe" : "" );
 my $prefix   = $^O eq 'MSWin32' ? "" : "./";
 my $args     = "test_towctrans.c -I.. -o $exe";
+$args .= " -g" if $ENV{TEST_VERBOSE};
 
 sub compiles_empty {
     my $args = "main.c -o $exe";

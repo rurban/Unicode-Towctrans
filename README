@@ -122,7 +122,7 @@ SEE ALSO
     <https://www.unicode.org/reports/tr44/#Casemapping>
     <https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c>
     <https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c?id=e8aba
-    58ab19a18f83d7f78e80d5e4f51e7e4e8a9>
+    58ab19a18f83d7f78e80d5e4f51ee4e8a9>
     <https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c
     >
     <https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
