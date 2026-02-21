@@ -355,16 +355,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ----------------------------------------------------------------------
 */
 
+#include <assert.h>
 #include <stdint.h>
 #include <wctype.h>
-#include <assert.h>
 #ifdef HAVE_LOCALE_TR
-# include <string.h>
-# include <locale.h>
+#include <locale.h>
+#include <string.h>
 #endif
 
 /* map from upper until upper, to lower */
-#define CASEMAP(u1, u2, l) { (u1), (l) - (u1), (u2) - (u1) + 1 }
+#define CASEMAP(u1, u2, l) {(u1), (l) - (u1), (u2) - (u1) + 1}
 /* map from upper until lower, with dist 1 */
 #define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
 
@@ -372,18 +372,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TOWCTRANS_UNICODE_VERSION %u
 
 static const struct {
-    uint16_t upper; /* base */
-    int8_t lower; /* distance from upper to lower */
-    uint8_t len; /* how many */
+  uint16_t upper; /* base */
+  int8_t lower;   /* distance from upper to lower */
+  uint8_t len;    /* how many */
 } casemaps[] = {
     /* from, until, to */
 EOF
 
 my $CASEL = <<'EOF';
 static const struct {
-    uint32_t upper; /* base */
-    int lower; /* distance from upper to lower */
-    uint16_t len; /* how many */
+  uint32_t upper; /* base */
+  int lower;      /* distance from upper to lower */
+  uint16_t len;   /* how many */
 } casemapsl[] = {
     /* from, until, to */
 EOF
@@ -402,7 +402,7 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $cmt = sprintf "\t/* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
+        my $cmt = sprintf " /* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
           $m->[2];
 
         # on overflow push to @CASEL instead
@@ -430,7 +430,7 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $l->[0], $l->[1] - 1 );
+        my $cmt = sprintf( "        /* '%c' -> '%c' */", $l->[0], $l->[1] - 1 );
         printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
           $cmt;
         ( $j, $l ) = each @lace;
@@ -443,7 +443,7 @@ print FH "static const unsigned short pairs[][2] = {\n"
 # also fixup pairs to enable reverse lookup
 my $n_pairl;
 for my $p (@pair) {
-    my $cmt = sprintf( "\t\t/* '%c' -> '%c' */", $p->[0], $p->[1] );
+    my $cmt = sprintf( " /* '%c' -> '%c' */", $p->[0], $p->[1] );
     if ( $p->[0] > 0xffff ) {
         if ($n_pairl) {
             $n_pairl++;
