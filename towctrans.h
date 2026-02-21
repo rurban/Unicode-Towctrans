@@ -322,14 +322,12 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int lmul;	/* 1 for lower, -1 for upper */
     int lmask;  /* 0 for lower, -1/0xffff for upper */
     /* !iswalpha(wc) is broken on most locales, at least with glibc. */
-    if (wc <= 0x40 ||
-        (
-          wc - 0xabc0 <= 0xfaff - 0xabc0 ?	/* [2] 20287 */
-          wc - 0x2d2e <= 0xa63f - 0x2d2e :	/* [1] 30993 */
-          wc - 0x118e0 <= 0x16e3f - 0x118e0 ?	/* [3] 21855 */
-          wc - 0x16ed4 <= 0x1df3f - 0x16ed4 : 0	/* [4] 28779 */
-
-        ))
+    if (wc <= 0x40				/* 64 */
+        || wc - 0x2d2e <= 0xa63f - 0x2d2e	/* 30994 */
+        || wc - 0x16ed4 <= 0x1df3f - 0x16ed4	/* 28780 */
+        || wc - 0x118e0 <= 0x16e3f - 0x118e0	/* 21856 */
+        || wc - 0xabc0 <= 0xfaff - 0xabc0	/* 20288 */
+        )
         return wc;
 
 #ifdef HAVE_LOCALE_TR
@@ -352,7 +350,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
 
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO: make it a binary search. GH #4 */
+    /* TODO: binary search the ranges. GH #4 */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
@@ -368,7 +366,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (lower && casemaps[i].upper > wc)
             break;
     }
-    /* TODO: make it a binary search. GH #3 */
+    /* TODO: binary search the pairs. GH #3 */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
@@ -381,6 +379,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     if (pairl[0][1 - lower] == wc)
           return pairs[0][lower];
 # else
+    /* TODO: binary search the pairs. GH #3 */
     for (i = 0; pairl[i][1 - lower]; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
         if (pairl[i][1 - lower] == wc)
@@ -390,6 +389,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     }
 # endif
 #endif
+    /* TODO: binary search the ranges. GH #4 */
     for (i = 0; casemapsl[i].len; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
