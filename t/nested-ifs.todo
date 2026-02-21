@@ -8,6 +8,8 @@ my $M   = $DEV ? 6  : 10;     # Length of generated @excl. Must be even.
 die if $M % 2;
 plan tests => 6 + 2 + 2 + ( $N * 2 );
 
+# needed to search for pairs, not ranges.
+
 # copied verbatim from the script.
 # here we skip the first index
 # for 0 1 2 3 4 5 6

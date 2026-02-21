@@ -32,10 +32,10 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                my:        264 [us]
-          musl-new:        392 [us]
-          musl-old:        280 [us]
-             glibc:        206 [us]
+              my:        203 [us]
+        musl-new:        263 [us]
+        musl-old:        229 [us]
+           glibc:        141 [us]
 
          wc -c towctrans-*.o
            5352 towctrans-my.o
