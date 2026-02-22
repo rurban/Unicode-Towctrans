@@ -26,8 +26,8 @@ use Carp;
 
 # Minimum size of and excluded range. The more ranges we have, the slower.
 # The larger the ranges, the more misses in holes we might have, going through
-# all checks. musl-old had ~1024. Tested via bench
-use constant MIN_ECXL => 5000;
+# all checks. musl-old had ~2500. Tested via bench
+use constant MIN_ECXL => 2500;
 
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
@@ -112,6 +112,16 @@ sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
 # CASELACE(0x01a0, 0x1a4), // 416 1 5 O WITH HORN - P WITH HOOK
 # CASELACE(0x01b3, 0x1b5), // 435 1 3
 # CASELACE(0x01cd, 0x1db), // 461 1 15
+
+sub map_len {
+    my $m = shift;
+    return $m->[1] - $m->[0] + 1;
+}
+
+sub map_lower {
+    my $m = shift;
+    return $m->[2] - $m->[0];
+}
 
 # triple of base, last, to.
 # offset is to - base, length is last - base + 1
@@ -232,7 +242,8 @@ while ( my $l = <$CF> ) {
     else {
         # check status. only if C
         if ( $cp - $prev == 1 ) {              # next cp
-            if ( ( $status eq 'C' or $status eq 'S') and scalar @mapping == 1 ) {
+            if ( ( $status eq 'C' or $status eq 'S' ) and scalar @mapping == 1 )
+            {
                 $lc = $mapping[0];
                 if ( $lc - $cp == 1 ) {
 
@@ -372,18 +383,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TOWCTRANS_UNICODE_VERSION %u
 
 static const struct {
-  uint16_t upper; /* base */
-  int8_t lower;   /* distance from upper to lower */
-  uint8_t len;    /* how many */
+    uint16_t upper; /* base */
+    int8_t lower;   /* distance from upper to lower. 1 with LACE */
+    uint8_t len;    /* how many */
 } casemaps[] = {
     /* from, until, to */
 EOF
 
 my $CASEL = <<'EOF';
 static const struct {
-  uint32_t upper; /* base */
-  int lower;      /* distance from upper to lower */
-  uint16_t len;   /* how many */
+    uint32_t upper; /* base */
+    int lower;      /* distance from upper to lower */
+    uint16_t len;   /* how many */
 } casemapsl[] = {
     /* from, until, to */
 EOF
@@ -392,6 +403,7 @@ EOF
 my ( $i, $m ) = each @map;
 my ( $j, $l ) = each @lace;
 my $has_long;
+
 while ( defined($i) or defined($j) ) {
 
     # short or long
@@ -402,21 +414,24 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $cmt = sprintf " /* '%c' -> '%c' .. '%c' */", $m->[0], $m->[1],
-          $m->[2];
+        my $spc = $has_long ? $m->[0] < 0xffff ? " "x4 : " " : " "; # x8
+        my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
+            $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
 
         # on overflow push to @CASEL instead
         my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
           $m->[1],
           $m->[2], $cmt;
-        my $lower = $m->[2] - $m->[0];
-        my $len   = $m->[1] - $m->[0] + 1;
+        my $lower = map_lower($m);
+        my $len   = map_len($m);
         if ( $lower > 128 or $lower < -128 or $len > 255 ) {
-            my $s0 = sprintf "CASEMAP(0x%04x, 0x%04x, 0x%04x)", $m->[0],
-              $m->[1],
-              $m->[2];
+            $spc = " ";
+            my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
+                $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+            my $s0 = sprintf "    CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",  $m->[0],
+              $m->[1], $m->[2], $cmt;
             warn "defer overflow $s0 to casemapl\n" if $verbose;
-            push @CASEL, $s;
+            push @CASEL, $s0;
         }
         else {
             printf FH $s;
@@ -430,7 +445,9 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $cmt = sprintf( "        /* '%c' -> '%c' */", $l->[0], $l->[1] - 1 );
+        my $cmt =
+            sprintf( "%s/* '%c'->'%c' {, %d, %u} */", $has_long ? " "x9 : " "x8,
+                     $l->[0], $l->[1] - 1, map_lower($m), map_len($m) );
         printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
           $cmt;
         ( $j, $l ) = each @lace;
@@ -463,8 +480,8 @@ printf FH "#define PAIRL_SZ %u\n", $n_pairl if $n_pairl;
 print FH "\n";
 print FH "uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lmul;	/* 1 for lower, -1 for upper */
-    int lmask;  /* 0 for lower, -1/0xffff for upper */
+    int lmul;  /* 1 for lower, -1 for upper */
+    int lmask; /* 0 for lower, -1/0xffff for upper */
     /* !iswalpha(wc) is broken on most locales, at least with glibc. */
 ";
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
@@ -518,59 +535,36 @@ for ( $first + 1 .. $last - 1 ) {
 #    return @indices;
 #}
 
-if (0) {
-    # old unsorted variant
-    for my $e (@excl) {
-        if ( !$e->[0] ) {
-            printf FH "wc <= 0x%x", $e->[1];
-        }
-        elsif ( $e->[1] - $e->[0] >= MIN_ECXL ) {
-            my $skip;
+# first purge all too small ranges
+my @new_excl = ( $excl[0] );
+for my $i ( 1 .. $#excl ) {
+    my $e = $excl[$i];
+    my $skip;
+    if ( $e->[1] - $e->[0] >= MIN_ECXL ) {
 
-            # cross-check
-            for ( $e->[0] .. $e->[1] ) {
-                if ( exists $lower{$_} or exists $upper{$_} ) {
-                    warn( sprintf( "wrong excl %04X skipped", $_ ) );
-                    $skip = 1;
-                    last;
-                }
-            }
-            if ( !$skip ) {
-                printf FH "\n        || wc - 0x%x <= 0x%x - 0x%x\t" . "/* %u */",
-                    $e->[0], $e->[1], $e->[0], $e->[1] - $e->[0];
+        # cross-check
+        for ( $e->[0] .. $e->[1] ) {
+            if ( exists $lower{$_} or exists $upper{$_} ) {
+                warn( sprintf( "wrong excl %04X skipped", $_ ) );
+                $skip = 1;
+                last;
             }
         }
+        push @new_excl, $e unless $skip;
     }
-} else {
-    # first purge all too small ranges
-    my @new_excl = ( $excl[0] );
-    for my $i (1 .. $#excl) {
-        my $e = $excl[$i];
-        my $skip;
-        if ( $e->[1] - $e->[0] >= MIN_ECXL ) {
-            # cross-check
-            for ( $e->[0] .. $e->[1] ) {
-                if ( exists $lower{$_} or exists $upper{$_} ) {
-                    warn( sprintf( "wrong excl %04X skipped", $_ ) );
-                    $skip = 1;
-                    last;
-                }
-            }
-            push @new_excl, $e unless $skip;
-        }
-    }
-    # sort ranges by size. GH #2
-    printf FH "wc <= 0x%x\t\t\t\t/* %u */\n", $excl[0]->[1], $excl[0]->[1];
-    my $j = 0;
-    shift @new_excl;
-    my @ex = sort { $b->[1] - $b->[0] <=>  $a->[1] - $a->[0] } @new_excl;
-    for my $e (@ex) {
-        printf FH "        || wc - 0x%x <= 0x%x - 0x%x",
-            $e->[0], $e->[1], $e->[0];
-        printf FH "\t" . "/* %u */\n", $e->[1] - $e->[0] + 1;
-    }
-    print FH "        )\n";
 }
+
+# sort ranges by size. GH #2
+printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1], $excl[0]->[1];
+$j = 0;
+shift @new_excl;
+my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
+for my $e (@ex) {
+    my $s = sprintf("        || wc - 0x%x <= 0x%x - 0x%x", $e->[0], $e->[1], $e->[0]);
+    my $spc = 45-length($s) > 0 ? " "x(45-length($s)) : " ";
+    printf FH "%s%s/* %u */\n", $s, $spc, $e->[1] - $e->[0] + 1;
+}
+print FH "    )\n";
 print FH "        return wc;\n";
 print FH <<'EOF';
 
@@ -581,12 +575,15 @@ print FH <<'EOF';
         const char *loc = setlocale(LC_CTYPE, NULL);
         if (loc && (!strncmp(loc, "tr", 2) || !strncmp(loc, "az", 2))) {
             if (lower) {
-                if (wc == 0x49) return 0x131;
-                else return 0x69;
-            }
-            else {
-                if (wc == 0x69) return 0x130;
-                else return 0x49;
+                if (wc == 0x49)
+                    return 0x131;
+                else
+                    return 0x69;
+            } else {
+                if (wc == 0x69)
+                    return 0x130;
+                else
+                    return 0x49;
             }
         }
     }
@@ -594,7 +591,7 @@ print FH <<'EOF';
 
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* TODO: binary search the ranges. GH #4 */
+    /* TODO: binary search the ranges if lower. GH #4 */
     for (i = 0; casemaps[i].len; i++) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
@@ -610,7 +607,7 @@ print FH <<'EOF';
         if (lower && casemaps[i].upper > wc)
             break;
     }
-    /* TODO: binary search the pairs. GH #3 */
+    /* TODO: binary search the pairs (lower only?). GH #3 */
     for (i = 0; pairs[i][1 - lower]; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
@@ -619,10 +616,10 @@ print FH <<'EOF';
             break;
     }
 #ifdef HAVE_PAIRL
-# if PAIRL_SZ == 1
+#if PAIRL_SZ == 1
     if (pairl[0][1 - lower] == wc)
-          return pairs[0][lower];
-# else
+        return pairs[0][lower];
+#else
     /* TODO: binary search the pairs. GH #3 */
     for (i = 0; pairl[i][1 - lower]; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
@@ -631,9 +628,9 @@ print FH <<'EOF';
         if (lower && pairl[i][0] > wc)
             break;
     }
-# endif
 #endif
-    /* TODO: binary search the ranges. GH #4 */
+#endif
+    /* TODO: binary search the ranges. (lower only?) GH #4 */
     for (i = 0; casemapsl[i].len; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);

@@ -29,4 +29,4 @@ if ( $^V =~ /c$/ ) {
         if $Module::CPANTS::Kwalitee::Uses::VERSION eq '1.01';
 }
 
-Test::Kwalitee->import( tests => [qw( -use_strict )] );
+Test::Kwalitee->import();
