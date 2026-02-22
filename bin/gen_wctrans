@@ -41,7 +41,7 @@ our $PACKAGE = 'Unicode::Towctrans';
 $Unicode::Towctrans::VERSION = '0.03';
 
 use Getopt::Long;
-my ( $v, $help, $verbose, $safec, $musl );
+my ( $v, $lower16, $help, $verbose, $safec, $musl );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $fn            = "_towcase";
@@ -55,6 +55,7 @@ GetOptions(
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
     "min-excl=i"    => \$MIN_ECXL,         # numeric
+    "lower16"       => \$lower16,          # flag
     "fn=s"          => \$fn,               # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
@@ -72,6 +73,8 @@ OPTIONS
 --out filename        default: towctrans.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
 --min-excl 10000      exclude ranges lower than 10000 (default: 2500)
+--lower16             use 16bit shorts for casemap.lower instead of 8.
+                      moves more ranges from the long to the short first check.
 --fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
@@ -565,8 +568,8 @@ my ( $i, $m ) = each @map;
 my ( $j, $l ) = each @lace;
 my $has_long;
 my $max_upper = 0xffff;
-my $max_lower = 128;
-my $min_lower = -127;
+my $max_lower = $lower16 ? 32767 : 128;
+my $min_lower = $lower16 ? -32766 : -127;
 my $max_len   = 255;
 
 while ( defined($i) or defined($j) ) {
@@ -585,8 +588,7 @@ while ( defined($i) or defined($j) ) {
 
         # on overflow push to @CASEL instead
         if ($is_long) {
-            my $spc = " ";
-            my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
+            my $cmt = sprintf " /* '%c'->'%c'..'%c' {, %d, %u} */",
               $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
             my $s0 = sprintf "    CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",
               $m->[0],
@@ -595,8 +597,7 @@ while ( defined($i) or defined($j) ) {
             push @CASEL, $s0;
         }
         else {
-            my $spc = $has_long ? $m->[0] < $max_upper ? " " x 4 : " " : " ";   # x8
-            my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
+            my $cmt = sprintf " /* '%c'->'%c'..'%c' {, %d, %u} */",
                 $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
             my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
                 $m->[1], $m->[2], $cmt;
@@ -631,10 +632,10 @@ while ( defined($i) or defined($j) ) {
         ( $j, $l ) = each @lace;
     }
 }
-printf FH <<"EOF", scalar @CASE;
+printf FH <<"EOF", $lower16 ? 16 : 8, scalar @CASE;
 static const struct {
     uint16_t upper; /* base */
-    int8_t lower;   /* distance from upper to lower. 1 with LACE */
+    int%u_t lower;   /* distance from upper to lower. 1 with LACE */
     uint8_t len;    /* how many */
 } casemaps[%u + 1] = {
     /* from, until, to */
@@ -681,12 +682,12 @@ if (@pairl) {
     print FH "    {0, 0}};\n";
 }
 print FH "\n";
-print FH "uint32_t " . $fn . "(uint32_t wc, int lower) {
+printf FH "uint32_t %s(uint32_t wc, int lower) {
     int i;
     int lmul;  /* 1 for lower, -1 for upper */
     int lmask; /* 0 for lower, -1/0xffff for upper */
     /* !iswalpha(wc) is broken on most locales, at least with glibc. */
-";
+", $fn;
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
     print FH "    if (!iswalpha(wc) || ";
 }
@@ -925,6 +926,8 @@ Unicode::Towctrans - Generate small casefolding tables
     gen_wctrans --musl
     gen_wctrans -v 15
     gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
+    gen_wctrans --lower16
+    gen_wctrans --fn __towcase
 
 =head1 DESCRIPTION
 
@@ -941,6 +944,10 @@ If you know that your C<iswalpha()> works correctly (only with musl),
 then use C<--with_iswalpha> to get a lightly faster function. E.g. for
 benchmarking.
 
+With C<--lower16> it creates larger and more C<casemaps> tables, with less
+long C<casemapl> tables. Thus it finds those ranges earlier, at the cost of
+more caches misses.
+
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
 safeclib. As the single-byte C<towupper> and C<towlower> conversions
 are meaningless for many multi-byte unicode mappings, those with
@@ -956,16 +963,18 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        220 [us] 100.00 %
-        musl-new:        129 [us] 170.54 %	210 errors
-        musl-old:        136 [us] 161.76 %	10 errors
-           glibc:         77 [us] 285.71 %	10 errors
+              my:        132 [us] 100.00 %
+        my_low16:       1084 [us] 12.18 %	211 errors
+        musl-new:        259 [us] 50.97 %	210 errors
+        musl-old:        136 [us] 97.06 %	10 errors
+           glibc:         70 [us] 188.57 %	10 errors
 
     wc -c towctrans-*.o
-      4520 towctrans-my.o
-      6808 towctrans-musl-new.o
-      3416 towctrans-musl-old.o
-     97432 towctrans-glibc.o
+      4936 towctrans-my.o
+      4952 towctrans-mylow16.o
+      6848 towctrans-musl-new.o
+      3464 towctrans-musl-old.o
+     97440 towctrans-glibc.o
 
 =head1 INSTALLATION
 

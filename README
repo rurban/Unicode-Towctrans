@@ -7,6 +7,8 @@ SYNOPSIS
         gen_wctrans --musl
         gen_wctrans -v 15
         gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
+        gen_wctrans --lower16
+        gen_wctrans --fn __towcase
 
 DESCRIPTION
     gen_wctrans generates a towctrans.h header file, which is used by "musl"
@@ -22,6 +24,10 @@ DESCRIPTION
     use "--with_iswalpha" to get a lightly faster function. E.g. for
     benchmarking.
 
+    With "--lower16" it creates larger and more "casemaps" tables, with less
+    long "casemapl" tables. Thus it finds those ranges earlier, at the cost
+    of more caches misses.
+
     Planned also for the multi-byte folding tables for wcsfc_s() for
     safeclib. As the single-byte "towupper" and "towlower" conversions are
     meaningless for many multi-byte unicode mappings, those with status F -
@@ -36,16 +42,18 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        220 [us] 100.00 %
-            musl-new:        129 [us] 170.54 %      210 errors
-            musl-old:        136 [us] 161.76 %      10 errors
-               glibc:         77 [us] 285.71 %      10 errors
+                  my:        132 [us] 100.00 %
+            my_low16:       1084 [us] 12.18 %       211 errors
+            musl-new:        259 [us] 50.97 %       210 errors
+            musl-old:        136 [us] 97.06 %       10 errors
+               glibc:         70 [us] 188.57 %      10 errors
 
         wc -c towctrans-*.o
-          4520 towctrans-my.o
-          6808 towctrans-musl-new.o
-          3416 towctrans-musl-old.o
-         97432 towctrans-glibc.o
+          4936 towctrans-my.o
+          4952 towctrans-mylow16.o
+          6848 towctrans-musl-new.o
+          3464 towctrans-musl-old.o
+         97440 towctrans-glibc.o
 
 INSTALLATION
     Perl 5.12 or later is required.

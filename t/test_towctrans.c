@@ -6,7 +6,11 @@
 #include <string.h>
 #include <wctype.h>
 
+#ifdef LOW16
+#include "towctrans-low16.h"
+#else
 #include "towctrans.h"
+#endif
 #define CFOLD "CaseFolding.txt"
 
 uint32_t my_towlower(uint32_t wc) { return _towcase(wc, 1); }

@@ -7,6 +7,8 @@
 extern uint32_t _towcase(uint32_t wc, int lower); /* towctrans-my */
 extern wint_t my_towlower(wint_t wc);
 extern wint_t my_towupper(wint_t wc);
+extern wint_t my_low16_towlower(wint_t wc);
+extern wint_t my_low16_towupper(wint_t wc);
 extern wint_t musl_towupper(wint_t wc); /* towctrans-musl-new */
 extern wint_t musl_towlower(wint_t wc);
 extern wint_t old_towupper(wint_t wc); /* towctrans-musl-old */
@@ -86,6 +88,7 @@ int main(void) {
 
     BENCH("my", my_towlower, my_towupper);
     t_my = t1;
+    BENCH("my_low16", my_low16_towlower, my_low16_towupper);
     BENCH("musl-new", musl_towlower, musl_towupper);
     if (perc > 300)
         perf_errs++;

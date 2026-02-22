@@ -3,7 +3,7 @@ CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I.
 CFLAGS = -g -Wall -Wextra $(DEFINES)
-OBJ = towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
+OBJ = towctrans-my.o towctrans-mylow16.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
 TESTS = test test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
@@ -23,12 +23,20 @@ update-bench:
 	cd .. && $(GEN) --with-iswalpha -v 15 --out examples/towctrans-15.h --cf CaseFolding.txt.15
 towctrans-15.h :: ../CaseFolding.txt.15
 # Note: the 3 bench objects merge different CaseFolding.txt.15 together. serialize them
+towctrans-low16.h : ../CaseFolding.txt.15
+	../$(GEN)  --lower16 --fn=_towcase_low16 -v 15 --out $@ --cf ../CaseFolding.txt.15
 towctrans-my.o: towctrans-my.c towctrans-15.h
+towctrans-mylow16.o: towctrans-my.c towctrans-low16.h
+	$(CC) -c -DLOW16 $(CFLAGS_BENCH) $< -o $@
 
 test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-glibc: test-glibc.c towctrans-glibc.o
 	$(CC) $(CFLAGS) -I. -o $@ $^
+../towctrans-low16.h : ../CaseFolding.txt
+	../$(GEN) --lower16 --fn=_towcase_low16 --out $@ --cf ../CaseFolding.txt
+test-low16: test.c ../towctrans-low16.h
+	$(CC) $(CFLAGS) -DLOW16 -UHAVE_LOCALE_TR -o $@ test.c
 test: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -UHAVE_LOCALE_TR -o $@ test.c
 test-5: test.c towctrans-5.c
@@ -87,4 +95,5 @@ towctrans-18.c: ../$(GEN)
 	cd .. && $(GEN) -v 18 --out examples/towctrans-18.c --cf CaseFolding.txt.18
 
 clean:
-	rm -f bench $(OBJ) $(TESTS) towctrans-[0-9][0-9]?.c
+	rm -f bench $(OBJ) $(TESTS) towctrans-[0-9][0-9]?.c towctrans-*.h \
+	  ../towctrans-low16.h
