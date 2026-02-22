@@ -741,15 +741,15 @@ which ignores characters from other locales.
 
     make -C examples
     ./bench
-          my:        203 [us]
-    musl-new:        263 [us]
-    musl-old:        229 [us]
-       glibc:        141 [us]
+          my:        160 [us]
+    musl-new:        352 [us]
+    musl-old:        286 [us]
+       glibc:        197 [us]
 
      wc -c towctrans-*.o
-       5352 towctrans-my.o
-       7128 towctrans-musl-new.o
-       3464 towctrans-musl-old.o
+       5072 towctrans-my.o
+       7096 towctrans-musl-new.o
+       3408 towctrans-musl-old.o
       97432 towctrans-glibc.o
 
 =head1 INSTALLATION

@@ -2,11 +2,11 @@
 CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2
-CFLAGS = -g -O2 -Wall -Wextra $(DEFINES)
+CFLAGS = -g -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
-TESTS = test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
+TESTS = test test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
 	test-15 test-16 test-17 test-18 test-glibc test-iswalpha
 all: bench $(OBJ) $(TESTS)
 bench: bench.c $(OBJ) Makefile
@@ -23,6 +23,8 @@ test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-glibc: test-glibc.c towctrans-glibc.o
 	$(CC) $(CFLAGS) -I. -o $@ $^
+test: test.c ../towctrans.h
+	$(CC) $(CFLAGS) -DUSE_GLOBAL -UHAVE_LOCALE_TR -o $@ test.c
 test-5: test.c towctrans-5.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-6: test.c towctrans-6.c

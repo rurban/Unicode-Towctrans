@@ -6,7 +6,11 @@
 #include <wchar.h>
 
 /* versioned headers to compare unicode versions */
+#ifdef USE_GLOBAL
+#include "../towctrans.h"
+#else
 uint32_t _towcase(uint32_t wc, int lower);
+#endif
 wint_t my_towlower(wint_t wc) { return (wint_t)_towcase((uint32_t)wc, 1); }
 wint_t my_towupper(wint_t wc) { return (wint_t)_towcase((uint32_t)wc, 0); }
 
@@ -17,7 +21,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Usage: %s HEXNUMBER [-u]\n", argv[0]);
     exit(1);
   }
+#ifndef USE_GLOBAL
   setlocale(LC_ALL, "en_US.UTF-8");
+#endif
   int rc = sscanf(argv[1], "%X", &wc);
   if (!rc) {
     goto err;
