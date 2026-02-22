@@ -1,5 +1,12 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.03	2026-02-22
+    - add --musl and --safec generators
+    - extend benchmark to error counting
+    - fix bench for glibc size
+    - format for indent 4
+    - document tunables, change MIN_EXCL to 2500 (matching musl-old)
+
 0.02	2026-02-19
     - massive performance and size improvements
     - added benchmarks and iswalpha tests.

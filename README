@@ -3,6 +3,8 @@ NAME
 
 SYNOPSIS
         gen_wctrans
+        gen_wctrans --safec
+        gen_wctrans --musl
         gen_wctrans -v 15
         gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
 
