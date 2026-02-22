@@ -19,6 +19,7 @@ examples/update-bench.pl
 examples/wchar-lookup.h
 t/bench.t
 t/c-asan.t
+t/c-bits.t
 t/c-lower16.t
 t/c.t
 t/changes.t

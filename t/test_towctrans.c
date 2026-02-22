@@ -8,6 +8,8 @@
 
 #ifdef LOW16
 #include "towctrans-low16.h"
+#elif defined BITS
+#include "towctrans-bits.h"
 #else
 #include "towctrans.h"
 #endif

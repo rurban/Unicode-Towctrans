@@ -6,16 +6,26 @@
 #include <wchar.h>
 
 /* versioned headers to compare unicode versions */
-#ifdef USE_GLOBAL
+#if defined USE_GLOBAL
 #include "../towctrans.h"
+wint_t my_towlower(wint_t wc) { return (wint_t)_towcase(wc, 1); }
+wint_t my_towupper(wint_t wc) { return (wint_t)_towcase(wc, 0); }
+#elif defined LOW16
+#include "../towctrans-low16.h"
+wint_t my_towlower(wint_t wc) { return (wint_t)_towcase_low16(wc, 1); }
+wint_t my_towupper(wint_t wc) { return (wint_t)_towcase_low16(wc, 0); }
+#elif defined BITS
+#include "../towctrans-bits.h"
+wint_t my_towlower(wint_t wc) { return (wint_t)_towcase_bits(wc, 1); }
+wint_t my_towupper(wint_t wc) { return (wint_t)_towcase_bits(wc, 0); }
 #else
 uint32_t _towcase(uint32_t wc, int lower);
+wint_t my_towlower(wint_t wc) { return (wint_t)_towcase(wc, 1); }
+wint_t my_towupper(wint_t wc) { return (wint_t)_towcase(wc, 0); }
 #endif
-wint_t my_towlower(wint_t wc) { return (wint_t)_towcase((uint32_t)wc, 1); }
-wint_t my_towupper(wint_t wc) { return (wint_t)_towcase((uint32_t)wc, 0); }
 
 int main(int argc, char **argv) {
-    wint_t wc;
+    uint32_t wc;
     if (argc < 2) {
     err:
         fprintf(stderr, "Usage: %s HEXNUMBER [-u]\n", argv[0]);

@@ -8,14 +8,14 @@ BEGIN {
 use Test::More import => [qw( diag )];
 
 chdir("..");
-system("bin/gen_wctrans --lower16 --out towctrans-low16.h");
+system("bin/gen_wctrans --bits 16:10:6 --out towctrans-bits.h");
 chdir("t");
 
 my $is_mswin = $^O eq 'MSWin32';
 my $cc       = $Config{cc};
-my $exe      = "t_low16" . ( $^O eq 'MSWin32' ? ".exe" : "" );
+my $exe      = "t_bits" . ( $^O eq 'MSWin32' ? ".exe" : "" );
 my $prefix   = $^O eq 'MSWin32' ? "" : "./";
-my $args     = "-DLOW16 test_towctrans.c -I.. -o $exe";
+my $args     = "-DBITS test_towctrans.c -I.. -o $exe";
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
 my $output = `$cc $args`;
@@ -28,5 +28,5 @@ print "running $prefix$exe\n" if $ENV{TEST_VERBOSE};
 system("$prefix$exe");
 
 END {
-    unlink( $exe, "../towctrans-low16.h" ) unless $ENV{TEST_VERBOSE};
+    unlink( $exe, "../towctrans-bits.h" ) unless $ENV{TEST_VERBOSE};
 }

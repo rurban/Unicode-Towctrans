@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* for Unicode 18.0.0 */
 #define TOWCTRANS_UNICODE_VERSION 18
+
 static const struct {
     uint16_t upper; /* base */
     int8_t lower;   /* distance from upper to lower. 1 with LACE */
@@ -334,6 +335,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         || wc - 0x588 <= 0x109f - 0x588      /* 2840 */
     )
         return wc;
+#define CASELOW casemaps[i].lower
 
 #ifdef HAVE_LOCALE_TR
     /* check for the 2 turkish mappings if we have a turkish locale. */
@@ -360,7 +362,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
     /* TODO: binary search the ranges if lower. GH #4 */
     for (i = 0; casemaps[i].len; i++) {
-        int base = casemaps[i].upper + (lmask & casemaps[i].lower);
+        int base = casemaps[i].upper + (lmask & CASELOW);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
         if (wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1) {
@@ -369,16 +371,21 @@ uint32_t _towcase(uint32_t wc, int lower) {
                 if (!lower && wc == 0x1F3)
                     return 0x1F1;
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
+            } else {
+                return wc + lmul * CASELOW;
             }
-            /* Needed these exceptions previously. Tested from Unicode 4 to 18.
-            if (!lower && wc == 0x1E61)
-                return 0x1E60;
-            else if (wc == 0xA64B)
-                return 0xA64A;
-            */
-            else {
-                return wc + lmul * casemaps[i].lower;
-            }
+        }
+        if (lower && casemaps[i].upper > wc)
+            break;
+    }
+    /* TODO: binary search the ranges. (lower only?) GH #4 */
+    for (i = 0; casemapsl[i].len; i++) {
+        unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
+        assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
+        if (wc - base < casemapsl[i].len) {
+            if (casemapsl[i].lower == 1)
+                return wc + lower - ((wc - casemapsl[i].upper) & 1);
+            return wc + lmul * casemapsl[i].lower;
         }
         if (lower && casemaps[i].upper > wc)
             break;
@@ -406,17 +413,8 @@ uint32_t _towcase(uint32_t wc, int lower) {
     }
 #endif
 #endif
-    /* TODO: binary search the ranges. (lower only?) GH #4 */
-    for (i = 0; casemapsl[i].len; i++) {
-        unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
-        assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
-        if (wc - base < casemapsl[i].len) {
-            if (casemapsl[i].lower == 1)
-                return wc + lower - ((wc - casemapsl[i].upper) & 1);
-            return wc + lmul * casemapsl[i].lower;
-        }
-        if (lower && casemaps[i].upper > wc)
-            break;
-    }
     return wc;
 }
+#undef CASELOW
+#undef CASEMAP
+#undef CASELACE

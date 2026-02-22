@@ -23,6 +23,8 @@ cover_db/
 towctrans-*.h
 towctrans.h.*
 t/t_towctrans
+t/t_low16
+t/t_bits
 /Unicode-Towctrans-*
 /diffs.log
 examples/bench
@@ -30,6 +32,9 @@ examples/bench.log
 examples/test
 examples/test-[0-9]*
 examples/test-asan
+examples/test-bits
+examples/test-low16
 examples/test-glibc
 examples/test-iswalpha
 examples/towctrans-[0-9]*.c
+eexamples/towctrans*.h
