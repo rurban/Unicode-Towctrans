@@ -305,7 +305,7 @@ wint_t old_towlower(wint_t wc)
 	return (unsigned)wc < 128 ? tolower(wc) : __towcase(wc, 1);
 }
 
-/*
+#if 0
 wint_t __towupper_l(wint_t c, locale_t l)
 {
 	return towupper(c);
@@ -317,4 +317,4 @@ wint_t __towlower_l(wint_t c, locale_t l)
 }
 weak_alias(__towupper_l, towupper_l);
 weak_alias(__towlower_l, towlower_l);
-*/
+#endif

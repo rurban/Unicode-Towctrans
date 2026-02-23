@@ -28,7 +28,7 @@ jobs:
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test || make test TEST_VERBOSE=1
-      - run: make bench
+      - run: make -C examples -B bench
 
   linux:
     name: "perl ${{ matrix.perl-version }}"

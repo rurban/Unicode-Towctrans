@@ -16,6 +16,7 @@ examples/towctrans-musl-new.c
 examples/towctrans-musl-old.c
 examples/towctrans-my.c
 examples/wchar-lookup.h
+t/bench.t
 t/c-asan.t
 t/c.t
 t/changes.t

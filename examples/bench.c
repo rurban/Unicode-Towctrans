@@ -74,10 +74,10 @@ int main(void) {
     }                                                                          \
     t1 = TEST_TIME();                                                          \
     if (errs)                                                                  \
-        printf("%10s: %10ld [us]\t%u errors\n", name, t1 - t0,                 \
+        printf("  %10s: %10ld [us]\t%u errors\n", name, t1 - t0,               \
                errs / RETRIES);                                                \
     else                                                                       \
-        printf("%10s: %10ld [us]\n", name, t1 - t0)
+        printf("  %10s: %10ld [us]\n", name, t1 - t0)
 
     BENCH("my", my_towlower, my_towupper);
     BENCH("musl-new", musl_towlower, musl_towupper);
