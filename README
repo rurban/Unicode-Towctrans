@@ -30,20 +30,22 @@ DESCRIPTION
 PERFORMANCE
     Currently it is still a bit un-optimized, but small and fast enough
     compared to the other implementations. And esp. correct compared to
-    glibc, which ignores characters from other locales.
+    glibc, which ignores characters from other locales. The musl errors are
+    probably caused by a different Unicode version to be compared against.
+    Currently we compare against 15.0.0
 
         make -C examples
         ./bench
-              my:        160 [us]
-        musl-new:        352 [us]
-        musl-old:        286 [us]
-           glibc:        197 [us]
+              my:        348 [us]
+        musl-new:        150 [us]   210 errors
+        musl-old:        241 [us]   10 errors
+           glibc:        108 [us]   10 errors
 
          wc -c towctrans-*.o
-           5072 towctrans-my.o
-           7096 towctrans-musl-new.o
-           3408 towctrans-musl-old.o
-          97432 towctrans-glibc.o
+           4808 towctrans-my.o
+           6784 towctrans-musl-new.o
+           3600 towctrans-musl-old.o
+          97184 towctrans-glibc.o
 
 INSTALLATION
     Perl 5.12 or later is required.

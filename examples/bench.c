@@ -18,8 +18,8 @@ extern wint_t glibc_towupper(wint_t wc); /* towctrans-glibc */
 extern wint_t glibc_towlower(wint_t wc);
 
 #define MAX_UNI 0x1ffff
-#define SIZE 1000000
-#define RETRIES 10000
+#define SIZE 10000
+#define RETRIES 10
 #define SZ(a) sizeof(a) / sizeof(*a)
 
 #ifndef _WIN32
@@ -43,7 +43,7 @@ int main(void) {
     ws = malloc(SIZE * sizeof(wint_t));
     lw = malloc(MAX_UNI * sizeof(wint_t));
     up = malloc(MAX_UNI * sizeof(wint_t));
-    for (i = 0; i < SZ(ws); i++) {
+    for (i = 0; i < SIZE; i++) {
         wint_t wc = (wint_t)(random() % 0x1ffff);
         ws[i] = wc;
     }
@@ -57,7 +57,7 @@ int main(void) {
     t0 = TEST_TIME();                                                          \
     errs = 0;                                                                  \
     for (int j = 0; j < RETRIES; j++) {                                        \
-        for (i = 0; i < SZ(ws); i++) {                                         \
+        for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
             wint_t n = locasefn(wc);                                           \
             if (n != lw[wc])                                                   \
@@ -65,7 +65,7 @@ int main(void) {
         }                                                                      \
     }                                                                          \
     for (int j = 0; j < RETRIES; j++) {                                        \
-        for (i = 0; i < SZ(ws); i++) {                                         \
+        for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
             wint_t n = upcasefn(wc);                                           \
             if (n != up[wc])                                                   \
@@ -74,10 +74,10 @@ int main(void) {
     }                                                                          \
     t1 = TEST_TIME();                                                          \
     if (errs)                                                                  \
-        printf("  %10s: %10ld [us]\t%u errors\n", name, t1 - t0,               \
+        printf("  %10s: %10ld [us]\t%u errors\n", name, (t1 - t0) / RETRIES,   \
                errs / RETRIES);                                                \
     else                                                                       \
-        printf("  %10s: %10ld [us]\n", name, t1 - t0)
+        printf("  %10s: %10ld [us]\n", name, (t1 - t0) / RETRIES)
 
     BENCH("my", my_towlower, my_towupper);
     BENCH("musl-new", musl_towlower, musl_towupper);
