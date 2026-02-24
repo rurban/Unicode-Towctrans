@@ -50,49 +50,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* for Unicode 18.0.0 */
 #define TOWCTRANS_UNICODE_VERSION 18
-
 static const struct {
     uint16_t upper; /* base */
     int8_t lower;   /* distance from upper to lower. 1 with LACE */
     uint8_t len;    /* how many */
-} casemaps[] = {
+} casemaps[103 + 1] = {
     /* from, until, to */
     CASEMAP(0x0041, 0x005a, 0x0061), /* 'A'->'Z'..'a' {, 32, 26} */
     CASEMAP(0x00c0, 0x00d6, 0x00e0), /* 'À'->'Ö'..'à' {, 32, 23} */
     CASEMAP(0x00d8, 0x00de, 0x00f8), /* 'Ø'->'Þ'..'ø' {, 32, 7} */
-    CASELACE(0x0100, 0x012e),        /* 'Ā'->'Į' {, 1, 2} */
-    CASELACE(0x0132, 0x0136),        /* 'Ĳ'->'Ķ' {, 1, 2} */
-    CASELACE(0x0139, 0x0147),        /* 'Ĺ'->'Ň' {, 1, 2} */
-    CASELACE(0x014a, 0x0176),        /* 'Ŋ'->'Ŷ' {, 1, 2} */
-    CASELACE(0x0179, 0x017d),        /* 'Ź'->'Ž' {, 1, 2} */
-    CASELACE(0x0182, 0x0184),        /* 'Ƃ'->'Ƅ' {, 1, 2} */
-    CASELACE(0x0187, 0x0187),        /* 'Ƈ'->'Ƈ' {, 1, 2} */
+    CASELACE(0x0100, 0x012e),        /* 'Ā'->'Į' {, 1, 47} */
+    CASELACE(0x0132, 0x0136),        /* 'Ĳ'->'Ķ' {, 1, 5} */
+    CASELACE(0x0139, 0x0147),        /* 'Ĺ'->'Ň' {, 1, 15} */
+    CASELACE(0x014a, 0x0176),        /* 'Ŋ'->'Ŷ' {, 1, 45} */
+    CASELACE(0x0179, 0x017d),        /* 'Ź'->'Ž' {, 1, 5} */
+    CASELACE(0x0182, 0x0184),        /* 'Ƃ'->'Ƅ' {, 1, 3} */
+    CASELACE(0x0187, 0x0187),        /* 'Ƈ'->'Ƈ' {, 1, 1} */
     CASELACE(0x018b, 0x018b),        /* 'Ƌ'->'Ƌ' {, 1, 1} */
     CASELACE(0x0191, 0x0191),        /* 'Ƒ'->'Ƒ' {, 1, 1} */
     CASELACE(0x0198, 0x0198),        /* 'Ƙ'->'Ƙ' {, 1, 1} */
-    CASELACE(0x01a0, 0x01a4),        /* 'Ơ'->'Ƥ' {, 1, 2} */
-    CASELACE(0x01a7, 0x01a7),        /* 'Ƨ'->'Ƨ' {, 1, 2} */
-    CASELACE(0x01ac, 0x01ac),        /* 'Ƭ'->'Ƭ' {, 1, 2} */
-    CASELACE(0x01af, 0x01af),        /* 'Ư'->'Ư' {, 1, 2} */
-    CASELACE(0x01b3, 0x01b5),        /* 'Ƴ'->'Ƶ' {, 1, 1} */
+    CASELACE(0x01a0, 0x01a4),        /* 'Ơ'->'Ƥ' {, 1, 5} */
+    CASELACE(0x01a7, 0x01a7),        /* 'Ƨ'->'Ƨ' {, 1, 1} */
+    CASELACE(0x01ac, 0x01ac),        /* 'Ƭ'->'Ƭ' {, 1, 1} */
+    CASELACE(0x01af, 0x01af),        /* 'Ư'->'Ư' {, 1, 1} */
+    CASELACE(0x01b3, 0x01b5),        /* 'Ƴ'->'Ƶ' {, 1, 3} */
     CASELACE(0x01b8, 0x01b8),        /* 'Ƹ'->'Ƹ' {, 1, 1} */
     CASELACE(0x01bc, 0x01bc),        /* 'Ƽ'->'Ƽ' {, 1, 1} */
     CASELACE(0x01c5, 0x01c5),        /* 'ǅ'->'ǅ' {, 1, 1} */
     CASELACE(0x01c8, 0x01c8),        /* 'ǈ'->'ǈ' {, 1, 1} */
-    CASELACE(0x01cb, 0x01db),        /* 'ǋ'->'Ǜ' {, 1, 1} */
-    CASELACE(0x01de, 0x01ee),        /* 'Ǟ'->'Ǯ' {, 1, 1} */
+    CASELACE(0x01cb, 0x01db),        /* 'ǋ'->'Ǜ' {, 1, 17} */
+    CASELACE(0x01de, 0x01ee),        /* 'Ǟ'->'Ǯ' {, 1, 17} */
     CASEMAP(0x01f1, 0x01f1, 0x01f3), /* 'Ǳ'->'Ǳ'..'ǳ' {, 2, 1} */
-    CASELACE(0x01f2, 0x01f4),        /* 'ǲ'->'Ǵ' {, 1, 1} */
+    CASELACE(0x01f2, 0x01f4),        /* 'ǲ'->'Ǵ' {, 1, 3} */
     CASEMAP(0x01f7, 0x01f7, 0x01bf), /* 'Ƿ'->'Ƿ'..'ƿ' {, -56, 1} */
-    CASELACE(0x01f8, 0x021e),        /* 'Ǹ'->'Ȟ' {, 1, 1} */
-    CASELACE(0x0222, 0x0232),        /* 'Ȣ'->'Ȳ' {, 1, 1} */
+    CASELACE(0x01f8, 0x021e),        /* 'Ǹ'->'Ȟ' {, 1, 39} */
+    CASELACE(0x0222, 0x0232),        /* 'Ȣ'->'Ȳ' {, 1, 17} */
     CASELACE(0x023b, 0x023b),        /* 'Ȼ'->'Ȼ' {, 1, 1} */
     CASELACE(0x0241, 0x0241),        /* 'Ɂ'->'Ɂ' {, 1, 1} */
     CASEMAP(0x0244, 0x0244, 0x0289), /* 'Ʉ'->'Ʉ'..'ʉ' {, 69, 1} */
     CASEMAP(0x0245, 0x0245, 0x028c), /* 'Ʌ'->'Ʌ'..'ʌ' {, 71, 1} */
-    CASELACE(0x0246, 0x024e),        /* 'Ɇ'->'Ɏ' {, 1, 3} */
+    CASELACE(0x0246, 0x024e),        /* 'Ɇ'->'Ɏ' {, 1, 9} */
     CASELACE(0x0370, 0x0372),        /* 'Ͱ'->'Ͳ' {, 1, 3} */
-    CASELACE(0x0376, 0x0376),        /* 'Ͷ'->'Ͷ' {, 1, 3} */
+    CASELACE(0x0376, 0x0376),        /* 'Ͷ'->'Ͷ' {, 1, 1} */
     CASEMAP(0x0388, 0x038a, 0x03ad), /* 'Έ'->'Ί'..'έ' {, 37, 3} */
     CASEMAP(0x038e, 0x038f, 0x03cd), /* 'Ύ'->'Ώ'..'ύ' {, 63, 2} */
     CASEMAP(0x0391, 0x03a1, 0x03b1), /* 'Α'->'Ρ'..'α' {, 32, 17} */
@@ -101,23 +100,23 @@ static const struct {
     CASEMAP(0x03d0, 0x03d0, 0x03b2), /* 'ϐ'->'ϐ'..'β' {, -30, 1} */
     CASEMAP(0x03d1, 0x03d1, 0x03b8), /* 'ϑ'->'ϑ'..'θ' {, -25, 1} */
     CASEMAP(0x03d6, 0x03d6, 0x03c0), /* 'ϖ'->'ϖ'..'π' {, -22, 1} */
-    CASELACE(0x03d8, 0x03ee),        /* 'Ϙ'->'Ϯ' {, 1, 1} */
+    CASELACE(0x03d8, 0x03ee),        /* 'Ϙ'->'Ϯ' {, 1, 23} */
     CASEMAP(0x03f1, 0x03f1, 0x03c1), /* 'ϱ'->'ϱ'..'ρ' {, -48, 1} */
     CASEMAP(0x03f5, 0x03f5, 0x03b5), /* 'ϵ'->'ϵ'..'ε' {, -64, 1} */
-    CASELACE(0x03f7, 0x03f7),        /* 'Ϸ'->'Ϸ' {, 1, 3} */
-    CASELACE(0x03fa, 0x03fa),        /* 'Ϻ'->'Ϻ' {, 1, 3} */
+    CASELACE(0x03f7, 0x03f7),        /* 'Ϸ'->'Ϸ' {, 1, 1} */
+    CASELACE(0x03fa, 0x03fa),        /* 'Ϻ'->'Ϻ' {, 1, 1} */
     CASEMAP(0x0400, 0x040f, 0x0450), /* 'Ѐ'->'Џ'..'ѐ' {, 80, 16} */
     CASEMAP(0x0410, 0x042f, 0x0430), /* 'А'->'Я'..'а' {, 32, 32} */
-    CASELACE(0x0460, 0x0480),        /* 'Ѡ'->'Ҁ' {, 1, 38} */
-    CASELACE(0x048a, 0x04be),        /* 'Ҋ'->'Ҿ' {, 1, 38} */
-    CASELACE(0x04c1, 0x04cd),        /* 'Ӂ'->'Ӎ' {, 1, 38} */
-    CASELACE(0x04d0, 0x052e),        /* 'Ӑ'->'Ԯ' {, 1, 38} */
+    CASELACE(0x0460, 0x0480),        /* 'Ѡ'->'Ҁ' {, 1, 33} */
+    CASELACE(0x048a, 0x04be),        /* 'Ҋ'->'Ҿ' {, 1, 53} */
+    CASELACE(0x04c1, 0x04cd),        /* 'Ӂ'->'Ӎ' {, 1, 13} */
+    CASELACE(0x04d0, 0x052e),        /* 'Ӑ'->'Ԯ' {, 1, 95} */
     CASEMAP(0x0531, 0x0556, 0x0561), /* 'Ա'->'Ֆ'..'ա' {, 48, 38} */
     CASEMAP(0x13f8, 0x13fd, 0x13f0), /* 'ᏸ'->'ᏽ'..'Ᏸ' {, -8, 6} */
-    CASELACE(0x1c89, 0x1c89),        /* 'Ᲊ'->'Ᲊ' {, 1, 43} */
-    CASELACE(0x1e00, 0x1e94),        /* 'Ḁ'->'Ẕ' {, 1, 1} */
+    CASELACE(0x1c89, 0x1c89),        /* 'Ᲊ'->'Ᲊ' {, 1, 1} */
+    CASELACE(0x1e00, 0x1e94),        /* 'Ḁ'->'Ẕ' {, 1, 149} */
     CASEMAP(0x1e9b, 0x1e9b, 0x1e61), /* 'ẛ'->'ẛ'..'ṡ' {, -58, 1} */
-    CASELACE(0x1ea0, 0x1efe),        /* 'Ạ'->'Ỿ' {, 1, 8} */
+    CASELACE(0x1ea0, 0x1efe),        /* 'Ạ'->'Ỿ' {, 1, 95} */
     CASEMAP(0x1f08, 0x1f0f, 0x1f00), /* 'Ἀ'->'Ἇ'..'ἀ' {, -8, 8} */
     CASEMAP(0x1f18, 0x1f1d, 0x1f10), /* 'Ἐ'->'Ἕ'..'ἐ' {, -8, 6} */
     CASEMAP(0x1f28, 0x1f2f, 0x1f20), /* 'Ἠ'->'Ἧ'..'ἠ' {, -8, 8} */
@@ -132,41 +131,40 @@ static const struct {
     CASEMAP(0x1fe8, 0x1fe9, 0x1fe0), /* 'Ῠ'->'Ῡ'..'ῠ' {, -8, 2} */
     CASEMAP(0x1fea, 0x1feb, 0x1f7a), /* 'Ὺ'->'Ύ'..'ὺ' {, -112, 2} */
     CASEMAP(0x1fec, 0x1fec, 0x1fe5), /* 'Ῥ'->'Ῥ'..'ῥ' {, -7, 1} */
-    CASEMAP(0x1ff8, 0x1ff9, 0x1f78), /* 'Ὸ'->'Ό'..'ὸ' {, -128, 2} */
     CASEMAP(0x1ffa, 0x1ffb, 0x1f7c), /* 'Ὼ'->'Ώ'..'ὼ' {, -126, 2} */
     CASEMAP(0x2160, 0x216f, 0x2170), /* 'Ⅰ'->'Ⅿ'..'ⅰ' {, 16, 16} */
-    CASELACE(0x2183, 0x2183),        /* 'Ↄ'->'Ↄ' {, 1, 26} */
+    CASELACE(0x2183, 0x2183),        /* 'Ↄ'->'Ↄ' {, 1, 1} */
     CASEMAP(0x24b6, 0x24cf, 0x24d0), /* 'Ⓐ'->'Ⓩ'..'ⓐ' {, 26, 26} */
     CASEMAP(0x2c00, 0x2c2f, 0x2c30), /* 'Ⰰ'->'Ⱟ'..'ⰰ' {, 48, 48} */
     CASELACE(0x2c60, 0x2c60),        /* 'Ⱡ'->'Ⱡ' {, 1, 1} */
-    CASELACE(0x2c67, 0x2c6b),        /* 'Ⱨ'->'Ⱬ' {, 1, 1} */
-    CASELACE(0x2c72, 0x2c72),        /* 'Ⱳ'->'Ⱳ' {, 1, 2} */
-    CASELACE(0x2c75, 0x2c75),        /* 'Ⱶ'->'Ⱶ' {, 1, 2} */
-    CASELACE(0x2c80, 0x2ce2),        /* 'Ⲁ'->'Ⳣ' {, 1, 1} */
-    CASELACE(0x2ceb, 0x2ced),        /* 'Ⳬ'->'Ⳮ' {, 1, 1} */
+    CASELACE(0x2c67, 0x2c6b),        /* 'Ⱨ'->'Ⱬ' {, 1, 5} */
+    CASELACE(0x2c72, 0x2c72),        /* 'Ⱳ'->'Ⱳ' {, 1, 1} */
+    CASELACE(0x2c75, 0x2c75),        /* 'Ⱶ'->'Ⱶ' {, 1, 1} */
+    CASELACE(0x2c80, 0x2ce2),        /* 'Ⲁ'->'Ⳣ' {, 1, 99} */
+    CASELACE(0x2ceb, 0x2ced),        /* 'Ⳬ'->'Ⳮ' {, 1, 3} */
     CASELACE(0x2cf2, 0x2cf2),        /* 'Ⳳ'->'Ⳳ' {, 1, 1} */
-    CASELACE(0xa640, 0xa66c),        /* 'Ꙁ'->'Ꙭ' {, 1, 1} */
-    CASELACE(0xa680, 0xa69a),        /* 'Ꚁ'->'Ꚛ' {, 1, 1} */
-    CASELACE(0xa722, 0xa72e),        /* 'Ꜣ'->'Ꜯ' {, 1, 1} */
-    CASELACE(0xa732, 0xa76e),        /* 'Ꜳ'->'Ꝯ' {, 1, 1} */
-    CASELACE(0xa779, 0xa77b),        /* 'Ꝺ'->'Ꝼ' {, 1, 1} */
-    CASELACE(0xa77e, 0xa786),        /* 'Ꝿ'->'Ꞇ' {, 1, 1} */
+    CASELACE(0xa640, 0xa66c),        /* 'Ꙁ'->'Ꙭ' {, 1, 45} */
+    CASELACE(0xa680, 0xa69a),        /* 'Ꚁ'->'Ꚛ' {, 1, 27} */
+    CASELACE(0xa722, 0xa72e),        /* 'Ꜣ'->'Ꜯ' {, 1, 13} */
+    CASELACE(0xa732, 0xa76e),        /* 'Ꜳ'->'Ꝯ' {, 1, 61} */
+    CASELACE(0xa779, 0xa77b),        /* 'Ꝺ'->'Ꝼ' {, 1, 3} */
+    CASELACE(0xa77e, 0xa786),        /* 'Ꝿ'->'Ꞇ' {, 1, 9} */
     CASELACE(0xa78b, 0xa78b),        /* 'Ꞌ'->'Ꞌ' {, 1, 1} */
-    CASELACE(0xa790, 0xa792),        /* 'Ꞑ'->'Ꞓ' {, 1, 1} */
-    CASELACE(0xa796, 0xa7a8),        /* 'Ꞗ'->'Ꞩ' {, 1, 1} */
-    CASELACE(0xa7b4, 0xa7c2),        /* 'Ꞵ'->'Ꟃ' {, 1, 1} */
-    CASELACE(0xa7c7, 0xa7c9),        /* 'Ꟈ'->'Ꟊ' {, 1, 1} */
-    CASELACE(0xa7cc, 0xa7da),        /* 'Ꟍ'->'Ꟛ' {, 1, 1} */
-    CASELACE(0xa7f5, 0xa7f5),        /* 'Ꟶ'->'Ꟶ' {, 1, 2} */
+    CASELACE(0xa790, 0xa792),        /* 'Ꞑ'->'Ꞓ' {, 1, 3} */
+    CASELACE(0xa796, 0xa7a8),        /* 'Ꞗ'->'Ꞩ' {, 1, 19} */
+    CASELACE(0xa7b4, 0xa7c2),        /* 'Ꞵ'->'Ꟃ' {, 1, 15} */
+    CASELACE(0xa7c7, 0xa7c9),        /* 'Ꟈ'->'Ꟊ' {, 1, 3} */
+    CASELACE(0xa7cc, 0xa7da),        /* 'Ꟍ'->'Ꟛ' {, 1, 15} */
+    CASELACE(0xa7f5, 0xa7f5),        /* 'Ꟶ'->'Ꟶ' {, 1, 1} */
     CASEMAP(0xab6c, 0xab6d, 0xab4b), /* '꭬'->'꭭'..'ꭋ' {, -33, 2} */
-    CASELACE(0xfb05, 0xfb05),        /* 'ﬅ'->'ﬅ' {, 1, 26} */
+    CASELACE(0xfb05, 0xfb05),        /* 'ﬅ'->'ﬅ' {, 1, 1} */
     CASEMAP(0xff21, 0xff3a, 0xff41), /* 'Ａ'->'Ｚ'..'ａ' {, 32, 26} */
     {0, 0, 0}};
 static const struct {
     uint32_t upper; /* base */
-    int lower;      /* distance from upper to lower */
+    int lower;      /* distance from upper to lower. 1 with LACE */
     uint16_t len;   /* how many */
-} casemapsl[] = {
+} casemapsl[56 + 1] = {
     /* from, until, to */
     CASEMAP(0x00189, 0x0018a, 0x00256), /* 'Ɖ'->'Ɗ'..'ɖ' {, 205, 2} */
     CASEMAP(0x0018f, 0x0018f, 0x00259), /* 'Ə'->'Ə'..'ə' {, 202, 1} */
@@ -187,6 +185,7 @@ static const struct {
     CASEMAP(0x01c88, 0x01c88, 0x0a64b), /* 'ᲈ'->'ᲈ'..'ꙋ' {, 35267, 1} */
     CASEMAP(0x01c90, 0x01cba, 0x010d0), /* 'Ა'->'Ჺ'..'ა' {, -3008, 43} */
     CASEMAP(0x01cbd, 0x01cbf, 0x010fd), /* 'Ჽ'->'Ჿ'..'ჽ' {, -3008, 3} */
+    CASEMAP(0x01ff8, 0x01ff9, 0x01f78), /* 'Ὸ'->'Ό'..'ὸ' {, -128, 2} */
     CASEMAP(0x0212b, 0x0212b, 0x000e5), /* 'Å'->'Å'..'å' {, -8262, 1} */
     CASEMAP(0x02c63, 0x02c63, 0x01d7d), /* 'Ᵽ'->'Ᵽ'..'ᵽ' {, -3814, 1} */
     CASEMAP(0x02c64, 0x02c64, 0x0027d), /* 'Ɽ'->'Ɽ'..'ɽ' {, -10727, 1} */
@@ -216,12 +215,12 @@ static const struct {
     CASEMAP(0x118a0, 0x118bf, 0x118c0), /* '𑢠'->'𑢿'..'𑣀' {, 32, 32} */
     CASEMAP(0x16e40, 0x16e5f, 0x16e60), /* '𖹀'->'𖹟'..'𖹠' {, 32, 32} */
     CASEMAP(0x16ea0, 0x16eb8, 0x16ebb), /* '𖺠'->'𖺸'..'𖺻' {, 27, 25} */
-    CASELACE(0x1df40, 0x1df40),         /* '𝽀'->'𝽀' {, 1, 34} */
-    CASELACE(0x1df48, 0x1df4a),         /* '𝽈'->'𝽊' {, 1, 34} */
-    CASELACE(0x1df4d, 0x1df4d),         /* '𝽍'->'𝽍' {, 1, 34} */
-    CASELACE(0x1df51, 0x1df51),         /* '𝽑'->'𝽑' {, 1, 34} */
-    CASELACE(0x1df68, 0x1df6e),         /* '𝽨'->'𝽮' {, 1, 34} */
-    CASELACE(0x1df72, 0x1df7e),         /* '𝽲'->'𝽾' {, 1, 34} */
+    CASELACE(0x1df40, 0x1df40),         /* '𝽀'->'𝽀' {, 1, 1} */
+    CASELACE(0x1df48, 0x1df4a),         /* '𝽈'->'𝽊' {, 1, 3} */
+    CASELACE(0x1df4d, 0x1df4d),         /* '𝽍'->'𝽍' {, 1, 1} */
+    CASELACE(0x1df51, 0x1df51),         /* '𝽑'->'𝽑' {, 1, 1} */
+    CASELACE(0x1df68, 0x1df6e),         /* '𝽨'->'𝽮' {, 1, 7} */
+    CASELACE(0x1df72, 0x1df7e),         /* '𝽲'->'𝽾' {, 1, 13} */
     CASEMAP(0x1e900, 0x1e921, 0x1e922), /* '𞤀'->'𞤡'..'𞤢' {, 34, 34} */
     {0, 0, 0}};
 static const unsigned short pairs[][2] = {
@@ -362,11 +361,15 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
-            if (wc == 0xA64B)
-                return 0xA64A;
-            else
+            /* The only reverse fixup needed. Tested from Unicode 4 to 18. */
+            /* clashes with 1E9B; C; 1E61 */
+            if (!lower && wc == 0x1E61)
+                return 0x1E60;
+            /* else if (wc == 0xA64B)
+                 return 0xA64A; */
+            else {
                 return wc + lmul * casemaps[i].lower;
+            }
         }
         if (lower && casemaps[i].upper > wc)
             break;

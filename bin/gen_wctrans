@@ -98,7 +98,7 @@ if ( !$v and !-e $cf ) {
 
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
-my ( @map, @lace, @excl, @pair, $prev, $lc, %upper, %lower, @CASEL );
+my ( @map, @lace, @excl, @pair, $prev, $lc, %upper, %lower, @CASE, @CASEL );
 
 ########## helpers ##########
 
@@ -135,6 +135,10 @@ sub map_lower {
 sub lace_len {
     my $l = shift;
     return map_len( [ $l->[0], $l->[1], $l->[0] + 1 ] );
+}
+
+sub lace_lower {
+    return 1;
 }
 
 # triple of base, last, to.
@@ -398,82 +402,98 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* for Unicode %s */
 #define TOWCTRANS_UNICODE_VERSION %u
-
-static const struct {
-    uint16_t upper; /* base */
-    int8_t lower;   /* distance from upper to lower. 1 with LACE */
-    uint8_t len;    /* how many */
-} casemaps[] = {
-    /* from, until, to */
-EOF
-
-my $CASEL = <<'EOF';
-static const struct {
-    uint32_t upper; /* base */
-    int lower;      /* distance from upper to lower */
-    uint16_t len;   /* how many */
-} casemapsl[] = {
-    /* from, until, to */
 EOF
 
 # take next of @map and @lace
 my ( $i, $m ) = each @map;
 my ( $j, $l ) = each @lace;
 my $has_long;
+my $max_upper = 0xffff;
+my $max_lower = 128;
+my $min_lower = -127;
+my $max_len   = 255;
 
 while ( defined($i) or defined($j) ) {
 
-    # short or long
+    # MAP or LACE
     if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
-        if ( !$has_long and $m->[2] > 0xffff ) {
-            $has_long++;
-            print FH "    {0, 0, 0}};\n";
-            print FH $CASEL;
-            print FH $_ for @CASEL;
-        }
-        my $spc = $has_long ? $m->[0] < 0xffff ? " " x 4 : " " : " ";    # x8
-        my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
-          $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+        my $lower   = map_lower($m);
+        my $len     = map_len($m);
+        # short or long
+        my $is_long = (
+                 $m->[0] > $max_upper
+              or $lower > $max_lower
+              or $lower < $min_lower
+              or $len > $max_len
+        );
 
         # on overflow push to @CASEL instead
-        my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
-          $m->[1],
-          $m->[2], $cmt;
-        my $lower = map_lower($m);
-        my $len   = map_len($m);
-        if ( $lower > 128 or $lower < -128 or $len > 255 ) {
-            $spc = " ";
+        if ($is_long) {
+            my $spc = " ";
             my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
               $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
             my $s0 = sprintf "    CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",
               $m->[0],
               $m->[1], $m->[2], $cmt;
-            warn "defer overflow $s0 to casemapl\n" if $verbose;
+            #warn "defer overflow $s0 to casemapl\n" if $verbose;
             push @CASEL, $s0;
         }
         else {
-            printf FH $s;
+            my $spc = $has_long ? $m->[0] < $max_upper ? " " x 4 : " " : " ";   # x8
+            my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
+                $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+            my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
+                $m->[1], $m->[2], $cmt;
+            push @CASE, $s;
         }
         ( $i, $m ) = each @map;
     }
     elsif ( defined($j) ) {
-        if ( !$has_long and $l->[1] > 0xffff ) {
-            $has_long++;
-            print FH "    {0, 0, 0}};\n";
-            print FH $CASEL;
-            print FH $_ for @CASEL;
-        }
-        my $cmt = sprintf(
-            "%s/* '%c'->'%c' {, %d, %u} */",
-            $has_long ? " " x 9 : " " x 8,
-            $l->[0],       $l->[1] - 1,
-            1, lace_len($m)
+        $l->[1] = $l->[1] - 1;
+        my $lower   = lace_lower($l);
+        my $len     = lace_len($l);
+        my $is_long = (
+                 $l->[0] > $max_upper
+              or $lower > $max_lower
+              or $lower < $min_lower
+              or $len > $max_len
         );
-        printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
-          $cmt;
+        if ($is_long) {
+            my $spc = " " x 9;
+            my $cmt = sprintf(
+                "%s/* '%c'->'%c' {, %d, %u} */",
+                $spc, $l->[0], $l->[1], lace_lower($l), lace_len($l)
+                );
+            push @CASEL, sprintf("    CASELACE(0x%05x, 0x%05x),%s\n", $l->[0], $l->[1], $cmt);
+        } else {
+            my $cmt = sprintf(
+                "%s/* '%c'->'%c' {, %d, %u} */",
+                " " x 8, $l->[0], $l->[1], lace_lower($l), lace_len($l)
+                );
+            push @CASE, sprintf("    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1], $cmt);
+        }
         ( $j, $l ) = each @lace;
     }
 }
+printf FH <<"EOF", scalar @CASE;
+static const struct {
+    uint16_t upper; /* base */
+    int8_t lower;   /* distance from upper to lower. 1 with LACE */
+    uint8_t len;    /* how many */
+} casemaps[%u + 1] = {
+    /* from, until, to */
+EOF
+print FH $_ for @CASE;
+print FH "    {0, 0, 0}};\n";
+printf FH <<"EOF", scalar @CASEL;
+static const struct {
+    uint32_t upper; /* base */
+    int lower;      /* distance from upper to lower. 1 with LACE */
+    uint16_t len;   /* how many */
+} casemapsl[%u + 1] = {
+    /* from, until, to */
+EOF
+print FH $_ for @CASEL;
 print FH "    {0, 0, 0}};\n";
 print FH "static const unsigned short pairs[][2] = {\n"
   . "    /* upper, lower */\n";
@@ -621,11 +641,15 @@ print FH <<'EOF';
         if (wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1)
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            /* The only reverse fixup needed. Tested from Unicode 5 to 18. */
-            if (wc == 0xA64B)
-                return 0xA64A;
-            else
+            /* The only reverse fixup needed. Tested from Unicode 4 to 18. */
+            /* clashes with 1E9B; C; 1E61 */
+            if (!lower && wc == 0x1E61)
+                return 0x1E60;
+            /* else if (wc == 0xA64B)
+                 return 0xA64A; */
+            else {
                 return wc + lmul * casemaps[i].lower;
+            }
         }
         if (lower && casemaps[i].upper > wc)
             break;
@@ -765,13 +789,13 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        136 [us]
-        musl-new:        134 [us]	210 errors
-        musl-old:        118 [us]	10 errors
-           glibc:         96 [us]	10 errors
+              my:        139 [us]
+        musl-new:        139 [us]	210 errors
+        musl-old:        149 [us]	10 errors
+           glibc:         75 [us]	10 errors
 
     wc -c towctrans-*.o
-      4728 towctrans-my.o
+      4720 towctrans-my.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o
      97432 towctrans-glibc.o
