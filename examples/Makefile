@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean update-bench
 CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2
@@ -13,6 +13,10 @@ bench: bench.c $(OBJ) Makefile
 	$(CC) $(CFLAGS_BENCH) -I. -o $@ bench.c $(OBJ)
 	./$@
 	wc -c $(OBJ)
+update-bench:
+	$(MAKE) -B bench > bench.log
+	./update-bench.pl ../$(GEN) bench.log #&& rm bench.log
+	../$(GEN)
 .c.o:
 	$(CC) -c $(CFLAGS_BENCH) -I. $<
 towctrans-15.h: ../$(GEN)

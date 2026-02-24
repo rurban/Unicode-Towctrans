@@ -45,7 +45,7 @@ my ( $v, $help, $verbose, $safec, $musl );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $with_iswalpha = 0;
-my $cmdline_args = join(" ", @ARGV);
+my $cmdline_args  = join( " ", @ARGV );
 $cmdline_args = " $cmdline_args" if $cmdline_args;
 
 GetOptions(
@@ -217,12 +217,13 @@ while ( my $l = <$CF> ) {
     my @cp = getHexArray($cp);
     die "first column multiple codepoints" if @cp != 1;
     $cp = $cp[0];
-    my @mapping = getHexArray($mapping);
-
-    if ( @mapping == 1 ) {
-        $lower{ $mapping[0] } = $cp;
+    if ($mapping) {
+        my @mapping = getHexArray($mapping);
+        if ( @mapping == 1 ) {
+            $lower{ $mapping[0] } = $cp;
+        }
+        $upper{$cp} = $mapping[0];
     }
-    $upper{$cp} = $mapping[0];
 }
 
 seek $CF, 0, 0;
@@ -416,9 +417,9 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $spc = $has_long ? $m->[0] < 0xffff ? " "x4 : " " : " "; # x8
+        my $spc = $has_long ? $m->[0] < 0xffff ? " " x 4 : " " : " ";    # x8
         my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
-            $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+          $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
 
         # on overflow push to @CASEL instead
         my $s = sprintf "    CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
@@ -429,8 +430,9 @@ while ( defined($i) or defined($j) ) {
         if ( $lower > 128 or $lower < -128 or $len > 255 ) {
             $spc = " ";
             my $cmt = sprintf "%s/* '%c'->'%c'..'%c' {, %d, %u} */", $spc,
-                $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
-            my $s0 = sprintf "    CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",  $m->[0],
+              $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+            my $s0 = sprintf "    CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",
+              $m->[0],
               $m->[1], $m->[2], $cmt;
             warn "defer overflow $s0 to casemapl\n" if $verbose;
             push @CASEL, $s0;
@@ -447,9 +449,12 @@ while ( defined($i) or defined($j) ) {
             print FH $CASEL;
             print FH $_ for @CASEL;
         }
-        my $cmt =
-            sprintf( "%s/* '%c'->'%c' {, %d, %u} */", $has_long ? " "x9 : " "x8,
-                     $l->[0], $l->[1] - 1, map_lower($m), map_len($m) );
+        my $cmt = sprintf(
+            "%s/* '%c'->'%c' {, %d, %u} */",
+            $has_long ? " " x 9 : " " x 8,
+            $l->[0],       $l->[1] - 1,
+            map_lower($m), map_len($m)
+        );
         printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
           $cmt;
         ( $j, $l ) = each @lace;
@@ -557,13 +562,15 @@ for my $i ( 1 .. $#excl ) {
 }
 
 # sort ranges by size. GH #2
-printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1], $excl[0]->[1];
+printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
+  $excl[0]->[1];
 $j = 0;
 shift @new_excl;
 my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
 for my $e (@ex) {
-    my $s = sprintf("        || wc - 0x%x <= 0x%x - 0x%x", $e->[0], $e->[1], $e->[0]);
-    my $spc = 45-length($s) > 0 ? " "x(45-length($s)) : " ";
+    my $s = sprintf( "        || wc - 0x%x <= 0x%x - 0x%x",
+        $e->[0], $e->[1], $e->[0] );
+    my $spc = 45 - length($s) > 0 ? " " x ( 45 - length($s) ) : " ";
     printf FH "%s%s/* %u */\n", $s, $spc, $e->[1] - $e->[0] + 1;
 }
 print FH "    )\n";

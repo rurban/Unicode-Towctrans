@@ -15,6 +15,7 @@ examples/towctrans-glibc.c
 examples/towctrans-musl-new.c
 examples/towctrans-musl-old.c
 examples/towctrans-my.c
+examples/update-bench.pl
 examples/wchar-lookup.h
 t/bench.t
 t/c-asan.t
