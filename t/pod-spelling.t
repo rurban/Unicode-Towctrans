@@ -10,20 +10,27 @@ plan skip_all => "Test::Spelling required"
     if $@;
 
 add_stopwords(<DATA>);
-all_pod_files_spelling_ok( 'bin', '.' );
+open my $fh, '<', 'MANIFEST' or die "MANIFEST: $!";
+my @manifest = <$fh>;
+my %SKIP     = map { $_ => 1 }
+    qw(t/changes.t t/kwalitee.t t/manifest.t t/meta.t t/perl_minimum_version.t
+    t/pod-coverage.t t/pod-spell-mistakes.t t/pod-spelling.t t/pod.t);
+@manifest = grep { !/^\s*#/ } @manifest;
+chomp for @manifest;
+@manifest = grep { !$SKIP{$_} } @manifest;
+close $fh;
+all_pod_files_spelling_ok(@manifest);
 
 __DATA__
-Reini
-foldcasing
 CaseFolding
-casefolding
-libc
-safeclib
-musl
-turkish
+Reini
 azeri
-towctrans
-unicode
+casefolding
+foldcasing
+libc
+musl
+safeclib
+turkish
 un
-wc
+unicode
 wget

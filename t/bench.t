@@ -1,11 +1,12 @@
 #! /usr/bin/env perl
 use strict;
 use Config qw( %Config );
+use Test::More import => [qw( diag ok plan skip )];
 
 BEGIN {
     chdir ".." if -e "../examples/bench.c";
 }
-use Test::More tests => 1;
+plan tests => 1;
 
 my $is_mswin = $^O eq 'MSWin32';
 my $cc       = $Config{cc};
