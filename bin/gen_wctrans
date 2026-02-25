@@ -10,7 +10,7 @@
 # The generated code is licensed under the MIT.
 #
 # Usage:
-#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt]
+#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt] [--help]
 #
 # Input files (will be downloaded if missing):
 #    CaseFolding.txt
@@ -27,7 +27,7 @@ use Carp;
 # Minimum size of and excluded range. The more ranges we have, the slower.
 # The larger the ranges, the more misses in holes we might have, going through
 # all checks. musl-old had ~2500. Tested via bench
-use constant MIN_ECXL => 2500;
+my $MIN_ECXL = 2500;
 
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
@@ -44,6 +44,7 @@ use Getopt::Long;
 my ( $v, $help, $verbose, $safec, $musl );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
+my $fn            = "_towcase";
 my $with_iswalpha = 0;
 my $cmdline_args  = join( " ", @ARGV );
 $cmdline_args = " $cmdline_args" if $cmdline_args;
@@ -53,6 +54,8 @@ GetOptions(
     "cf=s"          => \$cf,               # string
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
+    "min-excl=i"    => \$MIN_ECXL,         # numeric
+    "fn=s"          => \$fn,               # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
     "verbose"       => \$verbose,          # flag
@@ -68,6 +71,8 @@ OPTIONS
                       Downloaded if not found.
 --out filename        default: towctrans.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
+--min-excl 10000      exclude ranges lower than 10000 (default: 2500)
+--fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
 --verbose
@@ -79,6 +84,7 @@ EOF
 if ($musl) {
     $with_iswalpha = 1;
     $out           = "towctrans.c" if $out eq "towctrans.h";
+    $fn            = "__towcase";
 }
 if ($safec) {
     die "cannot use --sace and --musl together\n" if $musl;
@@ -485,7 +491,7 @@ for my $p (@pair) {
 print FH "    {0, 0}};\n";
 printf FH "#define PAIRL_SZ %u\n", $n_pairl if $n_pairl;
 print FH "\n";
-print FH "uint32_t _towcase(uint32_t wc, int lower) {
+print FH "uint32_t " . $fn . "(uint32_t wc, int lower) {
     int i;
     int lmul;  /* 1 for lower, -1 for upper */
     int lmask; /* 0 for lower, -1/0xffff for upper */
@@ -547,7 +553,7 @@ my @new_excl = ( $excl[0] );
 for my $i ( 1 .. $#excl ) {
     my $e = $excl[$i];
     my $skip;
-    if ( $e->[1] - $e->[0] >= MIN_ECXL ) {
+    if ( $e->[1] - $e->[0] >= $MIN_ECXL ) {
 
         # cross-check
         for ( $e->[0] .. $e->[1] ) {
@@ -657,16 +663,16 @@ EOF
 
 if ($musl) {
 
-    print FH <<'EOF';
+    print FH <<"EOF";
 
 wint_t towupper(wint_t wc)
 {
-	return (unsigned)wc < 128 ? toupper(wc) : __towcase(wc, 0);
+	return (unsigned)wc < 128 ? toupper(wc) : $fn(wc, 0);
 }
 
 wint_t towlower(wint_t wc)
 {
-	return (unsigned)wc < 128 ? tolower(wc) : __towcase(wc, 1);
+	return (unsigned)wc < 128 ? tolower(wc) : $fn(wc, 1);
 }
 
 wint_t __towupper_l(wint_t c, locale_t l)
@@ -685,20 +691,20 @@ EOF
 }
 elsif ($safec) {
 
-    print FH <<'EOF';
+    print FH <<"EOF";
 
 EXPORT uint32_t _towupper(uint32_t wc) {
-    return wc < 128 ? (uint32_t)toupper(wc) : _towcase(wc, 0);
+    return wc < 128 ? (uint32_t)toupper(wc) : $fn(wc, 0);
 }
 #ifndef HAVE_TOWUPPER
 EXPORT uint32_t towupper(uint32_t wc) {
-    return wc < 128 ? (uint32_t)toupper(wc) : _towcase(wc, 0);
+    return wc < 128 ? (uint32_t)toupper(wc) : $fn(wc, 0);
 }
 #endif
 
 #ifndef HAVE_TOWLOWER
 EXPORT uint32_t towlower(uint32_t wc) {
-    return (unsigned)wc < 128 ? (wint_t)tolower(wc) : _towcase(wc, 1);
+    return (unsigned)wc < 128 ? (wint_t)tolower(wc) : $fn(wc, 1);
 }
 #endif
 EOF
@@ -751,16 +757,16 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-          my:        348 [us]
-    musl-new:        150 [us]	210 errors
-    musl-old:        241 [us]	10 errors
-       glibc:        108 [us]	10 errors
+              my:        198 [us]
+        musl-new:        143 [us]	210 errors
+        musl-old:        148 [us]	10 errors
+           glibc:        106 [us]	10 errors
 
-     wc -c towctrans-*.o
-       4808 towctrans-my.o
-       6784 towctrans-musl-new.o
-       3600 towctrans-musl-old.o
-      97184 towctrans-glibc.o
+    wc -c towctrans-*.o
+      5144 towctrans-my.o
+      6848 towctrans-musl-new.o
+      3464 towctrans-musl-old.o
+     97440 towctrans-glibc.o
 
 =head1 INSTALLATION
 

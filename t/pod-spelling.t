@@ -22,6 +22,8 @@ safeclib
 musl
 turkish
 azeri
+towctrans
 unicode
 un
+wc
 wget
