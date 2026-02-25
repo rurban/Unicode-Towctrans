@@ -8,8 +8,13 @@ BEGIN {
     $^W = 1;
 }
 
-my @MODULES
-    = ( 'Perl::MinimumVersion 1.20', 'Test::MinimumVersion 0.101082', );
+my @MODULES = (
+    'Perl::MinimumVersion::Fast 0.03',
+    'Test::MinimumVersion::Fast 0.04',
+    'YAML::Tiny 1.40',
+    'File::Find::Rule',
+    'File::Find::Rule::Perl'
+);
 
 # Don't run tests during end-user installs
 use Test::More import => [qw( plan )];
