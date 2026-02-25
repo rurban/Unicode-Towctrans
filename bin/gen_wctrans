@@ -206,7 +206,9 @@ sub add_excl {
 
 if ( $v and !-e $cf ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
-    `wget -q $url -O $cf` and die "$PACKAGE: failed to download $url: $!";
+    `wget $url -O $cf`
+        or `wget --no-check-certificate $url -O $cf`;
+    die "$PACKAGE: failed to download $url: $!" unless -s $cf;
 }
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
 
