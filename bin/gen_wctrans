@@ -162,6 +162,20 @@ sub add_map {
             warn sprintf( "bump map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
         }
     }
+    # check if the previous map has only len 1, convert to pair then
+    elsif (   $map->[-1]
+              && map_len($map->[-1]) == 1 )
+    {
+        add_pair( \@pair, $map->[-1][0], $map->[-1][2] );
+        warn( sprintf( "convert short map to pair %04X, %04X\n", @{ $pair[-1] } ) )
+            if $verbose;
+        $map->[-1][0] = $base;
+        $map->[-1][1] = $base;
+        $map->[-1][2] = $to;
+        if ($verbose) {
+            warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+        }
+    }
     else {
         push @$map, [ $base, $base, $to ];
         if ($verbose) {
@@ -182,23 +196,20 @@ sub add_lace {
         warn(sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
     }
     # check if the previous lace has only len 1, convert to pair then
-    else
+    elsif (   $lace->[-1]
+              && lace_len_1($lace->[-1]) == 1 )
     {
-        if (   $lace->[-1]
-               && lace_len_1($lace->[-1]) == 1 )
-        {
-            warn( sprintf( "convert short lace to pair %04X, %04X\n", @{ $lace->[-1] } ) )
-                if $verbose;
-            add_pair( \@pair, $lace->[-1][0], $lace->[-1][1] );
-            $lace->[-1][0] = $base;
-            $lace->[-1][1] = $to;
-            warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
-        }
-        else {
-            push @$lace, [ $base, $to ];
-            if ($verbose) {
-                warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
-            }
+        warn( sprintf( "convert short lace to pair %04X, %04X\n", @{$lace->[-1]} ) )
+            if $verbose;
+        add_pair( \@pair, $lace->[-1][0], $lace->[-1][1] );
+        $lace->[-1][0] = $base;
+        $lace->[-1][1] = $to;
+        warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
+    }
+    else {
+        push @$lace, [ $base, $to ];
+        if ($verbose) {
+            warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
         }
     }
 }
@@ -816,7 +827,7 @@ to be compared against. Currently we compare against 15.0.0
            glibc:        114 [us] 129.82 %	10 errors
 
     wc -c towctrans-*.o
-      4720 towctrans-my.o
+      4520 towctrans-my.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o
      97432 towctrans-glibc.o
