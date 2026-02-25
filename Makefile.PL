@@ -121,6 +121,7 @@ towctrans.h: bin/gen_wctrans
 towctrans-15.h:
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --cf CaseFolding.txt.15
 bench: towctrans-15.h
+	-rm examples/bench
 	make -C examples bench
 update-bench:
 	make -C examples $@

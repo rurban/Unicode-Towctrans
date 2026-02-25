@@ -38,6 +38,9 @@ int main(void) {
     wint_t *ps;
     long t0, t1;
     int errs;
+    long t, t_my = 0;
+    double perc;
+
     srandom(0U);
     /* prep */
     ws = malloc(SIZE * sizeof(wint_t));
@@ -73,13 +76,16 @@ int main(void) {
         }                                                                      \
     }                                                                          \
     t1 = TEST_TIME();                                                          \
+    t1 = (t1 - t0) / RETRIES;                                                  \
+    perc = t_my ? t_my * 100.0 / t1 : 100;                                     \
     if (errs)                                                                  \
-        printf("  %10s: %10ld [us]\t%u errors\n", name, (t1 - t0) / RETRIES,   \
+        printf("  %10s: %10ld [us] %.02f %%\t%u errors\n", name, t1, perc,     \
                errs / RETRIES);                                                \
     else                                                                       \
-        printf("  %10s: %10ld [us]\n", name, (t1 - t0) / RETRIES)
+        printf("  %10s: %10ld [us] %.02f %%\n", name, t1, perc)
 
     BENCH("my", my_towlower, my_towupper);
+    t_my = t1;
     BENCH("musl-new", musl_towlower, musl_towupper);
     BENCH("musl-old", old_towlower, old_towupper);
     BENCH("glibc", glibc_towlower, glibc_towupper);
