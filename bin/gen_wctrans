@@ -131,6 +131,12 @@ sub map_lower {
     return $m->[2] - $m->[0];
 }
 
+# note that our lace->[1] is one too much
+sub lace_len {
+    my $l = shift;
+    return map_len( [ $l->[0], $l->[1], $l->[0] + 1 ] );
+}
+
 # triple of base, last, to.
 # offset is to - base, length is last - base + 1
 sub add_map {
@@ -461,7 +467,7 @@ while ( defined($i) or defined($j) ) {
             "%s/* '%c'->'%c' {, %d, %u} */",
             $has_long ? " " x 9 : " " x 8,
             $l->[0],       $l->[1] - 1,
-            map_lower($m), map_len($m)
+            1, lace_len($m)
         );
         printf FH "    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1] - 1,
           $cmt;
@@ -759,16 +765,16 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        198 [us]
-        musl-new:        143 [us]	210 errors
-        musl-old:        148 [us]	10 errors
-           glibc:        106 [us]	10 errors
+              my:        136 [us]
+        musl-new:        134 [us]	210 errors
+        musl-old:        118 [us]	10 errors
+           glibc:         96 [us]	10 errors
 
     wc -c towctrans-*.o
-      5144 towctrans-my.o
-      6848 towctrans-musl-new.o
-      3464 towctrans-musl-old.o
-     97440 towctrans-glibc.o
+      4728 towctrans-my.o
+      6808 towctrans-musl-new.o
+      3416 towctrans-musl-old.o
+     97432 towctrans-glibc.o
 
 =head1 INSTALLATION
 

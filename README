@@ -36,16 +36,16 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        198 [us]
-            musl-new:        143 [us]       210 errors
-            musl-old:        148 [us]       10 errors
-               glibc:        106 [us]       10 errors
+                  my:        136 [us]
+            musl-new:        134 [us]       210 errors
+            musl-old:        118 [us]       10 errors
+               glibc:         96 [us]       10 errors
 
         wc -c towctrans-*.o
-          5144 towctrans-my.o
-          6848 towctrans-musl-new.o
-          3464 towctrans-musl-old.o
-         97440 towctrans-glibc.o
+          4728 towctrans-my.o
+          6808 towctrans-musl-new.o
+          3416 towctrans-musl-old.o
+         97432 towctrans-glibc.o
 
 INSTALLATION
     Perl 5.12 or later is required.
