@@ -390,11 +390,11 @@ uint32_t _towcase(uint32_t wc, int lower) {
     if (pairl[0][1 - lower] == wc)
         return pairs[0][lower];
 #else
-    /* TODO: binary search the pairs. GH #3 */
+    /* TODO: binary search the pairs (lower only?). GH #3 */
     for (i = 0; pairl[i][1 - lower]; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
         if (pairl[i][1 - lower] == wc)
-            return pairs[i][lower];
+            return pairl[i][lower];
         if (lower && pairl[i][0] > wc)
             break;
     }
