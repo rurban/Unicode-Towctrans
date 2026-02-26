@@ -84,6 +84,11 @@ sub has_working_iswalpha {
 
 package MY;
 
+# filter any temp .c files. We have no XS nor C files.
+sub libscan {
+    return 0;
+}
+
 sub depend {
     '
 .PHONY: tidy test-all diffs examples release-test release update-bench
