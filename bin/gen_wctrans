@@ -789,10 +789,10 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        139 [us]
-        musl-new:        139 [us]	210 errors
-        musl-old:        149 [us]	10 errors
-           glibc:         75 [us]	10 errors
+              my:        148 [us] 100.00 %
+        musl-new:        199 [us] 74.37 %	210 errors
+        musl-old:        168 [us] 88.10 %	10 errors
+           glibc:        114 [us] 129.82 %	10 errors
 
     wc -c towctrans-*.o
       4720 towctrans-my.o

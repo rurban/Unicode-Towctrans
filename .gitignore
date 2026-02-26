@@ -2,6 +2,7 @@
 /blib
 *.bs
 CaseFolding.txt*
+UnicodeData.txt.[0-9]*
 cover_db/
 /Debian_CPANTS.txt
 ./diffs
@@ -25,6 +26,7 @@ t/t_towctrans
 /Unicode-Towctrans-*
 /diffs.log
 examples/bench
+examples/bench.log
 examples/test
 examples/test-[0-9]*
 examples/test-asan
