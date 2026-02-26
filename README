@@ -36,10 +36,10 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        148 [us] 100.00 %
-            musl-new:        199 [us] 74.37 %       210 errors
-            musl-old:        168 [us] 88.10 %       10 errors
-               glibc:        114 [us] 129.82 %      10 errors
+                  my:        208 [us] 100.00 %
+            musl-new:        135 [us] 154.07 %      210 errors
+            musl-old:        131 [us] 158.78 %      10 errors
+               glibc:         74 [us] 281.08 %      10 errors
 
         wc -c towctrans-*.o
           4520 towctrans-my.o

@@ -131,6 +131,22 @@ sub map_lower {
     return $m->[2] - $m->[0];
 }
 
+sub map_range {
+    my $m = shift;
+    return ($m->[0], $m->[2]);
+}
+
+sub map_clashes{
+    # eg   CASEMAP(0x01f1, 0x01f1, 0x01f3) (ie pair 1f1, 1f3)
+    # with CASELACE(0x01f2, 0x01f4) (ie pair 1f2, 1f3) => true
+    # needed for upper 01F3 => 01F2 by lace, 01F3 => 01F2 by map.
+    my ($m, $l) = @_;
+    return 0 if !defined($m) or !defined($l);
+    my $l_len = lace_len($l);
+    my $l_max = $l->[1] + $l_len;
+    return 1 if $m->[0] >= $l->[0] && $m->[2] <= $l_max;
+}
+
 # note that our lace->[1] is one too much
 sub lace_len {
     my $l = shift;
@@ -162,10 +178,16 @@ sub add_map {
             warn sprintf( "bump map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
         }
     }
-    # check if the previous map has only len 1, convert to pair then
-    elsif (   $map->[-1]
-              && map_len($map->[-1]) == 1 )
+    # check if the previous map has only len 1,
+    # convert to pair then.
+    elsif ( $map->[-1]
+            && map_len($map->[-1]) == 1 )
     {
+        if (map_clashes($map->[-1], $lace[-1])) {
+            warn( sprintf( "last map %04X, %04X clashes with last lace %04X, %04X\n",
+                           $map->[-1][0], $map->[-1][2], @{$lace[-1]} ) )
+                if $verbose;
+        }
         add_pair( \@pair, $map->[-1][0], $map->[-1][2] );
         warn( sprintf( "convert short map to pair %04X, %04X\n", @{ $pair[-1] } ) )
             if $verbose;
@@ -177,9 +199,15 @@ sub add_map {
         }
     }
     else {
-        push @$map, [ $base, $base, $to ];
-        if ($verbose) {
-            warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+        if ($diff == 1 and map_clashes([$base, $base, $to], $lace[-1])) {
+            warn( sprintf( "add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
+                           $base, $to, @{$lace[-1]} ) ) if $verbose;
+            add_pair( \@pair, $base, $to );
+        } else {
+            push @$map, [ $base, $base, $to ];
+            if ($verbose) {
+                warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+            }
         }
     }
 }
@@ -196,9 +224,14 @@ sub add_lace {
         warn(sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
     }
     # check if the previous lace has only len 1, convert to pair then
-    elsif (   $lace->[-1]
-              && lace_len_1($lace->[-1]) == 1 )
+    elsif ( $lace->[-1]
+            && lace_len_1($lace->[-1]) == 1 )
     {
+        if (map_clashes($map[-1], $lace->[-1])) {
+            warn( sprintf( "last lace %04X, %04X clashes with last map %04X, %04X\n",
+                           @{$lace->[-1]}, $map[-1][0], $map[-1][2] ) )
+                if $verbose;
+        }
         warn( sprintf( "convert short lace to pair %04X, %04X\n", @{$lace->[-1]} ) )
             if $verbose;
         add_pair( \@pair, $lace->[-1][0], $lace->[-1][1] );
@@ -207,6 +240,10 @@ sub add_lace {
         warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
     }
     else {
+        if (map_clashes($map[-1], [$base, $to])) {
+            warn( sprintf( "FIXME new lace %04X, %04X clashes with last map %04X, %04X\n",
+                           $base, $to, $map[-1][0], $map[-1][2] ) );
+        }
         push @$lace, [ $base, $to ];
         if ($verbose) {
             warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
@@ -821,10 +858,10 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        148 [us] 100.00 %
-        musl-new:        199 [us] 74.37 %	210 errors
-        musl-old:        168 [us] 88.10 %	10 errors
-           glibc:        114 [us] 129.82 %	10 errors
+              my:        208 [us] 100.00 %
+        musl-new:        135 [us] 154.07 %	210 errors
+        musl-old:        131 [us] 158.78 %	10 errors
+           glibc:         74 [us] 281.08 %	10 errors
 
     wc -c towctrans-*.o
       4520 towctrans-my.o
