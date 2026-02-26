@@ -106,6 +106,82 @@ my ( @map, @lace, @excl, @pair, $prev, $lc, %upper, %lower, @CASE, @CASEL );
 ## (hex digits separated by spaces)
 sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
 
+## simulate the search via the global @map, @lace, @excl, @pair arrays
+## to be able to leave out an uneeded pair,lace,map. Esp. for upper.
+sub simulate {
+    my ($wc, $lower) = @_;
+    die if $lower != 0 && $lower != 1;
+
+    for my $e (@excl) {
+        if ( $wc >= $e->[0] && $wc <= $e->[1] ) {
+            warn( sprintf( "simulate wc %04X in excl [%04X, %04X]\n", $wc,
+                           $e->[0], $e->[1] )) if $verbose;
+            return $wc;
+        }
+        last if $wc > $e->[1];
+    }
+    # skip the turkish checks
+    my $lmul = 2 * $lower - 1; # 1 for lower, -1 for upper
+    my $lmask = $lower - 1;    # 0 for lower, -1/0xffff for upper
+    # interleave laces and maps
+    my ( $i, $m ) = each @map;
+    my ( $j, $l ) = each @lace;
+    while ( defined($i) or defined($j) ) {
+        # MAP or LACE
+        if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
+            my $lower   = map_lower($m);
+            my $len     = map_len($m);
+            my $base = $m->[0] + ($lmask & $lower);
+            if ($wc - $base < $len) {
+                # The only reverse fixup needed. Tested from Unicode 4 to 18.
+                # clashes with 1E9B; C; 1E61 */
+                if (!$lower && $wc == 0x1E61) {
+                    return 0x1E60;
+                } else {
+                    return $wc + $lmul * $lower;
+                }
+            }
+            # FIXME we really should merge them earlier
+            elsif ($lower && $m->[0] > $wc) {
+                # exhaust @map iterator
+                while (each @map) { ; }
+            }
+            ( $i, $m ) = each @map;
+        }
+        elsif ( defined($j) ) {
+            my $lower   = lace_lower($l);
+            my $len     = lace_len_1($l);
+            my $base = $l->[0] + ($lmask & $lower);
+            if ($wc - $base < $len) {
+                # The only reverse fixup needed. Tested from Unicode 4 to 18.
+                # clashes with 1E9B; C; 1E61 */
+                if (!$lower && $wc == 0x1E61) {
+                    return 0x1E60;
+                } else {
+                    return $wc + $lmul * $lower;
+                }
+            }
+            # FIXME we really should merge them earlier
+            elsif ($lower && $l->[0] > $wc) {
+                # exhaust @lace iterator
+                while (each @lace) { ; }
+            }
+            ( $j, $l ) = each @lace;
+        }
+    }
+    # pairs
+    for my $p (@pair) {
+        if ($p->[1 - $lower] == $wc) {
+            return $p->[$lower];
+        }
+        if ($lower && $p->[0] > $wc) {
+            last;
+        }
+    }
+    return $wc;
+}
+
+
 ########## writing header files ##########
 
 #         from    until to (=lower of from)
@@ -165,6 +241,7 @@ sub lace_lower {
 
 # triple of base, last, to.
 # offset is to - base, length is last - base + 1
+# $base is upper, $to is lower
 sub add_map {
     my ( $map, $base, $to ) = @_;
 
@@ -200,9 +277,15 @@ sub add_map {
     }
     else {
         if ($diff == 1 and map_clashes([$base, $base, $to], $lace[-1])) {
-            warn( sprintf( "add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
-                           $base, $to, @{$lace[-1]} ) ) if $verbose;
-            add_pair( \@pair, $base, $to );
+            # do we need this pair?
+            if (simulate($base, 0) != $to && simulate($to, 1) != $base) {
+                warn( sprintf( "add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
+                               $base, $to, @{$lace[-1]} ) ) if $verbose;
+                add_pair( \@pair, $base, $to );
+            } else {
+                warn( sprintf( "pair %04X, %04X not needed\n",
+                               $base, $to ) ) if $verbose;
+            }
         } else {
             push @$map, [ $base, $base, $to ];
             if ($verbose) {
@@ -251,10 +334,17 @@ sub add_lace {
     }
 }
 
-# FIXME: check the reverse if deviating. upper(03BC) => 039C, not B5
+# also check the reverse if deviating. upper(03BC) => 039C, not B5
 sub add_pair {
     my ( $pair, $base, $to ) = @_;
-    push @$pair, [ $base, $to ];
+    # do we need this pair?
+    if (simulate($base, 0) != $to && simulate($to, 1) != $base) {
+        push @$pair, [ $base, $to ];
+    } else {
+        # same result without this pair already
+        warn( sprintf( "pair %04X, %04X not needed\n",
+                       $base, $to ) ) if $verbose;
+    }
 }
 
 # exclude a pair of first, last.
