@@ -156,7 +156,7 @@ static const struct {
     CASEMAP(0x1e900, 0x1e921, 0x1e922), /* '𞤀'->'𞤡'..'𞤢' {, 34, 34} */
     {0, 0, 0}};
 
-static const unsigned short pairs[/* 148 */][2] = {
+static const unsigned short pairs[/* 149 */][2] = {
     /* 0xb5 - 0xfb05 */
     /* upper, lower */
     {0x00b5, 0x03bc}, /* 'µ' -> 'μ' */
@@ -193,6 +193,7 @@ static const unsigned short pairs[/* 148 */][2] = {
     {0x01c8, 0x01c9}, /* 'ǈ' -> 'ǉ' */
     {0x01ca, 0x01cc}, /* 'Ǌ' -> 'ǌ' */
     {0x01f1, 0x01f3}, /* 'Ǳ' -> 'ǳ' */
+    {0x01f3, 0x01f1}, /* 'ǳ' -> 'Ǳ' */
     {0x01f6, 0x0195}, /* 'Ƕ' -> 'ƕ' */
     {0x01f7, 0x01bf}, /* 'Ƿ' -> 'ƿ' */
     {0x0220, 0x019e}, /* 'Ƞ' -> 'ƞ' */
@@ -362,14 +363,19 @@ uint32_t _towcase(uint32_t wc, int lower) {
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
         if (wc - base < casemaps[i].len) {
-            if (casemaps[i].lower == 1)
+            if (casemaps[i].lower == 1) {
+                /* Need this exception (wrong lace). Tested from Unicode 4
+                   to 18. */
+                if (!lower && wc == 0x1F3)
+                    return 0x1F1;
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            /* The only reverse fixup needed. Tested from Unicode 4 to 18. */
-            /* clashes with 1E9B; C; 1E61 */
+            }
+            /* Needed these exceptions previously. Tested from Unicode 4 to 18.
             if (!lower && wc == 0x1E61)
                 return 0x1E60;
-            /* else if (wc == 0xA64B)
-                 return 0xA64A; */
+            else if (wc == 0xA64B)
+                return 0xA64A;
+            */
             else {
                 return wc + lmul * casemaps[i].lower;
             }

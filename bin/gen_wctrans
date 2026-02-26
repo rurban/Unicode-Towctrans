@@ -652,7 +652,10 @@ EOF
 print FH $_ for @CASEL;
 print FH "    {0, 0, 0}};\n";
 
-# also fixup pairs to enable reverse lookup
+# Also fixup pairs to enable reverse lookup
+# FIXME Need this exception (wrong lace). Tested from Unicode 4 to 18.
+add_pair(\@pair, 0x1F3, 0x1F1);
+
 my @pair_s = sort { $a->[0] <=> $b->[0] } @pair;
 my @pairl  = grep { $_->[0] > 0xffff } @pair_s;
 @pair_s = grep { $_->[0] <= 0xffff } @pair_s;
@@ -798,14 +801,19 @@ print FH <<'EOF';
         int base = casemaps[i].upper + (lmask & casemaps[i].lower);
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
         if (wc - base < casemaps[i].len) {
-            if (casemaps[i].lower == 1)
+            if (casemaps[i].lower == 1) {
+                /* Need this exception (wrong lace). Tested from Unicode 4
+                   to 18. */
+                if (!lower && wc == 0x1F3)
+                    return 0x1F1;
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
-            /* The only reverse fixup needed. Tested from Unicode 4 to 18. */
-            /* clashes with 1E9B; C; 1E61 */
+            }
+            /* Needed these exceptions previously. Tested from Unicode 4 to 18.
             if (!lower && wc == 0x1E61)
                 return 0x1E60;
-            /* else if (wc == 0xA64B)
-                 return 0xA64A; */
+            else if (wc == 0xA64B)
+                return 0xA64A;
+            */
             else {
                 return wc + lmul * casemaps[i].lower;
             }
@@ -948,10 +956,10 @@ to be compared against. Currently we compare against 15.0.0
 
     make -C examples
     ./bench
-              my:        208 [us] 100.00 %
-        musl-new:        135 [us] 154.07 %	210 errors
-        musl-old:        131 [us] 158.78 %	10 errors
-           glibc:         74 [us] 281.08 %	10 errors
+              my:        220 [us] 100.00 %
+        musl-new:        129 [us] 170.54 %	210 errors
+        musl-old:        136 [us] 161.76 %	10 errors
+           glibc:         77 [us] 285.71 %	10 errors
 
     wc -c towctrans-*.o
       4520 towctrans-my.o
