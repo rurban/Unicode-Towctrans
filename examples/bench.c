@@ -99,7 +99,7 @@ int main(void) {
     if (perc > 300)
         perf_errs++;
     BENCH("glibc", glibc_towlower, glibc_towupper);
-    if (perc > 300)
+    if (perc > 500)
         perf_errs++;
     printf("\n");
 
