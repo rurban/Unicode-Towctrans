@@ -1,7 +1,10 @@
 .clang-format
-.gitignore
-.github/workflows/testsuite.yml
-.github/FUNDING.yml
-.pre-commit-config.yaml
+.dockerignore
 .gdbinit
+.github/FUNDING.yml
+.github/workflows/testsuite.yml
+.gitignore
+.pre-commit-config.yaml
+Dockerfile
 examples/.gdbinit
+run-docker.sh
