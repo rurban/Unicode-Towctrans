@@ -37,7 +37,7 @@ int main(void) {
     wint_t *ws, *lw, *up;
     wint_t *ps;
     long t0, t1;
-    int errs;
+    int errs = 0, perf_errs = 0;
     long t, t_my = 0;
     double perc;
 
@@ -87,12 +87,20 @@ int main(void) {
     BENCH("my", my_towlower, my_towupper);
     t_my = t1;
     BENCH("musl-new", musl_towlower, musl_towupper);
+    if (perc > 300)
+        perf_errs++;
     BENCH("musl-old", old_towlower, old_towupper);
+    if (perc > 300)
+        perf_errs++;
     BENCH("glibc", glibc_towlower, glibc_towupper);
+    if (perc > 300)
+        perf_errs++;
     printf("\n");
 
+    if (perf_errs)
+        printf("my is too slow\n");
     free(up);
     free(lw);
     free(ws);
-    return 0;
+    return perf_errs;
 }
