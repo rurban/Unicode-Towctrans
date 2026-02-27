@@ -38,16 +38,17 @@ PERFORMANCE
     compared to the other implementations. And esp. correct compared to
     glibc, which ignores characters from other locales. The musl errors are
     probably caused by a different Unicode version to be compared against.
-    Currently we compare against 15.0.0
+    Currently we compare against 15.0.0, and should not compare different
+    Unicode versions, because then the performance and sizes vary more.
 
         make -C examples
         ./bench
-                  my:        227 [us] 100.00 %
-            my_low16:        154 [us] 147.40 %
-             my_bits:        151 [us] 150.33 %
-            musl-new:        191 [us] 118.85 %      210 errors
-            musl-old:        253 [us] 89.72 %       10 errors
-               glibc:        165 [us] 137.58 %      10 errors
+                  my:        252 [us] 100.00 %
+            my_low16:        194 [us] 129.90 %
+             my_bits:        152 [us] 165.79 %
+            musl-new:        138 [us] 182.61 %      210 errors
+            musl-old:        152 [us] 165.79 %      10 errors
+               glibc:        105 [us] 240.00 %      10 errors
 
         wc -c towctrans-*.o
           4952 towctrans-my.o
@@ -56,6 +57,39 @@ PERFORMANCE
           6848 towctrans-musl-new.o
           3464 towctrans-musl-old.o
          97440 towctrans-glibc.o
+
+    Results with more various "--bits" size combinations. They need just
+    some logical fixups for the 5 errors.
+
+    <--bits 16:10:8> and "--bits 12:12:8" being the most promising, the best
+    being twice as fast as the default.
+
+         ./bench-bits.sh
+              16:8:8:        251 [us] 100.0 % 67 21 142 0 6
+             16:16:8:        125 [us] 200.8 % 76 12 142 0 6
+             16:10:8:        119 [us] 210.9 % 67 21 142 0 6
+            18:14:10:        118 [us] 212.7 % 85 3 142 0 6      5 errors
+             18:14:8:        138 [us] 181.9 % 85 3 142 0 6      5 errors
+            18:12:10:        120 [us] 209.2 % 81 7 142 0 6      5 errors
+             18:12:8:        180 [us] 139.4 % 81 7 142 0 6      5 errors
+             16:12:6:        193 [us] 130.1 % 67 21 142 0 6     5 errors
+             16:10:6:        133 [us] 188.7 % 67 21 142 0 6     5 errors
+             14:10:8:        127 [us] 197.6 % 58 30 142 0 6     5 errors
+             14:12:6:        135 [us] 185.9 % 54 34 142 0 6     5 errors
+             12:12:8:        119 [us] 210.9 % 34 54 142 0 6     5 errors
+
+         4880 towctrans-bmy.o (16:8:8)
+         5024 towctrans-bmylow16.o (16:16:8)
+         5232 towctrans-bmybits.o (16:10:8)
+         5408 bits-12_12_8.o
+         5312 bits-14_12_6.o
+         5312 bits-14_10_8.o
+         5256 bits-16_10_6.o
+         5256 bits-16_12_6.o
+         5176 bits-18_12_8.o
+         5208 bits-18_12_10.o
+         5208 bits-18_14_8.o
+         5240 bits-18_14_10.o
 
 INSTALLATION
     Perl 5.12 or later is required.

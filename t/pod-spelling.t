@@ -29,6 +29,7 @@ casefolding
 foldcasing
 libc
 musl
+fixups
 safeclib
 turkish
 un

@@ -31,7 +31,7 @@ $bench = "    " . $bench;
             $found = 1;
             next;
         }
-        if (m{^=head1 INSTALLATION}) {
+        if (m{Results with more various}) {
             $found = 0;
             print $out $bench . "\n";
         }

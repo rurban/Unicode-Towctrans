@@ -6,6 +6,8 @@ Makefile.PL
 README
 bin/gen_wctrans
 examples/Makefile
+examples/bench-bits.c
+examples/bench-bits.sh
 examples/bench.c
 examples/casemap.h
 examples/test-glibc.c
