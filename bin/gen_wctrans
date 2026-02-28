@@ -1060,7 +1060,7 @@ vary more.
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.
 
-<--bits 16:10:8> and C<--bits 12:12:8> being the most promising,
+C<--bits 16:10:8> and C<--bits 12:12:8> being the most promising,
 the best being twice as fast as the default.
 
      ./bench-bits.sh
