@@ -21,9 +21,12 @@ push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5 .. 18;
 push @cf, "examples/test-$_" for 5 .. 18;
 my $clean = {
     FILES => [
-        't/towctrans',   'diffs',
-        @cf,             'examples/test-glibc',
-        glob('t/*.bak'), glob('examples/tow*.o')
+        't/towctrans',          'diffs',
+        @cf,                    'examples/test-glibc',
+        glob('t/*.bak'),        glob('examples/tow*.o'),
+        'examples/towctrans.h', glob('examples/bits-*.[ch]'),
+        'examples/bits.h',      'examples/bench-bits',
+        'examples/bench-bits.h'
     ]
 };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;

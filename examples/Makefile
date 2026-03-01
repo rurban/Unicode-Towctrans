@@ -117,4 +117,5 @@ towctrans-18.c: ../$(GEN)
 
 clean:
 	rm -f bench $(OBJ) $(TESTS) towctrans-[0-9][0-9]?.c towctrans-*.h \
-	  ../towctrans-low16.h ../towctrans-bits.h
+	  ../towctrans-low16.h ../towctrans-bits.h \
+	  bench-bits bench-bits.h bits-*.[ch] bits.h
