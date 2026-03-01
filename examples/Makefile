@@ -3,11 +3,12 @@ CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I. -DNDEBUG
 CFLAGS = -g -Wall -Wextra $(DEFINES)
-OBJ = towctrans-my.o towctrans-mylow16.o towctrans-mybits.o towctrans-musl-new.o \
-      towctrans-musl-old.o towctrans-glibc.o
+OBJ = towctrans-my.o towctrans-mylow16.o towctrans-mybits.o towctrans-mybsearch.o \
+      towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
-TESTS = test test-low16 test-bits test-asan test-glibc test-iswalpha \
+TESTS = test test-low16 test-bits test-bsearch test-asan test-glibc \
+        test-iswalpha \
         test-5 test-6 test-7 test-8 test-9 test-10 test-11 test-12 test-13 \
 	test-15 test-16 test-17 test-18
 all: bench $(OBJ) $(TESTS)
@@ -29,6 +30,8 @@ towctrans-low16.h :: ../CaseFolding.txt.15
 	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 15 --out examples/$@ --cf CaseFolding.txt.15
 towctrans-bits.h :: ../CaseFolding.txt.15
 	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 15 --out examples/$@ --cf CaseFolding.txt.15
+towctrans-bsearch.h :: ../CaseFolding.txt.15
+	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 15 --out examples/$@ --cf CaseFolding.txt.15
 
 towctrans-my.o: towctrans-my.c towctrans-15.h
 	$(CC) -c $(CFLAGS_BENCH) $< -o $@
@@ -36,6 +39,8 @@ towctrans-mylow16.o: towctrans-my.c towctrans-low16.h
 	$(CC) -c -DLOW16 $(CFLAGS_BENCH) $< -o $@
 towctrans-mybits.o: towctrans-my.c towctrans-bits.h
 	$(CC) -c -DBITS $(CFLAGS_BENCH) $< -o $@
+towctrans-mybsearch.o: towctrans-my.c towctrans-bsearch.h
+	$(CC) -c -DBSEARCH $(CFLAGS_BENCH) $< -o $@
 
 test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
@@ -51,6 +56,10 @@ test-low16: test.c ../towctrans-low16.h
 	../$(GEN) --bits 16:10:6 --fn=_towcase_bits -v 15 --out $@ --cf ../CaseFolding.txt.15
 test-bits: test.c ../towctrans-bits.h
 	$(CC) $(CFLAGS) -DBITS -UHAVE_LOCALE_TR -o $@ test.c
+../towctrans-bsearch.h: ../$(GEN)
+	../$(GEN) --bsearch --fn=_towcase_bsearch -v 15 --out $@ --cf ../CaseFolding.txt.15
+test-bsearch: test.c ../towctrans-bsearch.h
+	$(CC) $(CFLAGS) -DBSEARCH -UHAVE_LOCALE_TR -o $@ test.c
 test-5: test.c towctrans-5.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-6: test.c towctrans-6.c

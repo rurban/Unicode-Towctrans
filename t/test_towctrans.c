@@ -7,12 +7,12 @@
 #include <wctype.h>
 
 // no wupper yet
-#define BSEARCH
-
 #ifdef LOW16
 #include "towctrans-low16.h"
 #elif defined BITS
 #include "towctrans-bits.h"
+#elif defined BSEARCH
+#include "towctrans-bsearch.h"
 #else
 #include "towctrans.h"
 #endif
@@ -123,7 +123,6 @@ int main(void) {
                         printf(
                             "ok %u towlower(U+%04X) => %s status=%s name=%s\n",
                             i++, wc, mapping, status, name);
-#ifdef BSEARCH
                     /* check the reverse */
                     upr = lwr < 128 ? (uint32_t)toupper(lwr) : my_towupper(lwr);
                     if (wc != upr) {
@@ -172,7 +171,6 @@ int main(void) {
                         printf("ok %u towupper(U+%04X) => U+%04X\n", i++, lwr,
                                upr);
                     }
-#endif
                 } else {
                     printf("ok %u towlower(U+%04X) => %s status=%s name=%s\n",
                            i++, wc, mapping, status, name);

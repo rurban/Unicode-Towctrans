@@ -47,7 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CASEMAP(u1, u2, l) {(u1), (l) - (u1), (u2) - (u1) + 1}
 /* map from upper until lower, with dist 1 */
 #define CASELACE(u1, u2) CASEMAP((u1), (u2), (u1) + 1)
-#define ARRAY_SZ(a) (sizeof(a) / sizeof((a)[0]))
 
 /* for Unicode 18.0.0 */
 #define TOWCTRANS_UNICODE_VERSION 18
@@ -57,7 +56,7 @@ static const struct casemaps_s {
     int8_t lower;   /* distance from upper to lower. 1 with LACE */
     uint8_t len;    /* how many */
 } casemaps[66] = {
-    /* 0x41 - 0xff21 */
+    /* upper: 0x41 - 0xff21 */
     /* from, until, to */
     CASEMAP(0x0041, 0x005a, 0x0061), /* 'A'->'Z'..'a' {, 32, 26} */
     CASEMAP(0x00c0, 0x00d6, 0x00e0), /* 'À'->'Ö'..'à' {, 32, 23} */
@@ -131,7 +130,7 @@ static const struct casemapsl_s {
     int lower;      /* distance from upper to lower. 1 with LACE */
     uint16_t len;   /* how many */
 } casemapsl[25] = {
-    /* 0x189 - 0x1e900 */
+    /* upper: 0x189 - 0x1e900 */
     /* from, until, to */
     CASEMAP(0x00189, 0x0018a, 0x00256), /* 'Ɖ'->'Ɗ'..'ɖ' {, 205, 2} */
     CASEMAP(0x001b1, 0x001b2, 0x0028a), /* 'Ʊ'->'Ʋ'..'ʊ' {, 217, 2} */
@@ -159,15 +158,9 @@ static const struct casemapsl_s {
     CASELACE(0x1df72, 0x1df7e),         /* '𝽲'->'𝽿' {, 1, 13} */
     CASEMAP(0x1e900, 0x1e921, 0x1e922), /* '𞤀'->'𞤡'..'𞤢' {, 34, 34} */
 };
-#define MAP_FIRST 0x41
-#define MAPL_FIRST 0x189
-#define MAP_LAST 0xff21
-#define MAP_LAST_LEN 26
-#define MAPL_LAST 0x1e900
-#define MAPL_LAST_LEN 34
 
 static const unsigned short pairs[149][2] = {
-    /* 0xb5 - 0xfb05 */
+    /* upper: 0xb5 - 0xfb05 */
     /* upper, lower */
     {0x00b5, 0x03bc}, /* 'µ' -> 'μ' */
     {0x0178, 0x00ff}, /* 'Ÿ' -> 'ÿ' */
@@ -319,10 +312,8 @@ static const unsigned short pairs[149][2] = {
     {0xa7f5, 0xa7f6}, /* 'Ꟶ' -> 'ꟶ' */
     {0xfb05, 0xfb06}, /* 'ﬅ' -> 'ﬆ' */
 };
-#define HAVE_PAIRL
-#define PAIRL_SZ 4
-static const unsigned int pairl[/* 4 */][2] = {
-    /* 0x1df40 - 0x1df95 */
+static const unsigned int pairl[4][2] = {
+    /* upper: 0x1df40 - 0x1df95 */
     /* upper, lower */
     {0x1df40, 0x1df41}, /* '𝽀' -> '𝽁' */
     {0x1df4d, 0x1df4e}, /* '𝽍' -> '𝽎' */
@@ -332,8 +323,9 @@ static const unsigned int pairl[/* 4 */][2] = {
 
 uint32_t _towcase(uint32_t wc, int lower) {
     int i;
-    int lo, hi;
-    /* !iswalpha(wc) is broken on most locales, at least with glibc. */
+    int lmul;  /* 1 for lower, -1 for upper */
+    int lmask; /* 0 for lower, -1/0xffff for upper */
+
     if (wc <= 0x40                           /* 64 */
         || wc - 0x2d2e <= 0xa63f - 0x2d2e    /* 30994 */
         || wc - 0x16ed4 <= 0x1df3f - 0x16ed4 /* 28780 */
@@ -345,7 +337,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         return wc;
 
 #ifdef HAVE_LOCALE_TR
-    /* check for the 2 turkish mappings if we hav e a turkish locale. */
+    /* check for the 2 turkish mappings if we have a turkish locale. */
     if ((lower && (wc == 0x49 || wc == 0x130)) ||
         (!lower && (wc == 0x69 || wc == 0x131))) {
         const char *loc = setlocale(LC_CTYPE, NULL);
@@ -365,117 +357,55 @@ uint32_t _towcase(uint32_t wc, int lower) {
     }
 #endif
 
-    /* binary search the casemaps ranges. */
-    if (lower) {
-        /* binary search lower only */
-        if (wc <= MAP_LAST + MAP_LAST_LEN) {
-            lo = 0;
-            hi = ARRAY_SZ(casemaps) - 1;
-            while (lo <= hi) {
-                /* avoids overflow vs. (lo+hi)/2 */
-                const int mid = lo + (hi - lo) / 2;
-                const struct casemaps_s *cm = &casemaps[mid];
-                if (wc < cm->upper) // too low
-                    hi = mid - 1;
-                else if (wc - cm->upper < cm->len) { // in range
-                    if (cm->lower == 1)              // is LACE
-                        return wc + 1 - ((wc - cm->upper) & 1);
-                    else
-                        return wc + cm->lower;
-                } else // too high
-                    lo = mid + 1;
+    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
+    /* linear search both */
+    for (i = 0; i < 66; i++) {
+
+        int base = casemaps[i].upper + (lmask & casemaps[i].lower);
+        assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
+        if (wc - base < casemaps[i].len) {
+            if (casemaps[i].lower == 1) {
+                /* Need this exception (wrong lace). Tested from Unicode 4
+                   to 18. We search pairs later. */
+                if (!lower && wc == 0x1F3)
+                    return 0x1F1;
+                return wc + lower - ((wc - casemaps[i].upper) & 1);
+            } else {
+                return wc + lmul * casemaps[i].lower;
             }
         }
-        if (wc - MAPL_FIRST <= (MAPL_LAST + MAPL_LAST_LEN) - MAPL_FIRST) {
-            lo = 0;
-            hi = ARRAY_SZ(casemapsl) - 1;
-            while (lo <= hi) {
-                const int mid = lo + (hi - lo) / 2;
-                const struct casemapsl_s *cm = &casemapsl[mid];
-                if (wc < cm->upper) // lower
-                    hi = mid - 1;
-                else if (wc - cm->upper < cm->len) { // in range
-                    if (cm->lower == 1)
-                        return wc + 1 - ((wc - cm->upper) & 1);
-                    else
-                        return wc + cm->lower;
-                } else // higher
-                    lo = mid + 1;
-            }
-        }
-    } else {
-#define CASELOW casemaps[i].lower
-        /* linear search upper */
-        for (i = 0; i < (int)ARRAY_SZ(casemaps); i++) {
-            int base = casemaps[i].upper + CASELOW;
-            assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
-            if (wc - base < casemaps[i].len) {
-                if (casemaps[i].lower == 1) {
-                    /* Need this exception (wrong lace). Tested from Unicode 4
-                       to 18. */
-                    if (wc == 0x1F3)
-                        return 0x1F1;
-                    return wc - ((wc - casemaps[i].upper) & 1);
-                } else {
-                    return wc - CASELOW;
-                }
-            }
-        }
-        for (i = 0; i < (int)ARRAY_SZ(casemapsl); i++) {
-            unsigned long base = casemapsl[i].upper + casemapsl[i].lower;
-            assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
-            if (wc - base < casemapsl[i].len) {
-                if (casemapsl[i].lower == 1) {
-                    /* Need this exception (wrong lace). Tested from Unicode 4
-                       to 18. */
-                    // if (wc == 0x1F3)
-                    //    return 0x1F1;
-                    return wc - ((wc - casemapsl[i].upper) & 1);
-                } else {
-                    return wc - casemapsl[i].lower;
-                }
-            }
-        }
+        if (lower && casemaps[i].upper > wc)
+            break;
     }
-    if (lower) {
-        /* binary search lower only */
-        lo = 0;
-        hi = ARRAY_SZ(pairs) - 1;
-        while (lo <= hi) {
-            const int mid = lo + (hi - lo) / 2;
-            const unsigned short *p = (unsigned short *)&pairs[mid];
-            if (*p == wc)
-                return *(p + 1);
-            else if (*p < wc)
-                lo = mid + 1;
-            else
-                hi = mid - 1;
+    for (i = 0; i < 25; i++) {
+        unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
+        assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
+        if (wc - base < casemapsl[i].len) {
+            if (casemapsl[i].lower == 1) {
+                return wc + lower - ((wc - casemapsl[i].upper) & 1);
+            }
+            return wc + lmul * casemapsl[i].lower;
         }
-    } else {
-        /* full linear search without or reverse array for bsearch */
-        for (i = 0; i < (int)ARRAY_SZ(pairs); i++) {
-            assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
-            if (pairs[i][1] == wc)
-                return pairs[i][0];
-        }
+        if (lower && casemapsl[i].upper > wc)
+            break;
     }
-#ifdef HAVE_PAIRL
-#if PAIRL_SZ == 1
-    if (pairl[0][1 - lower] == wc)
-        return pairl[0][lower];
-#else
-    for (i = 0; i < (int)ARRAY_SZ(pairl); i++) {
+    for (i = 0; i < 149; i++) {
+        assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
+        if (pairs[i][1 - lower] == wc)
+            return pairs[i][lower];
+        if (lower && pairs[i][0] > wc)
+            break;
+    }
+    for (i = 0; i < 4; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
         if (pairl[i][1 - lower] == wc)
             return pairl[i][lower];
         if (lower && pairl[i][0] > wc)
             break;
     }
-#endif
-#endif
     return wc;
 }
-#undef ARRAY_SZ
-#undef CASELOW
+
 #undef CASEMAP
 #undef CASELACE

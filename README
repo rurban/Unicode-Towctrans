@@ -9,6 +9,8 @@ SYNOPSIS
         gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
         gen_wctrans --lower16
         gen_wctrans --fn __towcase
+        gen_wctrans --bits 18:14:10
+        gen_wctrans --lower16
 
 DESCRIPTION
     gen_wctrans generates a towctrans.h header file, which is used by "musl"
@@ -26,12 +28,23 @@ DESCRIPTION
 
     With "--lower16" it creates larger and more "casemaps" tables, with less
     long "casemapl" tables. Thus it finds those ranges earlier, at the cost
-    of more caches misses.
+    of more caches misses. Currently "--lower16" is the best performance and
+    size combination. For "--bits" the fastest are 18:14:10 and 12:12:8, the
+    smallest is the default 16:8:8.
+
+    With "--bsearch" the tolower check is done with a binary search, the
+    toupper check does a linear search without early exit. It needs more
+    space, and its performance is not that good as with "--lower16".
+
+    With "--bsearch-both" the size is even bigger, as we have to store the
+    order of the upper maps and pairs also to be able to binary search it.
+    *TODO*.
 
     Planned also for the multi-byte folding tables for wcsfc_s() for
     safeclib. As the single-byte "towupper" and "towlower" conversions are
     meaningless for many multi-byte unicode mappings, those with status F -
-    folding. Use a proper string foldcasing function instead.
+    full folding. Use a full string foldcasing function instead, as safeclib
+    "wcsfc_s", ICU "u_strToUpper" or libunistring "uc_toupper".
 
 PERFORMANCE
     Currently it is still a bit un-optimized, but small and fast enough
@@ -43,20 +56,22 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        184 [us] 100.00 %
-            my_low16:        229 [us] 80.35 %
-             my_bits:        252 [us] 73.02 %
-            musl-new:        149 [us] 123.49 %      210 errors
-            musl-old:        174 [us] 105.75 %      10 errors
-               glibc:        108 [us] 170.37 %      10 errors
+                  my:        122 [us] 100.00 %
+            my_low16:        118 [us] 103.39 %
+             my_bits:        128 [us] 95.31 %
+          my_bsearch:        153 [us] 79.74 %
+            musl-new:        125 [us] 97.60 %       210 errors
+            musl-old:        117 [us] 104.27 %      10 errors
+               glibc:        111 [us] 109.91 %      10 errors
 
         wc -c towctrans-*.o
-          4008 towctrans-my.o
-          4096 towctrans-mylow16.o
-          4392 towctrans-mybits.o
-          6848 towctrans-musl-new.o
-          3464 towctrans-musl-old.o
-         97440 towctrans-glibc.o
+          3464 towctrans-my.o
+          3568 towctrans-mylow16.o
+          3776 towctrans-mybits.o
+          3808 towctrans-mybsearch.o
+          6808 towctrans-musl-new.o
+          3416 towctrans-musl-old.o
+         97432 towctrans-glibc.o
 
     Results with more various "--bits" size combinations. They need just
     some logical fixups for the 5 errors.
