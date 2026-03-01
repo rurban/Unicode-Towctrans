@@ -3,14 +3,16 @@
 #include <wchar.h>
 
 #ifdef HAVE_PAIRL
-#define PAIRL_SZ ARRAY_SZ(pairl)
+#define PAIRL_SZ sizeof(pairl) / sizeof(*pairl)
 #else
 #define PAIRL_SZ 0L
 #endif
 #define STATS                                                                  \
     char *s = malloc(64);                                                      \
-    snprintf(s, 64, "%lu %lu %lu %lu %u", ARRAY_SZ(casemaps),                  \
-             ARRAY_SZ(casemapsl), ARRAY_SZ(pairs), PAIRL_SZ, 6);               \
+    snprintf(s, 64, "%lu %lu %lu %lu %u",                                      \
+             sizeof(casemaps) / sizeof(*casemaps),                             \
+             sizeof(casemapsl) / sizeof(*casemapsl),                           \
+             sizeof(pairs) / sizeof(*pairs), PAIRL_SZ, 6);                     \
     return s
 
 #ifdef LOW16

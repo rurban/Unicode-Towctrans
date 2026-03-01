@@ -41,7 +41,8 @@ our $PACKAGE = 'Unicode::Towctrans';
 $Unicode::Towctrans::VERSION = '0.03';
 
 use Getopt::Long;
-my ( $v, $lower16, $bits, $help, $verbose, $safec, $musl );
+my ( $v, $lower16, $bits, $help, $verbose, $safec, $musl,
+     $bsearch, $bsearch_both );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $fn            = "_towcase";
@@ -57,6 +58,8 @@ GetOptions(
     "min-excl=i"    => \$MIN_ECXL,         # numeric
     "lower16"       => \$lower16,          # flag
     "bits=s"        => \$bits,             # string
+    "bsearch"       => \$bsearch,          # flag
+    "bsearch-both"  => \$bsearch_both,     # flag
     "fn=s"          => \$fn,               # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
@@ -77,6 +80,8 @@ OPTIONS
 --lower16             use 16bit shorts for casemap.lower instead of 8.
                       moves more ranges from the long to the short first check.
 --bits 16:10:8        set other bitsizes for the casemaps struct members
+--bsearch             binary search the towlower tables
+--bsearch-both        binary search the towupper tables also (bigger)
 --fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
@@ -779,10 +784,10 @@ if (@pairl) {
 }
 print FH "\n";
 
+# // int lmul;  /* 1 for lower, -1 for upper */
+# // int lmask; /* 0 for lower, -1/0xffff for upper */
 printf FH "uint32_t %s(uint32_t wc, int lower) {
     int i;
-    int lmul;  /* 1 for lower, -1 for upper */
-    int lmask; /* 0 for lower, -1/0xffff for upper */
     int lo, hi;
     /* !iswalpha(wc) is broken on most locales, at least with glibc. */
 ", $fn;
@@ -891,51 +896,98 @@ print FH <<'EOF';
         }
     }
 #endif
-EOF
 
-printf FH "#define CASELOW %s\n", $use_bitfields ? "low" : "cm->lower";
-print FH <<'EOF';
-    lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
-    lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
-    /* binary search the casemaps ranges. FIXME: only with lower */
-    if (wc <= MAP_LAST + MAP_LAST_LEN) {
-        lo = 0;
-        hi = ARRAY_SZ(casemaps) - 1;
-        while (lo <= hi) {
-            const int mid = lo + (hi - lo) / 2; // avoids overflow vs. (lo+hi)/2
-            const struct casemaps_s *cm = &casemaps[mid];
 EOF
-print FH "        int low = cm->sign ? -(cm->lower) : cm->lower;\n"
-    if $use_bitfields;
+#    //lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
+#    //lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
 print FH <<'EOF';
-            int base = cm->upper + (lmask & CASELOW);
-            if (wc < cm->upper) // too low
-                hi = mid - 1;
-            else if (wc - base < cm->len) { // in range
-                if (cm->lower == 1)         // is LACE
-                    return wc + lower - ((wc - cm->upper) & 1);
-                else
-                    return wc + lmul * CASELOW;
-            } else // too high
-                lo = mid + 1;
+    /* binary search the casemaps ranges. */
+    if (lower) {
+        /* binary search lower only */
+        if (wc <= MAP_LAST + MAP_LAST_LEN) {
+            lo = 0;
+            hi = ARRAY_SZ(casemaps) - 1;
+            while (lo <= hi) {
+                /* avoids overflow vs. (lo+hi)/2 */
+                const int mid = lo + (hi - lo) / 2;
+                const struct casemaps_s *cm = &casemaps[mid];
+                if (wc < cm->upper) // too low
+                    hi = mid - 1;
+                else if (wc - cm->upper < cm->len) { // in range
+                    if (cm->lower == 1)              // is LACE
+                        return wc + 1 - ((wc - cm->upper) & 1);
+                    else
+EOF
+if ($use_bitfields) {
+    print FH <<'EOF';
+                        return cm->sign ? wc - cm->lower : wc + cm->lower;
+EOF
+} else {
+    print FH <<'EOF';
+                        return wc + cm->lower;
+EOF
+}
+print FH <<'EOF';
+                } else // too high
+                    lo = mid + 1;
+            }
         }
-    }
-    if (wc - MAPL_FIRST <= (MAPL_LAST + MAPL_LAST_LEN) - MAPL_FIRST) {
-        lo = 0;
-        hi = ARRAY_SZ(casemapsl) - 1;
-        while (lo <= hi) {
-            const int mid = lo + (hi - lo) / 2; // avoids overflow vs. (lo+hi)/2
-            const struct casemapsl_s *cm = &casemapsl[mid];
-            int base = cm->upper + (lmask & cm->lower);
-            if (wc < cm->upper) // lower
-                hi = mid - 1;
-            else if (wc - base < cm->len) { // in range
-                if (cm->lower == 1)
-                    return wc + lower - ((wc - cm->upper) & 1);
-                else
-                    return wc + lmul * cm->lower;
-            } else // higher
-                lo = mid + 1;
+        if (wc - MAPL_FIRST <= (MAPL_LAST + MAPL_LAST_LEN) - MAPL_FIRST) {
+            lo = 0;
+            hi = ARRAY_SZ(casemapsl) - 1;
+            while (lo <= hi) {
+                const int mid = lo + (hi - lo) / 2;
+                const struct casemapsl_s *cm = &casemapsl[mid];
+                if (wc < cm->upper) // lower
+                    hi = mid - 1;
+                else if (wc - cm->upper < cm->len) { // in range
+                    if (cm->lower == 1)
+                        return wc + 1 - ((wc - cm->upper) & 1);
+                    else
+                        return wc + cm->lower;
+                } else // higher
+                    lo = mid + 1;
+            }
+        }
+    } else {
+EOF
+printf FH "#define CASELOW %s\n", $use_bitfields ? "low" : "casemaps[i].lower";
+print FH <<'EOF';
+        /* linear search upper */
+        for (i = 0; i < (int)ARRAY_SZ(casemaps); i++) {
+EOF
+print FH <<'EOF' if $use_bitfields;
+            const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;
+EOF
+print FH <<'EOF';
+            int base = casemaps[i].upper + CASELOW;
+            assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
+            if (wc - base < casemaps[i].len) {
+                if (casemaps[i].lower == 1) {
+                    /* Need this exception (wrong lace). Tested from Unicode 4
+                       to 18. We search pairs later. */
+                    if (wc == 0x1F3)
+                        return 0x1F1;
+                    return wc - ((wc - casemaps[i].upper) & 1);
+                } else {
+                    return wc - CASELOW;
+                }
+            }
+        }
+        for (i = 0; i < (int)ARRAY_SZ(casemapsl); i++) {
+            unsigned long base = casemapsl[i].upper + casemapsl[i].lower;
+            assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
+            if (wc - base < casemapsl[i].len) {
+                if (casemapsl[i].lower == 1) {
+                    /* Need this exception (wrong lace). Tested from Unicode 4
+                       to 18. */
+                    // if (wc == 0x1F3)
+                    //    return 0x1F1;
+                    return wc - ((wc - casemapsl[i].upper) & 1);
+                } else {
+                    return wc - casemapsl[i].lower;
+                }
+            }
         }
     }
     if (lower) {
@@ -944,9 +996,9 @@ print FH <<'EOF';
         hi = ARRAY_SZ(pairs) - 1;
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2;
-            const unsigned short *p = (unsigned short*)&pairs[mid];
+            const unsigned short *p = (unsigned short *)&pairs[mid];
             if (*p == wc)
-                return *(p+1);
+                return *(p + 1);
             else if (*p < wc)
                 lo = mid + 1;
             else
@@ -954,7 +1006,7 @@ print FH <<'EOF';
         }
     } else {
         /* full linear search without or reverse array for bsearch */
-        for (i = 0; i < ARRAY_SZ(pairs); i++) {
+        for (i = 0; i < (int)ARRAY_SZ(pairs); i++) {
             assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
             if (pairs[i][1] == wc)
                 return pairs[i][0];
@@ -965,8 +1017,7 @@ print FH <<'EOF';
     if (pairl[0][1 - lower] == wc)
         return pairl[0][lower];
 #else
-    /* TODO: binary search the pairs (lower only?). GH #3 */
-    for (i = 0; i < ARRAY_SZ(pairl); i++) {
+    for (i = 0; i < (int)ARRAY_SZ(pairl); i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
         if (pairl[i][1 - lower] == wc)
             return pairl[i][lower];
@@ -1094,17 +1145,17 @@ vary more.
 
     make -C examples
     ./bench
-              my:        175 [us] 100.00 %
-        my_low16:        151 [us] 115.89 %
-         my_bits:        162 [us] 108.02 %
-        musl-new:        140 [us] 125.00 %	210 errors
-        musl-old:        195 [us] 89.74 %	10 errors
-           glibc:        152 [us] 115.13 %	10 errors
+              my:        184 [us] 100.00 %
+        my_low16:        229 [us] 80.35 %
+         my_bits:        252 [us] 73.02 %
+        musl-new:        149 [us] 123.49 %	210 errors
+        musl-old:        174 [us] 105.75 %	10 errors
+           glibc:        108 [us] 170.37 %	10 errors
 
     wc -c towctrans-*.o
-      4720 towctrans-my.o
-      4816 towctrans-mylow16.o
-      5080 towctrans-mybits.o
+      4008 towctrans-my.o
+      4096 towctrans-mylow16.o
+      4392 towctrans-mybits.o
       6848 towctrans-musl-new.o
       3464 towctrans-musl-old.o
      97440 towctrans-glibc.o

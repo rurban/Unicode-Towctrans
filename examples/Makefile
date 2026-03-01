@@ -1,7 +1,7 @@
 .PHONY: all clean update-bench
 CC = cc
 DEFINES = -DHAVE_LOCALE_TR
-CFLAGS_BENCH = -O2 -I.
+CFLAGS_BENCH = -O2 -I. -DNDEBUG
 CFLAGS = -g -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-mylow16.o towctrans-mybits.o towctrans-musl-new.o \
       towctrans-musl-old.o towctrans-glibc.o
