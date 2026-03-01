@@ -390,7 +390,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     }
     if (wc - MAPL_FIRST <= (MAPL_LAST + MAPL_LAST_LEN) - MAPL_FIRST) {
         lo = 0;
-        hi = ARRAY_SZ(casemapsl) - 1; // 103
+        hi = ARRAY_SZ(casemapsl) - 1;
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2; // avoids overflow vs. (lo+hi)/2
             const struct casemapsl_s *cm = &casemapsl[mid];
@@ -406,13 +406,27 @@ uint32_t _towcase(uint32_t wc, int lower) {
                 lo = mid + 1;
         }
     }
-    /* TODO: binary search. One for lower and a reverse array for upper */
-    for (i = 0; i < ARRAY_SZ(pairs); i++) {
-        assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
-        if (pairs[i][1 - lower] == wc)
-            return pairs[i][lower];
-        if (lower && pairs[i][0] > wc)
-            break;
+    if (lower) {
+        /* binary search lower only */
+        lo = 0;
+        hi = ARRAY_SZ(pairs) - 1;
+        while (lo <= hi) {
+            const int mid = lo + (hi - lo) / 2;
+            const unsigned short *p = (unsigned short *)&pairs[mid];
+            if (*p == wc)
+                return *(p + 1);
+            else if (*p < wc)
+                lo = mid + 1;
+            else
+                hi = mid - 1;
+        }
+    } else {
+        /* full linear search without or reverse array for bsearch */
+        for (i = 0; i < ARRAY_SZ(pairs); i++) {
+            assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
+            if (pairs[i][1] == wc)
+                return pairs[i][0];
+        }
     }
 #ifdef HAVE_PAIRL
 #if PAIRL_SZ == 1
