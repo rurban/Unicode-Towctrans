@@ -591,7 +591,7 @@ while ( my $l = <$CF> ) {
             }
         }
     }
-    $prev = $cp;
+    $prev = $cp if $status eq 'C' or $status eq 'S';
 }
 close $CF;
 
@@ -1340,19 +1340,19 @@ vary more.
 
     make -C examples
     ./bench
-              my:        127 [us] 100.00 %
-        my_low16:        157 [us] 80.89 %
-         my_bits:        128 [us] 99.22 %
-      my_bsearch:        168 [us] 75.60 %
-        musl-new:        137 [us] 92.70 %	210 errors
-        musl-old:        187 [us] 67.91 %	10 errors
-           glibc:         75 [us] 169.33 %	10 errors
+              my:        145 [us] 100.00 %
+        my_low16:        115 [us] 126.09 %
+         my_bits:        146 [us] 99.32 %
+      my_bsearch:        126 [us] 115.08 %
+        musl-new:        148 [us] 97.97 %	210 errors
+        musl-old:        212 [us] 68.40 %	10 errors
+           glibc:        141 [us] 102.84 %	10 errors
 
     wc -c towctrans-*.o
-      3464 towctrans-my.o
-      3568 towctrans-mylow16.o
-      3776 towctrans-mybits.o
-      3808 towctrans-mybsearch.o
+      3384 towctrans-my.o
+      3496 towctrans-mylow16.o
+      3704 towctrans-mybits.o
+      3696 towctrans-mybsearch.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o
      97432 towctrans-glibc.o
