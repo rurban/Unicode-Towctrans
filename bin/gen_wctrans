@@ -1001,7 +1001,26 @@ if ($bsearch) {
     my $bits_ret =
       $use_bitfields
       ? "cm->sign ? wc - cm->lower : wc + cm->lower;\n"
-      : "wc + cm->lower";
+        : "wc + cm->lower";
+    # fast search lower pairl
+    my $pairl_search = "";
+    if ( $SZ_PAIRL == 1 ) {
+        $pairl_search = <<'EOF';
+        if (pairl[0][1 - lower] == wc)
+            return pairl[0][lower];
+EOF
+    }
+    elsif ( $SZ_PAIRL > 1 ) {
+        $pairl_search = <<"EOF";
+        for (i = 0; i < $SZ_PAIRL; i++) {
+            assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
+            if (pairl[i][0] == wc)
+                return pairl[i][1];
+            if (pairl[i][0] > wc)
+                break;
+        }
+EOF
+    }
     print FH <<"EOF";
     /* binary search the casemaps ranges. */
     if (lower) {
@@ -1041,6 +1060,20 @@ if ($bsearch) {
                     lo = mid + 1;
             }
         }
+        /* binary search pairs lower */
+        lo = 0;
+        hi = $SZ_PAIR - 1;
+        while (lo <= hi) {
+            const int mid = lo + (hi - lo) / 2;
+            const unsigned short *p = (unsigned short *)&pairs[mid];
+            if (*p == wc)
+                return *(p + 1);
+            else if (*p < wc)
+                lo = mid + 1;
+            else
+                hi = mid - 1;
+        }
+$pairl_search
     } else {
 EOF
     my $low_decl =
@@ -1048,22 +1081,21 @@ EOF
       ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;"
       : "";
     my $CASELOW      = $use_bitfields ? "low" : "casemaps[i].lower";
-    my $pairl_search = "";
+    $pairl_search = "";
     if ( $SZ_PAIRL == 1 ) {
         $pairl_search = <<'EOF';
-    if (pairl[0][1 - lower] == wc)
-        return pairl[0][lower];
+        if (pairl[0][1 - lower] == wc)
+            return pairl[0][lower];
 EOF
     }
     elsif ( $SZ_PAIRL > 1 ) {
+        # upper only
         $pairl_search = <<"EOF";
-    for (i = 0; i < $SZ_PAIRL; i++) {
-        assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
-        if (pairl[i][1 - lower] == wc)
-            return pairl[i][lower];
-        if (lower && pairl[i][0] > wc)
-            break;
-    }
+        for (i = 0; i < $SZ_PAIRL; i++) {
+            assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
+            if (pairl[i][1] == wc)
+                return pairl[i][0];
+        }
 EOF
     }
     print FH <<"EOF";
@@ -1099,30 +1131,14 @@ $low_decl
                 }
             }
         }
-    }
-    if (lower) {
-        /* binary search lower only */
-        lo = 0;
-        hi = $SZ_PAIR - 1;
-        while (lo <= hi) {
-            const int mid = lo + (hi - lo) / 2;
-            const unsigned short *p = (unsigned short *)&pairs[mid];
-            if (*p == wc)
-                return *(p + 1);
-            else if (*p < wc)
-                lo = mid + 1;
-            else
-                hi = mid - 1;
-        }
-    } else {
         /* upper: full linear search */
         for (i = 0; i < $SZ_PAIR; i++) {
             assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
             if (pairs[i][1] == wc)
                 return pairs[i][0];
         }
+$pairl_search
     }
-    $pairl_search
     return wc;
 }
 
@@ -1340,13 +1356,13 @@ vary more.
 
     make -C examples
     ./bench
-              my:        145 [us] 100.00 %
-        my_low16:        115 [us] 126.09 %
-         my_bits:        146 [us] 99.32 %
-      my_bsearch:        126 [us] 115.08 %
-        musl-new:        148 [us] 97.97 %	210 errors
-        musl-old:        212 [us] 68.40 %	10 errors
-           glibc:        141 [us] 102.84 %	10 errors
+              my:        137 [us] 100.00 %
+        my_low16:        154 [us] 88.96 %
+         my_bits:        114 [us] 120.18 %
+      my_bsearch:        139 [us] 98.56 %
+        musl-new:        145 [us] 94.48 %	210 errors
+        musl-old:        220 [us] 62.27 %	10 errors
+           glibc:         81 [us] 169.14 %	10 errors
 
     wc -c towctrans-*.o
       3384 towctrans-my.o

@@ -63,13 +63,13 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        145 [us] 100.00 %
-            my_low16:        115 [us] 126.09 %
-             my_bits:        146 [us] 99.32 %
-          my_bsearch:        126 [us] 115.08 %
-            musl-new:        148 [us] 97.97 %       210 errors
-            musl-old:        212 [us] 68.40 %       10 errors
-               glibc:        141 [us] 102.84 %      10 errors
+                  my:        137 [us] 100.00 %
+            my_low16:        154 [us] 88.96 %
+             my_bits:        114 [us] 120.18 %
+          my_bsearch:        139 [us] 98.56 %
+            musl-new:        145 [us] 94.48 %       210 errors
+            musl-old:        220 [us] 62.27 %       10 errors
+               glibc:         81 [us] 169.14 %      10 errors
 
         wc -c towctrans-*.o
           3384 towctrans-my.o
