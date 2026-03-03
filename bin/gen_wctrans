@@ -43,7 +43,8 @@ $Unicode::Towctrans::VERSION = '0.03';
 use Getopt::Long;
 my (
     $v,     $lower16, $bits,    $help, $verbose,
-    $safec, $musl,    $bsearch, $bsearch_both
+    $safec, $musl,    $bsearch, $bsearch_both,
+    $table
 );
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
@@ -62,6 +63,7 @@ GetOptions(
     "bits=s"        => \$bits,             # string
     "bsearch"       => \$bsearch,          # flag
     "bsearch-both"  => \$bsearch_both,     # flag
+    "table"         => \$table,            # flag
     "fn=s"          => \$fn,               # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
@@ -84,6 +86,7 @@ OPTIONS
 --bits 16:10:8        set other bitsizes for the casemaps struct members
 --bsearch             binary search the towlower tables
 --bsearch-both        binary search the towupper tables also (bigger)
+--table               use the musl-new style 3-way tables (bigger)
 --fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
@@ -93,6 +96,12 @@ EOF
     exit;
 }
 
+if ($table) {
+    die "cannot --bsearch with --table" if $bsearch;
+    die "cannot --bsearch-both with --table" if $bsearch_both;
+    die "cannot --lower16 with --table" if $lower16;
+    die "cannot --bits with --table" if $bits;
+}
 if ($musl) {
     $with_iswalpha = 1;
     $out           = "towctrans.c" if $out eq "towctrans.h";
@@ -1276,6 +1285,9 @@ Unicode::Towctrans - Generate small casefolding tables
     gen_wctrans --fn __towcase
     gen_wctrans --bits 18:14:10
     gen_wctrans --lower16
+    gen_wctrans --bsearch
+    gen_wctrans --bsearch-both
+    gen_wctrans --table
 
 =head1 DESCRIPTION
 
@@ -1305,6 +1317,10 @@ space, and its performance is not that good as with C<--lower16>.
 With C<--bsearch-both> the size is even bigger, as we have to store
 the order of the upper maps and pairs also to be able to binary search
 it. I<TODO>.
+
+With C<--table>, the musl-new style, the size is much bigger, as we
+have to store mappings for all blocks. The lookup is much faster
+though. I<TODO>.
 
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
 safeclib. As the single-byte C<towupper> and C<towlower> conversions

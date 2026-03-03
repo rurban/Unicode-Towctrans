@@ -11,6 +11,9 @@ SYNOPSIS
         gen_wctrans --fn __towcase
         gen_wctrans --bits 18:14:10
         gen_wctrans --lower16
+        gen_wctrans --bsearch
+        gen_wctrans --bsearch-both
+        gen_wctrans --table
 
 DESCRIPTION
     gen_wctrans generates a towctrans.h header file, which is used by "musl"
@@ -38,6 +41,10 @@ DESCRIPTION
 
     With "--bsearch-both" the size is even bigger, as we have to store the
     order of the upper maps and pairs also to be able to binary search it.
+    *TODO*.
+
+    With "--table", the musl-new style, the size is much bigger, as we have
+    to store mappings for all blocks. The lookup is much faster though.
     *TODO*.
 
     Planned also for the multi-byte folding tables for wcsfc_s() for
