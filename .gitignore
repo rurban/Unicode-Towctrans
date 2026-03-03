@@ -25,6 +25,8 @@ towctrans.h.*
 t/t_towctrans
 t/t_low16
 t/t_bits
+t/t_bsearch
+t/t_bsearch_both
 /Unicode-Towctrans-*
 /diffs.log
 examples/bench
@@ -33,8 +35,10 @@ examples/test
 examples/test-[0-9]*
 examples/test-asan
 examples/test-bits
+examples/test-bsearch
 examples/test-low16
 examples/test-glibc
 examples/test-iswalpha
 examples/towctrans-[0-9]*.c
-eexamples/towctrans*.h
+examples/towctrans.h
+examples/towctrans*.h

@@ -13,6 +13,8 @@ extern wint_t my_bits_towlower(wint_t wc);
 extern wint_t my_bits_towupper(wint_t wc);
 extern wint_t my_bsearch_towlower(wint_t wc);
 extern wint_t my_bsearch_towupper(wint_t wc);
+extern wint_t my_bsearchb_towlower(wint_t wc);
+extern wint_t my_bsearchb_towupper(wint_t wc);
 extern wint_t musl_towupper(wint_t wc); /* towctrans-musl-new */
 extern wint_t musl_towlower(wint_t wc);
 extern wint_t old_towupper(wint_t wc); /* towctrans-musl-old */
@@ -85,16 +87,17 @@ int main(void) {
     t1 = (t1 - t0) / RETRIES;                                                  \
     perc = t_my ? t_my * 100.0 / t1 : 100;                                     \
     if (errs)                                                                  \
-        printf("  %10s: %10ld [us] %.02f %%\t%u errors\n", name, t1, perc,     \
+        printf("  %12s: %10ld [us] %.02f %%\t%u errors\n", name, t1, perc,     \
                errs / RETRIES);                                                \
     else                                                                       \
-        printf("  %10s: %10ld [us] %.02f %%\n", name, t1, perc)
+        printf("  %12s: %10ld [us] %.02f %%\n", name, t1, perc)
 
     BENCH("my", my_towlower, my_towupper);
     t_my = t1;
     BENCH("my_low16", my_low16_towlower, my_low16_towupper);
     BENCH("my_bits", my_bits_towlower, my_bits_towupper);
     BENCH("my_bsearch", my_bsearch_towlower, my_bsearch_towupper);
+    BENCH("my_bsearchb", my_bsearchb_towlower, my_bsearchb_towupper);
     BENCH("musl-new", musl_towlower, musl_towupper);
     if (perc > 300)
         perf_errs++;

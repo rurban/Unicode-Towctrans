@@ -4,6 +4,7 @@ DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I. -DNDEBUG
 CFLAGS = -g -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-mylow16.o towctrans-mybits.o towctrans-mybsearch.o \
+      towctrans-mybsearch-both.o \
       towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
@@ -32,6 +33,8 @@ towctrans-bits.h :: ../CaseFolding.txt.15
 	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 15 --out examples/$@ --cf CaseFolding.txt.15
 towctrans-bsearch.h :: ../CaseFolding.txt.15
 	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 15 --out examples/$@ --cf CaseFolding.txt.15
+towctrans-bsearch-both.h :: ../CaseFolding.txt.15
+	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 15 --out examples/$@ --cf CaseFolding.txt.15
 
 towctrans-my.o: towctrans-my.c towctrans-15.h
 	$(CC) -c $(CFLAGS_BENCH) $< -o $@
@@ -41,6 +44,8 @@ towctrans-mybits.o: towctrans-my.c towctrans-bits.h
 	$(CC) -c -DBITS $(CFLAGS_BENCH) $< -o $@
 towctrans-mybsearch.o: towctrans-my.c towctrans-bsearch.h
 	$(CC) -c -DBSEARCH $(CFLAGS_BENCH) $< -o $@
+towctrans-mybsearch-both.o: towctrans-my.c towctrans-bsearch-both.h
+	$(CC) -c -DBSEARCH_BOTH $(CFLAGS_BENCH) $< -o $@
 
 test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
@@ -58,9 +63,13 @@ test-bits: test.c ../towctrans-bits.h
 	$(CC) $(CFLAGS) -DBITS -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bsearch.h: ../$(GEN)
 	../$(GEN) --bsearch --fn=_towcase_bsearch -v 15 --out $@ --cf ../CaseFolding.txt.15
+../towctrans-bsearch-both.h: ../$(GEN)
+	../$(GEN) --bsearch-both --fn=_towcase_bsearchb -v 15 --out $@ --cf ../CaseFolding.txt.15
 test-bsearch: test.c ../towctrans-bsearch.h
 	$(CC) $(CFLAGS) -DBSEARCH -UHAVE_LOCALE_TR -o $@ test.c
-test-5: test.c towctrans-5.c
+test-bsearch-both: test.c ../towctrans-bsearch-both.h
+	$(CC) $(CFLAGS) -DBSEARCH_BOTH -UHAVE_LOCALE_TR -o $@ test.c
+est-5: test.c towctrans-5.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-6: test.c towctrans-6.c
 	$(CC) $(CFLAGS) -I. -o $@ $^

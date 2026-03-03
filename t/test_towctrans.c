@@ -11,6 +11,8 @@
 #include "towctrans-low16.h"
 #elif defined BITS
 #include "towctrans-bits.h"
+#elif defined BSEARCH_BOTH
+#include "towctrans-bsearch-both.h"
 #elif defined BSEARCH
 #include "towctrans-bsearch.h"
 #else

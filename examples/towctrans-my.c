@@ -42,6 +42,15 @@ wint_t my_bsearch_towupper(wint_t wc) { return _towcase_bsearch(wc, 1); }
 char *my_bsearch_stats(void) { STATS; }
 #endif
 
+#elif defined BSEARCH_BOTH
+
+#include "towctrans-bsearch-both.h"
+wint_t my_bsearchb_towlower(wint_t wc) { return _towcase_bsearchb(wc, 0); }
+wint_t my_bsearchb_towupper(wint_t wc) { return _towcase_bsearchb(wc, 1); }
+#ifdef BITS_STATS
+char *my_bsearchb_stats(void) { STATS; }
+#endif
+
 #else
 
 #include "towctrans-15.h"

@@ -39,9 +39,9 @@ DESCRIPTION
     toupper check does a linear search without early exit. It needs more
     space, and its performance is not that good as with "--lower16".
 
-    With "--bsearch-both" the size is even bigger, as we have to store the
-    order of the upper maps and pairs also to be able to binary search it.
-    *TODO*.
+    With "--bsearch-both" the speed is faster and the size is even bigger,
+    as we have to store the order of the upper maps and pairs also to be
+    able to binary search it.
 
     With "--table", the musl-new style, the size is much bigger, as we have
     to store mappings for all blocks. The lookup is much faster though.
@@ -63,19 +63,21 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                  my:        137 [us] 100.00 %
-            my_low16:        154 [us] 88.96 %
-             my_bits:        114 [us] 120.18 %
-          my_bsearch:        139 [us] 98.56 %
-            musl-new:        145 [us] 94.48 %       210 errors
-            musl-old:        220 [us] 62.27 %       10 errors
-               glibc:         81 [us] 169.14 %      10 errors
+                    my:        124 [us] 100.00 %
+              my_low16:        126 [us] 98.41 %
+               my_bits:        150 [us] 82.67 %
+            my_bsearch:        128 [us] 96.88 %
+           my_bsearchb:        135 [us] 91.85 %
+              musl-new:        151 [us] 82.12 %     210 errors
+              musl-old:        199 [us] 62.31 %     10 errors
+                 glibc:         72 [us] 172.22 %    10 errors
 
         wc -c towctrans-*.o
           3384 towctrans-my.o
           3496 towctrans-mylow16.o
           3704 towctrans-mybits.o
           3696 towctrans-mybsearch.o
+          4976 towctrans-mybsearch-both.o
           6808 towctrans-musl-new.o
           3416 towctrans-musl-old.o
          97432 towctrans-glibc.o
