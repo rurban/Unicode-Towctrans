@@ -41,8 +41,10 @@ our $PACKAGE = 'Unicode::Towctrans';
 $Unicode::Towctrans::VERSION = '0.03';
 
 use Getopt::Long;
-my ( $v, $lower16, $bits, $help, $verbose, $safec, $musl,
-     $bsearch, $bsearch_both );
+my (
+    $v,     $lower16, $bits,    $help, $verbose,
+    $safec, $musl,    $bsearch, $bsearch_both
+);
 my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $fn            = "_towcase";
@@ -128,7 +130,7 @@ my @cmt = (
 $cmt[$_] = ( $bits[$_] >= 10 ? "" : " " ) . $cmt[$_] for 0 .. 2;
 if ($use_bitfields) {
     $f_upper = sprintf( "unsigned upper : %u; %s", $bits[0], $cmt[0] );
-    $f_sign  = sprintf( "unsigned sign  : 1;  /* if negative */" );
+    $f_sign  = sprintf("unsigned sign  : 1;  /* if negative */");
     $f_lower = sprintf( "unsigned lower : %u; %s", $bits[1], $cmt[1] );
     $f_len   = sprintf( "unsigned len : %u;   %s", $bits[2], $cmt[2] );
 }
@@ -140,8 +142,10 @@ else {
 
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
-my ( @map, @lace, @excl, @pair, $prev, $lc, %upper, %lower,
-     @CASE, @CASEL, @PAIR, @PAIRL );
+my (
+    @map,   @lace,  @excl, @pair,  $prev, $lc,
+    %upper, %lower, @CASE, @CASEL, @PAIR, @PAIRL
+);
 
 ########## helpers ##########
 
@@ -152,78 +156,92 @@ sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
 ## simulate the search via the global @map, @lace, @excl, @pair arrays
 ## to be able to leave out an uneeded pair,lace,map. Esp. for upper.
 sub simulate {
-    my ($wc, $lower) = @_;
+    my ( $wc, $lower ) = @_;
     die if $lower != 0 && $lower != 1;
 
     for my $e (@excl) {
         if ( $wc >= $e->[0] && $wc <= $e->[1] ) {
-            warn( sprintf( "simulate wc %04X in excl [%04X, %04X]\n", $wc,
-                           $e->[0], $e->[1] )) if $verbose;
+            warn(
+                sprintf(
+                    "simulate wc %04X in excl [%04X, %04X]\n",
+                    $wc, $e->[0], $e->[1]
+                )
+            ) if $verbose;
             return $wc;
         }
         last if $wc > $e->[1];
     }
+
     # skip the turkish checks
-    my $lmul = 2 * $lower - 1; # 1 for lower, -1 for upper
-    my $lmask = $lower - 1;    # 0 for lower, -1/0xffff for upper
-    # interleave laces and maps
+    my $lmul  = 2 * $lower - 1;    # 1 for lower, -1 for upper
+    my $lmask = $lower - 1;        # 0 for lower, -1/0xffff for upper
+                                   # interleave laces and maps
     my ( $i, $m ) = each @map;
     my ( $j, $l ) = each @lace;
     while ( defined($i) or defined($j) ) {
+
         # MAP or LACE
         if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
-            my $lower   = map_lower($m);
-            my $len     = map_len($m);
-            my $base = $m->[0] + ($lmask & $lower);
-            if ($wc - $base < $len) {
+            my $lower = map_lower($m);
+            my $len   = map_len($m);
+            my $base  = $m->[0] + ( $lmask & $lower );
+            if ( $wc - $base < $len ) {
+
                 # The only reverse fixup needed. Tested from Unicode 4 to 18.
                 # clashes with 1E9B; C; 1E61 */
-                if (!$lower && $wc == 0x1E61) {
+                if ( !$lower && $wc == 0x1E61 ) {
                     return 0x1E60;
-                } else {
+                }
+                else {
                     return $wc + $lmul * $lower;
                 }
             }
+
             # FIXME we really should merge them earlier
-            elsif ($lower && $m->[0] > $wc) {
+            elsif ( $lower && $m->[0] > $wc ) {
+
                 # exhaust @map iterator
-                while (each @map) { ; }
+                while ( each @map ) { ; }
             }
             ( $i, $m ) = each @map;
         }
         elsif ( defined($j) ) {
-            my $lower   = lace_lower($l);
-            my $len     = lace_len_1($l);
-            my $base = $l->[0] + ($lmask & $lower);
-            if ($wc - $base < $len) {
+            my $lower = lace_lower($l);
+            my $len   = lace_len_1($l);
+            my $base  = $l->[0] + ( $lmask & $lower );
+            if ( $wc - $base < $len ) {
+
                 # The only reverse fixup needed. Tested from Unicode 4 to 18.
                 # clashes with 1E9B; C; 1E61 */
-                if (!$lower && $wc == 0x1E61) {
+                if ( !$lower && $wc == 0x1E61 ) {
                     return 0x1E60;
-                } else {
+                }
+                else {
                     return $wc + $lmul * $lower;
                 }
             }
+
             # FIXME we really should merge them earlier
-            elsif ($lower && $l->[0] > $wc) {
+            elsif ( $lower && $l->[0] > $wc ) {
+
                 # exhaust @lace iterator
-                while (each @lace) { ; }
+                while ( each @lace ) { ; }
             }
             ( $j, $l ) = each @lace;
         }
     }
+
     # pairs
     for my $p (@pair) {
-        if ($p->[1 - $lower] == $wc) {
+        if ( $p->[ 1 - $lower ] == $wc ) {
             return $p->[$lower];
         }
-        if ($lower && $p->[0] > $wc) {
+        if ( $lower && $p->[0] > $wc ) {
             last;
         }
     }
     return $wc;
 }
-
 
 ########## writing header files ##########
 
@@ -253,14 +271,15 @@ sub map_len {
 
 sub map_range {
     my $m = shift;
-    return ($m->[0], $m->[2]);
+    return ( $m->[0], $m->[2] );
 }
 
-sub map_clashes{
+sub map_clashes {
+
     # eg   CASEMAP(0x01f1, 0x01f1, 0x01f3) (ie pair 1f1, 1f3)
     # with CASELACE(0x01f2, 0x01f4) (ie pair 1f2, 1f3) => true
     # needed for upper 01F3 => 01F2 by lace, 01F3 => 01F2 by map.
-    my ($m, $l) = @_;
+    my ( $m, $l ) = @_;
     return 0 if !defined($m) or !defined($l);
     my $l_len = lace_len($l);
     my $l_max = $l->[1] + $l_len;
@@ -304,19 +323,24 @@ sub add_map {
             warn sprintf( "bump map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
         }
     }
+
     # check if the previous map has only len 1,
     # convert to pair then.
     elsif ( $map->[-1]
-            && map_len($map->[-1]) == 1 )
+        && map_len( $map->[-1] ) == 1 )
     {
-        if (map_clashes($map->[-1], $lace[-1])) {
-            warn( sprintf( "last map %04X, %04X clashes with last lace %04X, %04X\n",
-                           $map->[-1][0], $map->[-1][2], @{$lace[-1]} ) )
-                if $verbose;
+        if ( map_clashes( $map->[-1], $lace[-1] ) ) {
+            warn(
+                sprintf(
+                    "last map %04X, %04X clashes with last lace %04X, %04X\n",
+                    $map->[-1][0], $map->[-1][2], @{ $lace[-1] }
+                )
+            ) if $verbose;
         }
         add_pair( \@pair, $map->[-1][0], $map->[-1][2] );
-        warn( sprintf( "convert short map to pair %04X, %04X\n", @{ $pair[-1] } ) )
-            if $verbose;
+        warn(
+            sprintf( "convert short map to pair %04X, %04X\n", @{ $pair[-1] } )
+        ) if $verbose;
         $map->[-1][0] = $base;
         $map->[-1][1] = $base;
         $map->[-1][2] = $to;
@@ -325,17 +349,24 @@ sub add_map {
         }
     }
     else {
-        if ($diff == 1 and map_clashes([$base, $base, $to], $lace[-1])) {
+        if ( $diff == 1 and map_clashes( [ $base, $base, $to ], $lace[-1] ) ) {
+
             # do we need this pair?
-            if (simulate($base, 0) != $to && simulate($to, 1) != $base) {
-                warn( sprintf( "add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
-                               $base, $to, @{$lace[-1]} ) ) if $verbose;
+            if ( simulate( $base, 0 ) != $to && simulate( $to, 1 ) != $base ) {
+                warn(
+                    sprintf(
+"add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
+                        $base, $to, @{ $lace[-1] }
+                    )
+                ) if $verbose;
                 add_pair( \@pair, $base, $to );
-            } else {
-                warn( sprintf( "pair %04X, %04X not needed\n",
-                               $base, $to ) ) if $verbose;
             }
-        } else {
+            else {
+                warn( sprintf( "pair %04X, %04X not needed\n", $base, $to ) )
+                  if $verbose;
+            }
+        }
+        else {
             push @$map, [ $base, $base, $to ];
             if ($verbose) {
                 warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
@@ -353,28 +384,41 @@ sub add_lace {
         && $lace->[-1][1] == $to - 2 )
     {
         $lace->[-1][1] = $to;
-        warn(sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
+        warn( sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } ) )
+          if $verbose;
     }
+
     # check if the previous lace has only len 1, convert to pair then
     elsif ( $lace->[-1]
-            && lace_len_1($lace->[-1]) == 1 )
+        && lace_len_1( $lace->[-1] ) == 1 )
     {
-        if (map_clashes($map[-1], $lace->[-1])) {
-            warn( sprintf( "last lace %04X, %04X clashes with last map %04X, %04X\n",
-                           @{$lace->[-1]}, $map[-1][0], $map[-1][2] ) )
-                if $verbose;
+        if ( map_clashes( $map[-1], $lace->[-1] ) ) {
+            warn(
+                sprintf(
+                    "last lace %04X, %04X clashes with last map %04X, %04X\n",
+                    @{ $lace->[-1] },
+                    $map[-1][0], $map[-1][2]
+                )
+            ) if $verbose;
         }
-        warn( sprintf( "convert short lace to pair %04X, %04X\n", @{$lace->[-1]} ) )
-            if $verbose;
+        warn(
+            sprintf( "convert short lace to pair %04X, %04X\n",
+                @{ $lace->[-1] } )
+        ) if $verbose;
         add_pair( \@pair, $lace->[-1][0], $lace->[-1][1] );
         $lace->[-1][0] = $base;
         $lace->[-1][1] = $to;
-        warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } )) if $verbose;
+        warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } ) )
+          if $verbose;
     }
     else {
-        if (map_clashes($map[-1], [$base, $to])) {
-            warn( sprintf( "FIXME new lace %04X, %04X clashes with last map %04X, %04X\n",
-                           $base, $to, $map[-1][0], $map[-1][2] ) );
+        if ( map_clashes( $map[-1], [ $base, $to ] ) ) {
+            warn(
+                sprintf(
+"FIXME new lace %04X, %04X clashes with last map %04X, %04X\n",
+                    $base, $to, $map[-1][0], $map[-1][2]
+                )
+            );
         }
         push @$lace, [ $base, $to ];
         if ($verbose) {
@@ -386,13 +430,15 @@ sub add_lace {
 # also check the reverse if deviating. upper(03BC) => 039C, not B5
 sub add_pair {
     my ( $pair, $base, $to ) = @_;
+
     # do we need this pair?
-    if (simulate($base, 0) != $to && simulate($to, 1) != $base) {
+    if ( simulate( $base, 0 ) != $to && simulate( $to, 1 ) != $base ) {
         push @$pair, [ $base, $to ];
-    } else {
+    }
+    else {
         # same result without this pair already
-        warn( sprintf( "pair %04X, %04X not needed\n",
-                       $base, $to ) ) if $verbose;
+        warn( sprintf( "pair %04X, %04X not needed\n", $base, $to ) )
+          if $verbose;
     }
 }
 
@@ -422,7 +468,7 @@ sub add_excl {
 if ( $v and !-e $cf ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
     `wget $url -O $cf`
-        or `wget --no-check-certificate $url -O $cf`;
+      or `wget --no-check-certificate $url -O $cf`;
     die "$PACKAGE: failed to download $url: $!" unless -s $cf;
 }
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
@@ -634,8 +680,9 @@ EOF
 my ( $case_min, $case_max, $casel_min, $casel_max );
 my ( $i,        $m ) = each @map;
 my ( $j,        $l ) = each @lace;
-$case_min  = $m->[0] < $l->[0] ? $m : $l;
-$case_max  = $m->[0] > $l->[0] ? $m : $l;
+$case_min = $m->[0] < $l->[0] ? $m : $l;
+$case_max = $m->[0] > $l->[0] ? $m : $l;
+
 #$casel_max = $m->[0] > $l->[0] ? $m : $l;
 my $has_long;
 my $max_upper = ( 2**$bits[0] ) - 1;             # 16: 0xffff;
@@ -647,8 +694,9 @@ while ( defined($i) or defined($j) ) {
 
     # MAP or LACE
     if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
-        my $lower   = map_lower($m);
-        my $len     = map_len($m);
+        my $lower = map_lower($m);
+        my $len   = map_len($m);
+
         # short or long
         my $is_long = (
                  $m->[0] > $max_upper
@@ -661,22 +709,28 @@ while ( defined($i) or defined($j) ) {
         if ($is_long) {
             my $CASEMAP = $use_bitfields ? "CASEMAPL" : "CASEMAP";
             $casel_min = $m unless $casel_min;
-            $casel_max = $m if !defined($casel_max) or $casel_max->[0] < $m->[0];
+            $casel_max = $m
+              if !defined($casel_max)
+              or $casel_max->[0] < $m->[0];
             my $cmt = sprintf " /* '%c'->'%c'..'%c' {, %d, %u} */",
               $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
             my $s = sprintf "    $CASEMAP(0x%05x, 0x%05x, 0x%05x),%s\n",
               $m->[0], $m->[1], $m->[2], $cmt;
+
             #warn "defer overflow $s0 to casemapl\n" if $verbose;
             push @CASEL, $s;
-            $casel_max = $m if !defined($casel_max) or $casel_max->[0] < $m->[0];
+            $casel_max = $m
+              if !defined($casel_max)
+              or $casel_max->[0] < $m->[0];
         }
         else {
             my $CASEMAP = "CASEMAP";
             $case_max = $m if $case_max->[0] < $m->[0];
             my $cmt = sprintf " /* '%c'->'%c'..'%c' {, %d, %u} */",
-                $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
-            my $s = sprintf "    $CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n", $m->[0],
-                $m->[1], $m->[2], $cmt;
+              $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+            my $s = sprintf "    $CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n",
+              $m->[0],
+              $m->[1], $m->[2], $cmt;
             push @CASE, $s;
         }
         ( $i, $m ) = each @map;
@@ -694,22 +748,28 @@ while ( defined($i) or defined($j) ) {
         if ($is_long) {
             my $CASELACE = $use_bitfields ? "CASELACEL" : "CASELACE";
             $casel_min = $l unless @CASEL;
-            $casel_max = $l if !defined($casel_max) or $casel_max->[0] < $l->[0];
+            $casel_max = $l
+              if !defined($casel_max)
+              or $casel_max->[0] < $l->[0];
             my $spc = " " x 9;
             my $cmt = sprintf(
                 "%s/* '%c'->'%c' {, %d, %u} */",
-                $spc, $l->[0], $l->[1] + 1, $lower, $len
-                );
-            push @CASEL, sprintf("    $CASELACE(0x%05x, 0x%05x),%s\n", $l->[0], $l->[1], $cmt);
-        } else {
+                $spc,   $l->[0], $l->[1] + 1,
+                $lower, $len
+            );
+            push @CASEL,
+              sprintf( "    $CASELACE(0x%05x, 0x%05x),%s\n",
+                $l->[0], $l->[1], $cmt );
+        }
+        else {
             $case_min = $l unless @CASE;
             $case_max = $l if $case_max->[0] < $l->[0];
             my $spc = " " x 8;
-            my $cmt = sprintf(
-                "%s/* '%c'->'%c' {, %d, %u} */",
-                " " x 8, $l->[0], $l->[1], $lower, $len
-                );
-            push @CASE, sprintf("    CASELACE(0x%04x, 0x%04x),%s\n", $l->[0], $l->[1], $cmt);
+            my $cmt = sprintf( "%s/* '%c'->'%c' {, %d, %u} */",
+                " " x 8, $l->[0], $l->[1], $lower, $len );
+            push @CASE,
+              sprintf( "    CASELACE(0x%04x, 0x%04x),%s\n",
+                $l->[0], $l->[1], $cmt );
         }
         ( $j, $l ) = each @lace;
     }
@@ -743,25 +803,30 @@ EOF
 print FH $_ for @CASEL;
 print FH "};\n";
 
+my (
+    $MAP_FIRST,    $MAPL_FIRST, $MAP_LAST,
+    $MAP_LAST_LEN, $MAPL_LAST,  $MAPL_LAST_LEN
+);
 if ($bsearch) {
-    #my $base = $case_min->[0];
-    printf FH "#define MAP_FIRST 0x%x\n",  $case_min->[0];
-    printf FH "#define MAPL_FIRST 0x%x\n", $casel_min->[0];
-    printf FH "#define MAP_LAST 0x%x\n", $case_max->[0];
-    printf FH "#define MAP_LAST_LEN %u\n",
-        @$case_max == 3 ? map_len($case_max) : $case_max->[1] - $case_max->[0];
-    printf FH "#define MAPL_LAST 0x%x\n", $casel_max->[0];
-    printf FH "#define MAPL_LAST_LEN %u\n",
-        @$casel_max == 3 ? map_len($casel_max) : $casel_max->[1] - $casel_max->[0];
+    $MAP_FIRST  = $case_min->[0];
+    $MAPL_FIRST = $casel_min->[0];
+    $MAP_LAST   = $case_max->[0];
+    $MAP_LAST_LEN =
+      @$case_max == 3 ? map_len($case_max) : $case_max->[1] - $case_max->[0];
+    $MAPL_LAST = $casel_max->[0];
+    $MAPL_LAST_LEN =
+      @$casel_max == 3
+      ? map_len($casel_max)
+      : $casel_max->[1] - $casel_max->[0];
 }
 
 # Also fixup pairs to enable reverse lookup
 # FIXME Need this exception (wrong lace). Tested from Unicode 4 to 18.
-add_pair(\@pair, 0x1F3, 0x1F1);
+add_pair( \@pair, 0x1F3, 0x1F1 );
 
-@PAIR = sort { $a->[0] <=> $b->[0] } @pair;
-@PAIRL  = grep { $_->[0] > 0xffff } @PAIR;
-@PAIR = grep { $_->[0] <= 0xffff } @PAIR;
+@PAIR  = sort { $a->[0] <=> $b->[0] } @pair;
+@PAIRL = grep { $_->[0] > 0xffff } @PAIR;
+@PAIR  = grep { $_->[0] <= 0xffff } @PAIR;
 
 printf FH "\nstatic const unsigned short pairs[%u][2] = {\n"
   . "    /* upper: 0x%x - 0x%x */\n"
@@ -794,7 +859,8 @@ if ($bsearch) {
     int i;
     int lo, hi;
 EOF
-} else {
+}
+else {
     print FH <<'EOF';
     int i;
     int lmul;  /* 1 for lower, -1 for upper */
@@ -803,7 +869,8 @@ EOF
 EOF
 }
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
-    print FH "    /* !iswalpha(wc) is broken on most locales, at least with glibc. */\n";
+    print FH
+"    /* !iswalpha(wc) is broken on most locales, at least with glibc. */\n";
     print FH "    if (!iswalpha(wc) ||";
 }
 else {
@@ -856,11 +923,12 @@ for ( $first + 1 .. $last - 1 ) {
 
 # first purge all too small ranges
 my @new_excl = ( $excl[0] );
-for my $i (1 .. $#excl) {
+for my $i ( 1 .. $#excl ) {
     my $e = $excl[$i];
     my $skip;
 
     if ( $e->[1] - $e->[0] >= $MIN_ECXL ) {
+
         # cross-check
         for ( $e->[0] .. $e->[1] ) {
             if ( exists $lower{$_} or exists $upper{$_} ) {
@@ -874,7 +942,8 @@ for my $i (1 .. $#excl) {
 }
 
 # sort ranges by size. GH #2
-printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1], $excl[0]->[1];
+printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
+  $excl[0]->[1];
 $j = 0;
 shift @new_excl;
 my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
@@ -910,19 +979,25 @@ print FH <<'EOF';
 #endif
 
 EOF
+
+my $SZ_CASE  = scalar(@CASE);
+my $SZ_CASEL = scalar(@CASEL);
+my $SZ_PAIR  = scalar(@PAIR);
+my $SZ_PAIRL = scalar(@PAIRL);
+
 if ($bsearch) {
-    #my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
-    #my $CASELOW = $use_bitfields ? "low" : "cm->lower";
-    my $SZ_CASE = scalar(@CASE);
-    my $SZ_CASEL = scalar(@CASEL);
-    my $SZ_PAIR = scalar(@PAIR);
-    my $SZ_PAIRL = scalar(@PAIRL);
-    my $bits_ret = $use_bitfields ? "cm->sign ? wc - cm->lower : wc + cm->lower;\n" : "wc + cm->lower";
+
+#my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
+#my $CASELOW = $use_bitfields ? "low" : "cm->lower";
+    my $bits_ret =
+      $use_bitfields
+      ? "cm->sign ? wc - cm->lower : wc + cm->lower;\n"
+      : "wc + cm->lower";
     print FH <<"EOF";
     /* binary search the casemaps ranges. */
     if (lower) {
         /* binary search lower only */
-        if (wc <= MAP_LAST + MAP_LAST_LEN) {
+        if (wc <= $MAP_LAST + $MAP_LAST_LEN) {
             lo = 0;
             hi = $SZ_CASE - 1;
             while (lo <= hi) {
@@ -940,7 +1015,7 @@ if ($bsearch) {
                     lo = mid + 1;
             }
         }
-        if (wc - MAPL_FIRST <= (MAPL_LAST + MAPL_LAST_LEN) - MAPL_FIRST) {
+        if (wc - $MAPL_FIRST <= ($MAPL_LAST + $MAPL_LAST_LEN) - $MAPL_FIRST) {
             lo = 0;
             hi = $SZ_CASEL - 1;
             while (lo <= hi) {
@@ -959,15 +1034,19 @@ if ($bsearch) {
         }
     } else {
 EOF
-    my $low_decl = $use_bitfields ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;" : "";
-    my $CASELOW = $use_bitfields ? "low" : "casemaps[i].lower";
+    my $low_decl =
+      $use_bitfields
+      ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;"
+      : "";
+    my $CASELOW      = $use_bitfields ? "low" : "casemaps[i].lower";
     my $pairl_search = "";
-    if ($SZ_PAIRL == 1) {
+    if ( $SZ_PAIRL == 1 ) {
         $pairl_search = <<'EOF';
     if (pairl[0][1 - lower] == wc)
         return pairl[0][lower];
 EOF
-    } elsif ($SZ_PAIRL > 1) {
+    }
+    elsif ( $SZ_PAIRL > 1 ) {
         $pairl_search = <<"EOF";
     for (i = 0; i < $SZ_PAIRL; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
@@ -1040,21 +1119,14 @@ $low_decl
 
 #undef CASEMAP
 #undef CASELACE
-#undef MAP_FIRST
-#undef MAPL_FIRST
-#undef MAP_LAST
-#undef MAP_LAST_LEN
-#undef MAPL_LAST
-#undef MAPL_LAST_LEN
 EOF
-} else { # no bsearch
-    #printf FH "#define CASELOW %s\n", $use_bitfields ? "low" : "casemaps[i].lower";
-    my $low_decl = $use_bitfields ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;" : "";
+}
+else {    # no bsearch
+    my $low_decl =
+      $use_bitfields
+      ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;"
+      : "";
     my $CASELOW = $use_bitfields ? "low" : "casemaps[i].lower";
-    my $SZ_CASE = scalar(@CASE);
-    my $SZ_CASEL = scalar(@CASEL);
-    my $SZ_PAIR = scalar(@PAIR);
-    my $SZ_PAIRL = scalar(@PAIRL);
     print FH <<"EOF";
     lmul = 2 * lower - 1; /* 1 for lower, -1 for upper */
     lmask = lower - 1;    /* 0 for lower, -1/0xffff for upper */
@@ -1083,6 +1155,7 @@ $low_decl
         if (wc - base < casemapsl[i].len) {
             if (casemapsl[i].lower == 1) {
 EOF
+
     # TODO if 1F3 is in PAIRL, add lace exception
     print FH <<"EOF";
                 return wc + lower - ((wc - casemapsl[i].upper) & 1);
@@ -1100,12 +1173,13 @@ EOF
             break;
     }
 EOF
-    if ($SZ_PAIRL == 1) {
+    if ( $SZ_PAIRL == 1 ) {
         print FH <<'EOF';
     if (pairl[0][1 - lower] == wc)
         return pairl[0][lower];
 EOF
-    } elsif ($SZ_PAIRL > 1) {
+    }
+    elsif ( $SZ_PAIRL > 1 ) {
         print FH <<"EOF";
     for (i = 0; i < $SZ_PAIRL; i++) {
         assert(i > 0 ? pairl[i][0] >= pairl[i - 1][0] : 1);
@@ -1124,7 +1198,7 @@ EOF
 #undef CASEMAP
 #undef CASELACE
 EOF
-} # !$bsearch
+}    # !$bsearch
 
 if ($use_bitfields) {
     print FH <<'EOF';
@@ -1250,13 +1324,13 @@ vary more.
 
     make -C examples
     ./bench
-              my:        122 [us] 100.00 %
-        my_low16:        118 [us] 103.39 %
-         my_bits:        128 [us] 95.31 %
-      my_bsearch:        153 [us] 79.74 %
-        musl-new:        125 [us] 97.60 %	210 errors
-        musl-old:        117 [us] 104.27 %	10 errors
-           glibc:        111 [us] 109.91 %	10 errors
+              my:        127 [us] 100.00 %
+        my_low16:        157 [us] 80.89 %
+         my_bits:        128 [us] 99.22 %
+      my_bsearch:        168 [us] 75.60 %
+        musl-new:        137 [us] 92.70 %	210 errors
+        musl-old:        187 [us] 67.91 %	10 errors
+           glibc:         75 [us] 169.33 %	10 errors
 
     wc -c towctrans-*.o
       3464 towctrans-my.o
