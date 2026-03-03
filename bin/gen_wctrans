@@ -152,7 +152,7 @@ else {
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
 my (
-    @map,   @lace,  @excl, @pair,  $prev, $lc,
+    @map,   @excl, @pair,  $prev, $lc,
     %upper, %lower, @CASE, @CASEL, @PAIR, @PAIRL,
     @CASE_RAW, @CASEL_RAW
 );
@@ -163,7 +163,25 @@ my (
 ## (hex digits separated by spaces)
 sub getHexArray { map hex, $_[0] =~ /\G *([0-9A-Fa-f]+)/g }
 
-## simulate the search via the global @map, @lace, @excl, @pair arrays
+# find the last 2-member (lace) entry in @map, or undef
+sub last_lace {
+    my $map = shift;
+    for my $i ( reverse 0 .. $#$map ) {
+        return $map->[$i] if @{ $map->[$i] } == 2;
+    }
+    return undef;
+}
+
+# find the last 3-member (map) entry in @map, or undef
+sub last_map3 {
+    my $map = shift;
+    for my $i ( reverse 0 .. $#$map ) {
+        return $map->[$i] if @{ $map->[$i] } == 3;
+    }
+    return undef;
+}
+
+## simulate the search via the global @map, @excl, @pair arrays
 ## to be able to leave out an uneeded pair,lace,map. Esp. for upper.
 sub simulate {
     my ( $wc, $lower ) = @_;
@@ -185,15 +203,10 @@ sub simulate {
     # skip the turkish checks
     my $lmul  = 2 * $lower - 1;    # 1 for lower, -1 for upper
     my $lmask = $lower - 1;        # 0 for lower, -1/0xffff for upper
-    # interleave maps and laces using index-based iteration
-    my $i = 0;
-    my $j = 0;
-    while ( $i < @map or $j < @lace ) {
-        my $m = $i < @map  ? $map[$i]  : undef;
-        my $l = $j < @lace ? $lace[$j] : undef;
-
-        # MAP or LACE (pick whichever has the lower base)
-        if ( defined($m) and ( !defined($l) or $m->[0] < $l->[0] ) ) {
+    # single loop over @map: 3-member = map, 2-member = lace
+    for my $m (@map) {
+        if ( @$m == 3 ) {
+            # MAP entry
             my $lower = map_lower($m);
             my $len   = map_len($m);
             my $base  = $m->[0] + ( $lmask & $lower );
@@ -208,15 +221,12 @@ sub simulate {
                     return $wc + $lmul * $lower;
                 }
             }
-            elsif ( $lower && $m->[0] > $wc ) {
-                last;    # maps are sorted; no later entry can match
-            }
-            $i++;
         }
-        elsif ( defined($l) ) {
-            my $lower = lace_lower($l);
-            my $len   = lace_len_1($l);
-            my $base  = $l->[0] + ( $lmask & $lower );
+        elsif ( @$m == 2 ) {
+            # LACE entry
+            my $lower = 1;    # lace_lower is always 1
+            my $len   = $m->[1] - $m->[0];    # lace_len_1
+            my $base  = $m->[0] + ( $lmask & $lower );
             if ( $wc - $base < $len ) {
 
                 # The only reverse fixup needed. Tested from Unicode 4 to 18.
@@ -228,10 +238,6 @@ sub simulate {
                     return $wc + $lmul * $lower;
                 }
             }
-            elsif ( $lower && $l->[0] > $wc ) {
-                last;    # laces are sorted; no later entry can match
-            }
-            $j++;
         }
     }
 
@@ -283,31 +289,18 @@ sub map_clashes {
     # eg   CASEMAP(0x01f1, 0x01f1, 0x01f3) (ie pair 1f1, 1f3)
     # with CASELACE(0x01f2, 0x01f4) (ie pair 1f2, 1f3) => true
     # needed for upper 01F3 => 01F2 by lace, 01F3 => 01F2 by map.
+    # Handles both 2-member (lace) and 3-member (map) entries.
     my ( $m, $l ) = @_;
     return 0 if !defined($m) or !defined($l);
-    my $l_len = lace_len($l);
-    my $l_max = $l->[1] + $l_len;
-    return 1 if $m->[0] >= $l->[0] && $m->[2] <= $l_max;
+    # normalize lace (2-member) to 3-member for comparison
+    my $l3 = @$l == 2 ? [ $l->[0], $l->[1], $l->[0] + 1 ] : $l;
+    my $l_len = map_len($l3);
+    my $l_max = $l3->[1] + $l_len;
+    my $m3 = @$m == 2 ? [ $m->[0], $m->[1], $m->[0] + 1 ] : $m;
+    return 1 if $m3->[0] >= $l3->[0] && $m3->[2] <= $l_max;
 }
 
-sub lace_lower {
-    return 1;
-}
-
-sub lace_len {
-    my $l = shift;
-
-    #return $l->[1] - $l->[0] + 1;
-    return map_len( [ $l->[0], $l->[1], $l->[0] + 1 ] );
-}
-
-# the variant before changing [1] -1
-sub lace_len_1 {
-    my $l = shift;
-    return map_len( [ $l->[0], $l->[1] - 1, $l->[0] + 1 ] );
-}
-
-# triple of base, last, to.
+# triple of base, last, to (3-member), or pair of base, last (2-member lace).
 # offset is to - base, length is last - base + 1
 # $base is upper, $to is lower
 # We might want set a flag when lower is < 0, because then the
@@ -316,51 +309,54 @@ sub lace_len_1 {
 sub add_map {
     my ( $map, $base, $to ) = @_;
 
+    my $last3 = last_map3($map);    # last 3-member (map) entry
     my $diff  = $to - $base;
-    my $olen  = $map->[-1] ? $map->[-1][1] - $map->[-1][0] : -1;
-    my $odiff = $map->[-1] ? $map->[-1][2] - $map->[-1][0] : 0;
+    my $olen  = $last3 ? $last3->[1] - $last3->[0] : -1;
+    my $odiff = $last3 ? $last3->[2] - $last3->[0] : 0;
 
     # if it's the next cp and has the same offset
-    if ( $map->[-1] and $map->[-1][1] == $base - 1 && $diff == $odiff ) {
-        ++$map->[-1][1];
+    if ( $last3 and $last3->[1] == $base - 1 && $diff == $odiff ) {
+        ++$last3->[1];
         if ($verbose) {
-            warn sprintf( "bump map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+            warn sprintf( "bump map [%04X, %04X, %04X]\n", @$last3 );
         }
     }
 
     # check if the previous map has only len 1,
     # convert to pair then.
-    elsif ( $map->[-1]
-        && map_len( $map->[-1] ) == 1 )
+    elsif ( $last3
+        && map_len($last3) == 1 )
     {
-        if ( map_clashes( $map->[-1], $lace[-1] ) ) {
+        my $ll = last_lace($map);
+        if ( map_clashes( $last3, $ll ) ) {
             warn(
                 sprintf(
                     "last map %04X, %04X clashes with last lace %04X, %04X\n",
-                    $map->[-1][0], $map->[-1][2], @{ $lace[-1] }
+                    $last3->[0], $last3->[2], @$ll
                 )
             ) if $verbose;
         }
-        add_pair( \@pair, $map->[-1][0], $map->[-1][2] );
+        add_pair( \@pair, $last3->[0], $last3->[2] );
         warn(
             sprintf( "convert short map to pair %04X, %04X\n", @{ $pair[-1] } )
         ) if $verbose;
-        $map->[-1][0] = $base;
-        $map->[-1][1] = $base;
-        $map->[-1][2] = $to;
+        $last3->[0] = $base;
+        $last3->[1] = $base;
+        $last3->[2] = $to;
         if ($verbose) {
-            warn sprintf( "new map [%04X, %04X, %04X]\n", @{ $map->[-1] } );
+            warn sprintf( "new map [%04X, %04X, %04X]\n", @$last3 );
         }
     }
     else {
-        if ( $diff == 1 and map_clashes( [ $base, $base, $to ], $lace[-1] ) ) {
+        my $ll = last_lace($map);
+        if ( $diff == 1 and map_clashes( [ $base, $base, $to ], $ll ) ) {
 
             # do we need this pair?
             if ( simulate( $base, 0 ) != $to && simulate( $to, 1 ) != $base ) {
                 warn(
                     sprintf(
 "add pair: new map %04X, %04X clashes with last lace %04X, %04X\n",
-                        $base, $to, @{ $lace[-1] }
+                        $base, $to, @$ll
                     )
                 ) if $verbose;
                 add_pair( \@pair, $base, $to );
@@ -379,57 +375,62 @@ sub add_map {
     }
 }
 
-# pair of base, last with lower offset of 1
+# pair of base, last with lower offset of 1 (2-member entry in @map)
 sub add_lace {
-    my ( $lace, $base, $to ) = @_;
+    my ( $map, $base, $to ) = @_;
+
+    my $ll = last_lace($map);    # last 2-member (lace) entry in @map
 
     # if it's the next cp
-    if (   $lace->[-1]
-        && $lace->[-1][1] == $to - 2 )
+    if (   $ll
+        && $ll->[1] == $to - 2 )
     {
-        $lace->[-1][1] = $to;
-        warn( sprintf( "bump lace %04X, %04X\n", @{ $lace->[-1] } ) )
+        $ll->[1] = $to;
+        warn( sprintf( "bump lace %04X, %04X\n", @$ll ) )
           if $verbose;
     }
 
     # check if the previous lace has only len 1, convert to pair then
-    elsif ( $lace->[-1]
-        && lace_len_1( $lace->[-1] ) == 1 )
+    # lace_len_1($ll) == $ll->[1] - $ll->[0]
+    elsif ( $ll
+        && ( $ll->[1] - $ll->[0] ) == 1 )
     {
-        if ( map_clashes( $map[-1], $lace->[-1] ) ) {
+        my $lm = last_map3($map);
+        if ( map_clashes( $lm, $ll ) ) {
             warn(
                 sprintf(
                     "last lace %04X, %04X clashes with last map %04X, %04X\n",
-                    @{ $lace->[-1] },
-                    $map[-1][0], $map[-1][2]
+                    @$ll,
+                    $lm->[0], $lm->[2]
                 )
             ) if $verbose;
         }
         warn(
             sprintf( "convert short lace to pair %04X, %04X\n",
-                @{ $lace->[-1] } )
+                @$ll )
         ) if $verbose;
-        add_pair( \@pair, $lace->[-1][0], $lace->[-1][1] );
-        $lace->[-1][0] = $base;
-        $lace->[-1][1] = $to;
-        warn( sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } ) )
+        add_pair( \@pair, $ll->[0], $ll->[1] );
+        $ll->[0] = $base;
+        $ll->[1] = $to;
+        warn( sprintf( "new lace %04X, %04X\n", @$ll ) )
           if $verbose;
     }
     else {
-        if ( map_clashes( $map[-1], [ $base, $to ] ) ) {
+        my $lm = last_map3($map);
+        if ( map_clashes( $lm, [ $base, $to ] ) ) {
             # Clash with last map: demote to pair instead of lace
             warn(
                 sprintf(
 "new lace %04X, %04X clashes with last map %04X, %04X => pair\n",
-                    $base, $to, $map[-1][0], $map[-1][2]
+                    $base, $to, $lm->[0], $lm->[2]
                 )
             ) if $verbose;
             add_pair( \@pair, $base, $to );
         }
         else {
-            push @$lace, [ $base, $to ];
+            push @$map, [ $base, $to ];
             if ($verbose) {
-                warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
+                warn sprintf( "new lace %04X, %04X\n", @{ $map->[-1] } );
             }
         }
     }
@@ -521,9 +522,10 @@ warn sprintf("UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\
     scalar keys %upper, scalar keys %lower)
   if $verbose;
 
-# Build @map, @lace, @pair from %upper (uppercase->lowercase mappings).
+# Build @map, @pair from %upper (uppercase->lowercase mappings).
 # Process in codepoint order, detecting consecutive ranges (maps, laces)
 # and isolated pairs.  This replaces the old CaseFolding.txt second scan.
+# @map now contains both 3-member maps and 2-member laces.
 for my $cp (sort { $a <=> $b } keys %upper) {
     $lc = $upper{$cp};
 
@@ -546,11 +548,11 @@ for my $cp (sort { $a <=> $b } keys %upper) {
                         )
                     ) if $verbose;
                     pop @pair;
-                    add_lace( \@lace, $cp - 1, $lc - 1 );
-                    add_lace( \@lace, $cp,     $lc );
+                    add_lace( \@map, $cp - 1, $lc - 1 );
+                    add_lace( \@map, $cp,     $lc );
                 }
                 else {
-                    add_lace( \@lace, $cp, $lc );
+                    add_lace( \@map, $cp, $lc );
                 }
             }
             else {
@@ -575,7 +577,7 @@ for my $cp (sort { $a <=> $b } keys %upper) {
         }
         else {    # not consecutive, a hole
             if ( $lc - $cp == 1 ) {
-                add_lace( \@lace, $cp, $lc );
+                add_lace( \@map, $cp, $lc );
             }
             else {    # add a hole
                 warn( sprintf( "add_pair %04X, %04X\n", $cp, $lc ) )
@@ -1197,24 +1199,23 @@ printf FH <<'EOF', ( $ucd_version, $v );
 
 EOF
 
-# take next of @map and @lace
+# iterate @map (3-member maps and 2-member laces interleaved), sorted by base
+my @sorted_map = sort { $a->[0] <=> $b->[0] } @map;
 my ( $case_min, $case_max, $casel_min, $casel_max );
-my ( $i,        $m ) = each @map;
-my ( $j,        $l ) = each @lace;
-$case_min = $m->[0] < $l->[0] ? $m : $l;
-$case_max = $m->[0] > $l->[0] ? $m : $l;
+$case_min = $sorted_map[0];
+$case_max = $sorted_map[0];
 
-#$casel_max = $m->[0] > $l->[0] ? $m : $l;
 my $has_long;
 my $max_upper = ( 2**$bits[0] ) - 1;             # 16: 0xffff;
 my $max_lower = ( ( 2**$bits[1] ) - 1 ) >> 1;    # 16: 32767, 8: 128;
 my $min_lower = -( $max_lower - 1 );
 my $max_len   = ( 2**$bits[2] ) - 1;             # 8: 255;
 
-while ( defined($i) or defined($j) ) {
+for my $entry (@sorted_map) {
 
-    # MAP or LACE
-    if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
+    if ( @$entry == 3 ) {
+        # MAP entry
+        my $m = $entry;
         my $lower = map_lower($m);
         my $len   = map_len($m);
 
@@ -1253,12 +1254,13 @@ while ( defined($i) or defined($j) ) {
             push @CASE, $s;
             push @CASE_RAW, [$m->[0], $lower, $len, $s];
         }
-        ( $i, $m ) = each @map;
     }
-    elsif ( defined($j) ) {
+    elsif ( @$entry == 2 ) {
+        # LACE entry
+        my $l = $entry;
         $l->[1] = $l->[1] - 1;
-        my $lower   = lace_lower($l);
-        my $len     = lace_len($l);
+        my $lower   = 1;    # lace_lower is always 1
+        my $len     = $l->[1] - $l->[0] + 1;    # map_len of [$l->[0], $l->[1], $l->[0]+1]
         my $is_long = (
                  $l->[0] > $max_upper
               or $lower > $max_lower
@@ -1293,7 +1295,6 @@ while ( defined($i) or defined($j) ) {
                 $l->[0], $l->[1], $cmt );
             push @CASE_RAW, [$l->[0], $lower, $len, $CASE[-1]];
         }
-        ( $j, $l ) = each @lace;
     }
 }
 
@@ -1567,7 +1568,6 @@ printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
 # upper bound: everything above the last cased codepoint
 printf FH "        || wc > 0x%x                      /* >%u */\n",
   $last, $last;
-$j = 0;
 shift @new_excl;
 my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
 for my $e (@ex) {

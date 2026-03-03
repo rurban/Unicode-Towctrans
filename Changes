@@ -13,6 +13,8 @@ Revision history for the Perl package Unicode::Towctrans.
     - fix add_lace() clash: demote clashing lace to pair instead of warning
     - add upper bound exclusion guard for towupper performance, avoiding
       full table scans for >1M codepoints above the last cased character
+    - eliminate separate @lace array: merge 2-member lace entries into @map,
+      simplify simulate() and C gen loop to single-pass iteration
     - bench: use Unicode 10.0 data to match musl-old, add setlocale
 
 0.03	2026-02-22
