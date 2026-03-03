@@ -103,19 +103,23 @@ int main(void) {
     BENCH("my_bsearch", my_bsearch_towlower, my_bsearch_towupper);
     BENCH("my_bsearchb", my_bsearchb_towlower, my_bsearchb_towupper);
     BENCH("my_table", my_table_towlower, my_table_towupper);
+    long t_my_table = t1;
     BENCH("musl-new", musl_towlower, musl_towupper);
-    if (perc > 800) /* musl-new uses --table (O(1) lookup), inherently faster */
+    /* compare my_table against musl-new (both O(1) table lookup) */
+    if (t_my_table > t1 * 4)
         perf_errs++;
     BENCH("musl-old", old_towlower, old_towupper);
-    if (perc > 300)
+    /* compare my against musl-old (both linear search) */
+    if (t_my > t1 * 3)
         perf_errs++;
     BENCH("glibc", glibc_towlower, glibc_towupper);
-    if (perc > 1000) /* glibc uses table lookup, inherently faster */
+    /* compare my_table against glibc (both O(1) table lookup) */
+    if (t_my_table > t1 * 4)
         perf_errs++;
     printf("\n");
 
     if (perf_errs)
-        printf("my is too slow\n");
+        printf("too slow\n");
     free(up);
     free(lw);
     free(ws);
