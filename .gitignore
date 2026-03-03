@@ -2,7 +2,10 @@
 /blib
 *.bs
 CaseFolding.txt*
+UnicodeData.txt
 UnicodeData.txt.[0-9]*
+.opencode/
+session-ses_*.md
 cover_db/
 /Debian_CPANTS.txt
 ./diffs
@@ -42,3 +45,4 @@ examples/test-iswalpha
 examples/towctrans-[0-9]*.c
 examples/towctrans.h
 examples/towctrans*.h
+examples/UnicodeData.txt
