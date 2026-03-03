@@ -86,7 +86,7 @@ OPTIONS
 --bits 16:10:8        set other bitsizes for the casemaps struct members
 --bsearch             binary search the towlower tables
 --bsearch-both        binary search the towupper tables also (bigger)
---table               use the musl-new style 3-way tables (bigger)
+--table               use the musl-new style two-level base-6 tables (bigger)
 --fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
@@ -872,54 +872,79 @@ if (@PAIRL) {
     }
     print FH "};\n";
 }
-# Create reverse-sorted tables for upper (target) lookups for --bsearch-both
+# Create reverse-sorted index tables for upper (target) lookups for --bsearch-both.
+# Instead of duplicating the full tables, store only indices into the lower tables.
 my (@PAIR_UPPER, @PAIRL_UPPER);
 if ($bsearch_both) {
+    # Build a lookup from [upper,lower] pair to index in @PAIR
+    my %pair_idx;
+    for my $pi (0 .. $#PAIR) {
+        $pair_idx{$PAIR[$pi][0]}{$PAIR[$pi][1]} = $pi;
+    }
+    my %pairl_idx;
+    for my $pi (0 .. $#PAIRL) {
+        $pairl_idx{$PAIRL[$pi][0]}{$PAIRL[$pi][1]} = $pi;
+    }
+
     @PAIR_UPPER  = sort { $a->[1] <=> $b->[1] } grep { $_->[0] <= 0xffff && $_->[1] <= 0xffff } @pair;
     @PAIRL_UPPER = sort { $a->[1] <=> $b->[1] } grep { $_->[0] > 0xffff || $_->[1] > 0xffff } @pair;
 
     if (@PAIR_UPPER) {
-        printf FH "\nstatic const unsigned short pairs_upper[%u][2] = {\n"
-          . "    /* lower: 0x%x - 0x%x */\n"
-          . "    /* upper, lower */\n", scalar @PAIR_UPPER, $PAIR_UPPER[0][1], $PAIR_UPPER[-1][1];
+        printf FH "\n/* indices into pairs[], sorted by lower (target) */\n";
+        printf FH "static const uint8_t pairs_upper[%u] = {\n"
+          . "    /* lower: 0x%x - 0x%x */\n", scalar @PAIR_UPPER, $PAIR_UPPER[0][1], $PAIR_UPPER[-1][1];
         for my $p (@PAIR_UPPER) {
-            my $cmt = sprintf( " /* '%c' <- '%c' */", $p->[0], $p->[1] );
-            printf FH "    {0x%04x, 0x%04x},%s\n", $p->[0], $p->[1], $cmt;
+            my $idx = $pair_idx{$p->[0]}{$p->[1]};
+            my $cmt = sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
+            printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
     }
     if (@PAIRL_UPPER) {
-        printf FH "static const unsigned int pairl_upper[%u][2] = {\n"
-          . "    /* lower: 0x%x - 0x%x */\n"
-          . "    /* upper, lower */\n", scalar @PAIRL_UPPER, $PAIRL_UPPER[0][1], $PAIRL_UPPER[-1][1];
+        printf FH "/* indices into pairl[], sorted by lower (target) */\n";
+        printf FH "static const uint8_t pairl_upper[%u] = {\n"
+          . "    /* lower: 0x%x - 0x%x */\n", scalar @PAIRL_UPPER, $PAIRL_UPPER[0][1], $PAIRL_UPPER[-1][1];
         for my $p (@PAIRL_UPPER) {
-            my $cmt = sprintf( " /* '%c' <- '%c' */", $p->[0], $p->[1] );
-            printf FH "    {0x%05x, 0x%05x},%s\n", $p->[0], $p->[1], $cmt;
+            my $idx = $pairl_idx{$p->[0]}{$p->[1]};
+            my $cmt = sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
+            printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
     }
-    # Generate casemaps_upper[] sorted by target for upper binary search
-    my @case_by_target = sort { ($a->[0] + $a->[1]) <=> ($b->[0] + $b->[1]) } @CASE_RAW;
-    printf FH "static const struct casemaps_s casemaps_upper[%u] = {\n"
-      . "    /* target: 0x%x - 0x%x */\n"
-      . "    /* from, until, to (sorted by target) */\n",
+    # Generate casemaps_upper[] as index array sorted by target for upper binary search
+    # Assign original indices to @CASE_RAW entries
+    my @case_indexed;
+    for my $ci (0 .. $#CASE_RAW) {
+        push @case_indexed, [$ci, @{$CASE_RAW[$ci]}];
+        # [orig_idx, upper, lower, len, str]
+    }
+    my @case_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @case_indexed;
+    printf FH "/* indices into casemaps[], sorted by target (upper+lower) */\n";
+    printf FH "static const uint8_t casemaps_upper[%u] = {\n"
+      . "    /* target: 0x%x - 0x%x */\n",
       scalar @case_by_target,
-      $case_by_target[0][0] + $case_by_target[0][1],
-      $case_by_target[-1][0] + $case_by_target[-1][1] + $case_by_target[-1][2] - 1;
+      $case_by_target[0][1] + $case_by_target[0][2],
+      $case_by_target[-1][1] + $case_by_target[-1][2] + $case_by_target[-1][3] - 1;
     for my $r (@case_by_target) {
-        print FH $r->[3];
+        my $target = $r->[1] + $r->[2];
+        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $r->[0], $target;
     }
     print FH "};\n";
 
-    my @casel_by_target = sort { ($a->[0] + $a->[1]) <=> ($b->[0] + $b->[1]) } @CASEL_RAW;
-    printf FH "static const struct casemapsl_s casemapsl_upper[%u] = {\n"
-      . "    /* target: 0x%x - 0x%x */\n"
-      . "    /* from, until, to (sorted by target) */\n",
+    my @casel_indexed;
+    for my $ci (0 .. $#CASEL_RAW) {
+        push @casel_indexed, [$ci, @{$CASEL_RAW[$ci]}];
+    }
+    my @casel_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @casel_indexed;
+    printf FH "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
+    printf FH "static const uint8_t casemapsl_upper[%u] = {\n"
+      . "    /* target: 0x%x - 0x%x */\n",
       scalar @casel_by_target,
-      $casel_by_target[0][0] + $casel_by_target[0][1],
-      $casel_by_target[-1][0] + $casel_by_target[-1][1] + $casel_by_target[-1][2] - 1;
+      $casel_by_target[0][1] + $casel_by_target[0][2],
+      $casel_by_target[-1][1] + $casel_by_target[-1][2] + $casel_by_target[-1][3] - 1;
     for my $r (@casel_by_target) {
-        print FH $r->[3];
+        my $target = $r->[1] + $r->[2];
+        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $r->[0], $target;
     }
     print FH "};\n";
 }
@@ -1143,12 +1168,15 @@ $pairl_search
     } else {
 EOF
     if ($bsearch_both) {
-        # binary search upper via target
+        # binary search upper via index into lower tables
         my $pairl_upper_search = "";
         if ($SZ_PAIRL_UPPER == 1) {
             $pairl_upper_search = <<'EOF';
-        if (pairl_upper[0][1] == wc)
-            return pairl_upper[0][0];
+        {
+            const unsigned int *p = (unsigned int *)&pairl[pairl_upper[0]];
+            if (p[1] == wc)
+                return p[0];
+        }
 EOF
         }
         elsif ($SZ_PAIRL_UPPER > 1) {
@@ -1157,7 +1185,7 @@ EOF
         hi = $SZ_PAIRL_UPPER - 1;
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2;
-            const unsigned int *p = (unsigned int *)&pairl_upper[mid];
+            const unsigned int *p = (unsigned int *)&pairl[pairl_upper[mid]];
             if (p[1] == wc)
                 return p[0];
             else if (p[1] < wc)
@@ -1170,18 +1198,21 @@ EOF
         my $pair_upper_search = "";
         if ($SZ_PAIR_UPPER == 1) {
             $pair_upper_search = <<'EOF';
-        if (pairs_upper[0][1] == wc)
-            return pairs_upper[0][0];
+        {
+            const unsigned short *p = (unsigned short *)&pairs[pairs_upper[0]];
+            if (p[1] == wc)
+                return p[0];
+        }
 EOF
         }
         elsif ($SZ_PAIR_UPPER > 1) {
             $pair_upper_search = <<"EOF";
-        /* binary search upper pairs */
+        /* binary search upper pairs via index */
         lo = 0;
         hi = $SZ_PAIR_UPPER - 1;
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2;
-            const unsigned short *p = (unsigned short *)&pairs_upper[mid];
+            const unsigned short *p = (unsigned short *)&pairs[pairs_upper[mid]];
             if (p[1] == wc)
                 return p[0];
             else if (p[1] < wc)
@@ -1192,13 +1223,13 @@ EOF
 EOF
         }
         print FH <<"EOF";
-        /* binary search upper via target: casemaps_upper */
+        /* binary search upper via index: casemaps_upper */
         if (wc >= $TARGET_FIRST && wc <= $TARGET_LAST) {
             lo = 0;
             hi = $SZ_CASE - 1;
             while (lo <= hi) {
                 const int mid = lo + (hi - lo) / 2;
-                const struct casemaps_s *cm = &casemaps_upper[mid];
+                const struct casemaps_s *cm = &casemaps[casemaps_upper[mid]];
                 uint32_t target = cm->upper + cm->lower;
                 uint32_t target_end = target + cm->len - 1;
                 if (wc < target)
@@ -1218,13 +1249,13 @@ EOF
                 }
             }
         }
-        /* binary search upper via target: casemapsl_upper */
+        /* binary search upper via index: casemapsl_upper */
         if (wc >= $TARGETL_FIRST && wc <= $TARGETL_LAST) {
             lo = 0;
             hi = $SZ_CASEL - 1;
             while (lo <= hi) {
                 const int mid = lo + (hi - lo) / 2;
-                const struct casemapsl_s *cm = &casemapsl_upper[mid];
+                const struct casemapsl_s *cm = &casemapsl[casemapsl_upper[mid]];
                 uint32_t target = cm->upper + cm->lower;
                 uint32_t target_end = target + cm->len - 1;
                 if (wc < target)
