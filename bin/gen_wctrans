@@ -1564,6 +1564,9 @@ for my $i ( 1 .. $#excl ) {
 # sort ranges by size. GH #2
 printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
   $excl[0]->[1];
+# upper bound: everything above the last cased codepoint
+printf FH "        || wc > 0x%x                      /* >%u */\n",
+  $last, $last;
 $j = 0;
 shift @new_excl;
 my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
@@ -2119,22 +2122,22 @@ vary more.
 
     make -C examples
     ./bench
-                my:        577 [us] 100.00 %
-          my_low16:        597 [us] 96.65 %
-           my_bits:        613 [us] 94.13 %
-        my_bsearch:        466 [us] 123.82 %
-       my_bsearchb:        435 [us] 132.64 %
-          my_table:        117 [us] 493.16 %
-          musl-new:        108 [us] 534.26 %	9 errors
-          musl-old:        767 [us] 75.23 %	3 errors
-             glibc:        262 [us] 220.23 %	14 errors
+                my:        578 [us] 100.00 %
+          my_low16:        585 [us] 98.80 %
+           my_bits:        741 [us] 78.00 %
+        my_bsearch:        469 [us] 123.24 %
+       my_bsearchb:        427 [us] 135.36 %
+          my_table:        110 [us] 525.45 %
+          musl-new:        108 [us] 535.19 %	9 errors
+          musl-old:        794 [us] 72.80 %	3 errors
+             glibc:         87 [us] 664.37 %	14 errors
 
     wc -c towctrans-*.o
       3400 towctrans-my.o
       3392 towctrans-mylow16.o
       3712 towctrans-mybits.o
       3736 towctrans-mybsearch.o
-      4496 towctrans-mybsearch-both.o
+      4528 towctrans-mybsearch-both.o
       6784 towctrans-mytable.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o

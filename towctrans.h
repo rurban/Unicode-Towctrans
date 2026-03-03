@@ -291,6 +291,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
     int lmask; /* 0 for lower, -1/0xffff for upper */
 
     if (wc <= 0x40                           /* 64 */
+        || wc > 0x1e943                      /* >125251 */
         || wc - 0x16e80 <= 0x1e8ff - 0x16e80 /* 31360 */
         || wc - 0x2d2e <= 0xa63f - 0x2d2e    /* 30994 */
         || wc - 0x118e0 <= 0x16e3f - 0x118e0 /* 21856 */
