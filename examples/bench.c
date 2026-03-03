@@ -91,10 +91,10 @@ int main(void) {
     t1 = (t1 - t0) / RETRIES;                                                  \
     perc = t_my ? t_my * 100.0 / t1 : 100;                                     \
     if (errs)                                                                  \
-        printf("  %12s: %10ld [us] %.02f %%\t%u errors\n", name, t1, perc,     \
+        printf("  %12s: %10ld [us] %7.02f %%\t%u errors\n", name, t1, perc,    \
                errs / RETRIES);                                                \
     else                                                                       \
-        printf("  %12s: %10ld [us] %.02f %%\n", name, t1, perc)
+        printf("  %12s: %10ld [us] %7.02f %%\n", name, t1, perc)
 
     BENCH("my", my_towlower, my_towupper);
     t_my = t1;

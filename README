@@ -55,28 +55,46 @@ DESCRIPTION
 PERFORMANCE
     Currently it is still a bit un-optimized, but small and fast enough
     compared to the other implementations. And esp. correct compared to
-    glibc, which ignores characters from other locales. The musl errors are
-    probably caused by a different Unicode version to be compared against.
-    Currently we compare against 15.0.0, and should not compare different
-    Unicode versions, because then the performance and sizes vary more.
+    glibc, which ignores characters from other locales.
+
+    The bench uses Unicode 10.0 data ("-v 10") so that our tables match the
+    Unicode version compiled into musl-old. Benchmark errors fall into three
+    categories, none of which are bugs in our code:
+
+    Circled letters 0x24B6-0x24E9 (affects musl-old, 52 diffs)
+        Our code correctly maps these per UnicodeData.txt (e.g.
+        "towupper(0x24D0)=0x24B6"). musl-old does not map them at all.
+
+    Georgian Mtavruli 0x1C90-0x1CBF (affects musl-new, 96 diffs)
+        These uppercase Georgian letters were added in Unicode 11.0.
+        musl-new includes them, but our Unicode 10.0 bench tables do not, so
+        musl-new reports differences for every Mtavruli codepoint.
+
+    Post-Unicode-10.0 additions (affects musl-new, 16+ diffs)
+        Additional cased characters introduced after Unicode 10.0 (Osage,
+        Adlam, etc.) are present in musl-new but absent from our Unicode
+        10.0 tables.
+
+    glibc errors are caused by glibc ignoring cased characters from
+    non-latin locales entirely.
 
         make -C examples
         ./bench
-                    my:        578 [us] 100.00 %
-              my_low16:        585 [us] 98.80 %
-               my_bits:        741 [us] 78.00 %
-            my_bsearch:        469 [us] 123.24 %
-           my_bsearchb:        427 [us] 135.36 %
-              my_table:        110 [us] 525.45 %
-              musl-new:        108 [us] 535.19 %    9 errors
-              musl-old:        794 [us] 72.80 %     3 errors
-                 glibc:         87 [us] 664.37 %    14 errors
+                    my:        588 [us]  100.00 %
+              my_low16:        641 [us]   91.73 %
+               my_bits:        682 [us]   86.22 %
+            my_bsearch:        517 [us]  113.73 %
+           my_bsearchb:        437 [us]  134.55 %
+              my_table:        124 [us]  474.19 %
+              musl-new:        135 [us]  435.56 %   9 errors
+              musl-old:       1088 [us]   54.04 %   3 errors
+                 glibc:        105 [us]  560.00 %   14 errors
 
         wc -c towctrans-*.o
-          3400 towctrans-my.o
-          3392 towctrans-mylow16.o
-          3712 towctrans-mybits.o
-          3736 towctrans-mybsearch.o
+          3336 towctrans-my.o
+          3424 towctrans-mylow16.o
+          3648 towctrans-mybits.o
+          3704 towctrans-mybsearch.o
           4528 towctrans-mybsearch-both.o
           6784 towctrans-mytable.o
           6808 towctrans-musl-new.o
