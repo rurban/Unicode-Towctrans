@@ -15,7 +15,7 @@ my $args     = "-fsanitize=address -I.. -o $exe test_towctrans.c";
 $args .= " -g" if $ENV{TEST_VERBOSE};
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
-my $output = `$cc $args`;
+my $output = `$cc $args 2>&1`;
 if ( $? != 0 ) {
     diag $output;
     print "1..0 # skip AddressSanitizer not supported by $cc\n";

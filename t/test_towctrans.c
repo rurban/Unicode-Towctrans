@@ -60,20 +60,22 @@ int main(void) {
     f = fopen("../" UDATA, "r");
     if (!f) {
         char url[256];
-        snprintf(url, 255,
-                 "wget -O ../%s https://www.unicode.org/Public/%d.0.0/ucd/%s",
-                 UDATA, TOWCTRANS_UNICODE_VERSION, UDATA);
-        printf("downloading %s ...", UDATA);
+        snprintf(
+            url, 255,
+            "wget -q -O ../%s https://www.unicode.org/Public/%d.0.0/ucd/%s",
+            UDATA, TOWCTRANS_UNICODE_VERSION, UDATA);
+        printf("# downloading %s ...", UDATA);
         fflush(stdout);
-        if (system(url))
+        if (system(url) == 0) {
             printf(" done\n");
-        else {
+            f = fopen("../" UDATA, "r");
+        } else {
             printf(" failed\n");
+        }
+        if (!f) {
+            printf("1..0 # skip %s not available\n", UDATA);
             return 0;
         }
-        f = fopen("../" UDATA, "r");
-        if (!f)
-            return 0;
     }
 
     /* First pass: count tests.

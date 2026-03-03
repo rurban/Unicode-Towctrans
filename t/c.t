@@ -5,7 +5,7 @@ use Config qw( %Config );
 BEGIN {
     chdir "t" if -e "t/test_towctrans.c";
 }
-use Test::More import => [qw( diag ok )];
+use Test::More import => [qw( diag ok plan )];
 
 my $is_mswin = $^O eq 'MSWin32';
 my $cc       = $Config{cc};
@@ -31,18 +31,17 @@ sub compiles_empty {
 }
 
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
-my $output = `$cc $args`;
+my $output = `$cc $args 2>&1`;
 if ( $? != 0 ) {
     diag $output;
 
     # crosscheck that an empty main works. Let it fail then.
     if ( !compiles_empty() ) {
-        print "1..0 # skip $cc fails to compile a simple main\n";
-        exit 0;
+        plan skip_all => "$cc fails to compile a simple main";
     }
 
     # now we know our header is broken, not the system cc
-    print "1..1\n";
+    plan tests => 1;
     ok( 0, "$cc $args failed" );
     exit 1;
 }
