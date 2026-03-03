@@ -35,8 +35,9 @@ towctrans-bsearch.h :: ../CaseFolding.txt.10
 	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --cf CaseFolding.txt.10
 towctrans-bsearch-both.h :: ../CaseFolding.txt.10
 	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --cf CaseFolding.txt.10
-towctrans-table.h :: ../CaseFolding.txt.10
-	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --cf CaseFolding.txt.10
+../UnicodeData.txt.10 :: ../$(GEN)
+	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --cf CaseFolding.txt.10 --ud UnicodeData.txt.10
+towctrans-table.h :: ../UnicodeData.txt.10 ../CaseFolding.txt.10
 
 towctrans-my.o: towctrans-my.c towctrans-10.h
 	$(CC) -c $(CFLAGS_BENCH) $< -o $@

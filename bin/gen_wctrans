@@ -10,10 +10,11 @@
 # The generated code is licensed under the MIT.
 #
 # Usage:
-#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt] [--help]
+#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt] [--ud UnicodeData.txt] [--help]
 #
 # Input files (will be downloaded if missing):
 #    CaseFolding.txt
+#    UnicodeData.txt (optional, for full bidirectional case mappings)
 #
 # Output files:
 #    towctrans.h or towctrans.c
@@ -47,6 +48,7 @@ my (
     $table
 );
 my $cf            = "CaseFolding.txt";
+my $ud;    # UnicodeData.txt path (optional, for full bidirectional mappings)
 my $out           = "towctrans.h";
 my $fn            = "_towcase";
 my $with_iswalpha = 0;
@@ -56,6 +58,7 @@ $cmdline_args = " $cmdline_args" if $cmdline_args;
 GetOptions(
     "v=i"           => \$v,                # numeric
     "cf=s"          => \$cf,               # string
+    "ud=s"          => \$ud,               # string (UnicodeData.txt)
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
     "min-excl=i"    => \$MIN_ECXL,         # numeric
@@ -78,6 +81,8 @@ OPTIONS
 -v NUM                Unicode major version number
 --cf CaseFolding.txt  input filename. default: CaseFolding.txt
                       Downloaded if not found.
+--ud UnicodeData.txt  optional UnicodeData.txt for full bidirectional mappings.
+                      Downloaded if not found and --ud is given.
 --out filename        default: towctrans.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
 --min-excl 10000      exclude ranges lower than 10000 (default: 2500)
@@ -542,6 +547,55 @@ while ( my $l = <$CF> ) {
     }
 }
 
+# If --ud is given, read UnicodeData.txt for full bidirectional case mappings.
+# UnicodeData.txt fields (0-indexed, semicolon-separated):
+#   field 12: Simple_Uppercase_Mapping
+#   field 13: Simple_Lowercase_Mapping
+# This provides authoritative towupper/towlower data that CaseFolding.txt lacks.
+# When --ud is given, %upper and %lower are REPLACED entirely by UnicodeData.txt
+# data, because CaseFolding.txt provides case *folding* (normalization) not
+# case *mapping* (towlower/towupper).  E.g., CaseFolding folds 0x13F8 (Cherokee
+# Small, already Ll) to 0x13F0 (Cherokee uppercase), which is wrong for towlower.
+if ($ud) {
+    if ( $v and !-e $ud ) {
+        my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
+        `wget $url -O $ud`
+          or `wget --no-check-certificate $url -O $ud`;
+        die "$PACKAGE: failed to download $url: $!" unless -s $ud;
+    }
+    open my $UD, "<", $ud or croak "$PACKAGE: $ud can't be read $!";
+    # Clear CaseFolding-derived hashes; rebuild from UnicodeData.txt
+    %upper = ();
+    %lower = ();
+    while ( my $l = <$UD> ) {
+        chomp $l;
+        next if $l =~ /^\s*#/;
+        next if $l =~ /^\s*$/;
+        my @fields = split /;/, $l;
+        my $cp = hex($fields[0]);
+        # Field 12: Simple_Uppercase_Mapping (uppercase of this codepoint)
+        # Field 13: Simple_Lowercase_Mapping (lowercase of this codepoint)
+        my $uc_map = $fields[12];
+        my $lc_map = $fields[13];
+        # If this codepoint has a lowercase mapping, it's an uppercase char:
+        # %upper maps uppercase->lowercase (confusing name, see notes)
+        if ( defined $lc_map && $lc_map =~ /^[0-9A-F]+$/i ) {
+            my $lc = hex($lc_map);
+            $upper{$cp} = $lc;
+        }
+        # If this codepoint has an uppercase mapping, it's a lowercase char:
+        # %lower maps lowercase->uppercase (confusing name, see notes)
+        if ( defined $uc_map && $uc_map =~ /^[0-9A-F]+$/i ) {
+            my $uc = hex($uc_map);
+            $lower{$cp} = $uc;
+        }
+    }
+    close $UD;
+    warn sprintf("UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\n",
+        scalar keys %upper, scalar keys %lower)
+      if $verbose;
+}
+
 seek $CF, 0, 0;
 
 # 2nd scan, now process CP's in order.
@@ -818,10 +872,11 @@ EOF
         for my $offset (0 .. $BLOCKSZ - 1) {
             my $cp = $base + $offset;
             if ($has_both{$cp}) {
-                my $lc_delta = $lower{$cp} - $cp;
-                my $uc_delta = $upper{$cp} - $cp;
-                if ($lc_delta == 1 && $uc_delta == -1) {
-                    # Titlecase: type 3
+                # %lower maps lc->uc, %upper maps uc->lc (confusing names)
+                my $uc_target_delta = $lower{$cp} - $cp;  # delta to uppercase
+                my $lc_target_delta = $upper{$cp} - $cp;  # delta to lowercase
+                if ($uc_target_delta == -1 && $lc_target_delta == 1) {
+                    # Titlecase: type 3 (towlower: +1, towupper: -1)
                     push @exc, { cp_low => $offset, rule_int => 0x3 };
                 } else {
                     push @exc, { cp_low => $offset, rule_int => $cp_rule{$cp} };
