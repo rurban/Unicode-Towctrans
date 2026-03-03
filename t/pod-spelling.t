@@ -22,17 +22,23 @@ close $fh;
 all_pod_files_spelling_ok(@manifest);
 
 __DATA__
+Adlam
+CBF
 CaseFolding
+Mtavruli
+Osage
 Reini
 UnicodeData
 azeri
 casefolding
 foldcasing
+latin
 libc
 musl
 fixups
 safeclib
 TODO
+towupper
 turkish
 un
 unicode

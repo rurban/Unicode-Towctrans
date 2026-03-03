@@ -15,6 +15,8 @@ Revision history for the Perl package Unicode::Towctrans.
       full table scans for >1M codepoints above the last cased character
     - eliminate separate @lace array: merge 2-member lace entries into @map,
       simplify simulate() and C gen loop to single-pass iteration
+    - emit titlecase digraph lace exceptions only into the loop(s) where
+      the digraphs actually land (casemaps vs casemapsl depends on --bits)
     - bench: use Unicode 10.0 data to match musl-old, add setlocale
 
 0.03	2026-02-22

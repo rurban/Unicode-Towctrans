@@ -350,10 +350,6 @@ uint32_t _towcase(uint32_t wc, int lower) {
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
         if (wc - base < casemapsl[i].len) {
             if (casemapsl[i].lower == 1) {
-                if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6))
-                    return wc - 2;
-                if (lower && (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4))
-                    return wc + 2;
                 return wc + lower - ((wc - casemapsl[i].upper) & 1);
             }
             return wc + lmul * casemapsl[i].lower;
