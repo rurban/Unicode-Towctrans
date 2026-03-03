@@ -1,5 +1,6 @@
 *~
 /blib
+.gdbinit
 *.bs
 CaseFolding.txt*
 UnicodeData.txt
