@@ -24,6 +24,7 @@ all_pod_files_spelling_ok(@manifest);
 __DATA__
 CaseFolding
 Reini
+UnicodeData
 azeri
 casefolding
 foldcasing

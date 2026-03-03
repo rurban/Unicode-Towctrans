@@ -17,7 +17,7 @@ if ( !-f "towctrans.h" ) {
 }
 
 my @cf;
-push @cf, "towctrans.h.$_", "CaseFolding.txt.$_" for 5 .. 18;
+push @cf, "towctrans.h.$_", "UnicodeData.txt.$_" for 5 .. 18;
 push @cf, "examples/test-$_" for 5 .. 18;
 my $clean = {
     FILES => [
@@ -112,22 +112,22 @@ README: bin/gen_wctrans
 	pod2text $< >$@
 tidy:
 	perltidy -b bin/gen_wctrans
-CaseFolding.txt:
+UnicodeData.txt:
 	 bin/gen_wctrans
-CaseFolding.txt.8 towctrans-8.h CaseFolding.txt.15:
-	for v in `seq 5 18`; do $(FULLPERLRUN) bin/gen_wctrans --out towctrans-$$v.h -v $$v --cf CaseFolding.txt.$$v; done
-test-all : bin/gen_wctrans CaseFolding.txt.8 towctrans-8.h
+UnicodeData.txt.8 towctrans-8.h UnicodeData.txt.15:
+	for v in `seq 5 18`; do $(FULLPERLRUN) bin/gen_wctrans --out towctrans-$$v.h -v $$v --ud UnicodeData.txt.$$v; done
+test-all : bin/gen_wctrans UnicodeData.txt.8 towctrans-8.h
 	for v in `seq 5 18`; do \
-	  $(FULLPERLRUN) bin/gen_wctrans --out towctrans.h -v $$v --cf CaseFolding.txt; \
+	  $(FULLPERLRUN) bin/gen_wctrans --out towctrans.h -v $$v --ud UnicodeData.txt; \
 	  echo Unicode $$v; \
 	  $(FULLPERLRUN) -MExtUtils::Command::MM -MTest::Harness -e "test_harness(0)" t/*.t; done; \
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans.h
-diffs : bin/gen_wctrans CaseFolding.txt.8
+diffs : bin/gen_wctrans UnicodeData.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans-$$v.h towctrans-$$n.h; done
 towctrans.h: bin/gen_wctrans
 	$(FULLPERLRUN) bin/gen_wctrans
 towctrans-15.h:
-	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --cf CaseFolding.txt.15
+	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --ud UnicodeData.txt.15
 bench: towctrans-15.h
 	@if test -f examples/bench; then rm examples/bench; fi
 	make -C examples bench

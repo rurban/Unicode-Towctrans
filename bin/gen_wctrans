@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #
 # This script creates a towctrans.h header (or C source) file, musl old-style.
-# for simple casefolding as implemented in towlower() and towupper().
+# for simple case mapping as implemented in towlower() and towupper().
 # Used for building musl and safeclib for fast and small upper/lowercasing
 # tables for towlower() and towupper() and its secure variants
 # towupper_s() and towlower_s(). Planned also for the multi-byte
@@ -10,11 +10,10 @@
 # The generated code is licensed under the MIT.
 #
 # Usage:
-#    gen_wctrans [-v 17] [--out towctrans.h] [--cf CaseFolding.txt] [--ud UnicodeData.txt] [--help]
+#    gen_wctrans [-v 17] [--out towctrans.h] [--ud UnicodeData.txt] [--help]
 #
 # Input files (will be downloaded if missing):
-#    CaseFolding.txt
-#    UnicodeData.txt (optional, for full bidirectional case mappings)
+#    UnicodeData.txt  (primary: Simple_Uppercase/Lowercase_Mapping fields 12/13)
 #
 # Output files:
 #    towctrans.h or towctrans.c
@@ -47,8 +46,7 @@ my (
     $safec, $musl,    $bsearch, $bsearch_both,
     $table
 );
-my $cf            = "CaseFolding.txt";
-my $ud;    # UnicodeData.txt path (optional, for full bidirectional mappings)
+my $ud            = "UnicodeData.txt";
 my $out           = "towctrans.h";
 my $fn            = "_towcase";
 my $with_iswalpha = 0;
@@ -57,7 +55,6 @@ $cmdline_args = " $cmdline_args" if $cmdline_args;
 
 GetOptions(
     "v=i"           => \$v,                # numeric
-    "cf=s"          => \$cf,               # string
     "ud=s"          => \$ud,               # string (UnicodeData.txt)
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
@@ -76,13 +73,11 @@ GetOptions(
 if ($help) {
     print <<'EOF';
 gen_wctrans [OPTIONS]
-Generate casefolding C header file
+Generate case mapping C header file
 OPTIONS
 -v NUM                Unicode major version number
---cf CaseFolding.txt  input filename. default: CaseFolding.txt
+--ud UnicodeData.txt  input filename. default: UnicodeData.txt
                       Downloaded if not found.
---ud UnicodeData.txt  optional UnicodeData.txt for full bidirectional mappings.
-                      Downloaded if not found and --ud is given.
 --out filename        default: towctrans.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
 --min-excl 10000      exclude ranges lower than 10000 (default: 2500)
@@ -116,7 +111,7 @@ if ($safec) {
     die "cannot use --sace and --musl together\n" if $musl;
     $out = "towctrans.c"                          if $out eq "towctrans.h";
 }
-if ( !$v and !-e $cf ) {
+if ( !$v ) {
     use Unicode::UCD;
     my $full = Unicode::UCD::UnicodeVersion();
     ($v) = $full =~ /^(\d+)\./;
@@ -480,212 +475,145 @@ sub add_excl {
     }
 }
 
-if ( $v and !-e $cf ) {
-    my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
-    `wget $url -O $cf`
-      or `wget --no-check-certificate $url -O $cf`;
-    die "$PACKAGE: failed to download $url: $!" unless -s $cf;
+if ( $v and !-s $ud ) {
+    my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
+    `wget $url -O $ud`
+      or `wget --no-check-certificate $url -O $ud`;
+    die "$PACKAGE: failed to download $url: $!" unless -s $ud;
 }
-open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
+open my $UD, "<", $ud or croak "$PACKAGE: $ud can't be read $!";
 
-# first scan to catch all rhs lower mappings
-# Two-pass: first collect all forward mappings (upper->lower), then build
-# reverse mapping (%lower) preferring "true" uppercase letters (Lu) over
-# variant forms (Ll, Lt, Mn).  Uses Unicode::UCD to get General Category.
-my %_all_mappings;  # cp -> mapping (single-char only)
-while ( my $l = <$CF> ) {
-    chomp $l;
-    if ( !$v and $. == 1 ) {
-        $l =~ /CaseFolding-(\d+).0.0.txt/;
-        $v = $1;
-    }
-    next if $l =~ /^\s*#/;
-    next if $l =~ /^\s*$/;
-    my ( $cp, $status, $mapping, $name ) = split /;\s*/, $l;
-    my @cp = getHexArray($cp);
-    die "first column multiple codepoints" if @cp != 1;
-    $cp = $cp[0];
-    if ($mapping) {
-        my @mapping = getHexArray($mapping);
-        $upper{$cp} = $mapping[0];
-        if ( @mapping == 1 ) {
-            $_all_mappings{$cp} = $mapping[0];
-        }
-    }
-}
-# Build %lower: for each lowercase target, pick the best uppercase source.
-# Prefer Lu (uppercase letter) over Lt (titlecase) over others.
-# Among equally-qualified candidates, prefer smallest |delta|.
-{
-    require Unicode::UCD;
-    my %_candidates;  # lowercase -> [cp, ...]
-    for my $cp (keys %_all_mappings) {
-        push @{ $_candidates{ $_all_mappings{$cp} } }, $cp;
-    }
-    my %_cat_priority = ( Lu => 0, Lt => 1 );  # lower number = preferred
-    # Cache category lookups
-    my %_cat_cache;
-    for my $lc (keys %_candidates) {
-        my @cands = @{ $_candidates{$lc} };
-        if (@cands == 1) {
-            $lower{$lc} = $cands[0];
-            next;
-        }
-        # Sort by: 1) Lu first, then Lt, then others  2) smallest |delta|
-        for my $c (@cands) {
-            unless (exists $_cat_cache{$c}) {
-                my $info = Unicode::UCD::charinfo($c);
-                $_cat_cache{$c} = $info ? ($info->{category} // '') : '';
-            }
-        }
-        my @sorted = sort {
-            my $pa = $_cat_priority{ $_cat_cache{$a} } // 2;
-            my $pb = $_cat_priority{ $_cat_cache{$b} } // 2;
-            $pa <=> $pb || abs($a - $lc) <=> abs($b - $lc)
-        } @cands;
-        $lower{$lc} = $sorted[0];
-    }
-}
-
-# If --ud is given, read UnicodeData.txt for full bidirectional case mappings.
+# Read UnicodeData.txt to build:
+# 1. %upper (uppercase->lowercase, from field 13: Simple_Lowercase_Mapping)
+# 2. %lower (lowercase->uppercase, from field 12: Simple_Uppercase_Mapping)
+#
 # UnicodeData.txt fields (0-indexed, semicolon-separated):
+#   field 0:  codepoint hex
+#   field 2:  General_Category (Lu, Ll, Lt, etc.)
 #   field 12: Simple_Uppercase_Mapping
 #   field 13: Simple_Lowercase_Mapping
-# This provides authoritative towupper/towlower data that CaseFolding.txt lacks.
-# When --ud is given, %upper and %lower are REPLACED entirely by UnicodeData.txt
-# data, because CaseFolding.txt provides case *folding* (normalization) not
-# case *mapping* (towlower/towupper).  E.g., CaseFolding folds 0x13F8 (Cherokee
-# Small, already Ll) to 0x13F0 (Cherokee uppercase), which is wrong for towlower.
-if ($ud) {
-    if ( $v and !-e $ud ) {
-        my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
-        `wget $url -O $ud`
-          or `wget --no-check-certificate $url -O $ud`;
-        die "$PACKAGE: failed to download $url: $!" unless -s $ud;
-    }
-    open my $UD, "<", $ud or croak "$PACKAGE: $ud can't be read $!";
-    # Clear CaseFolding-derived hashes; rebuild from UnicodeData.txt
-    %upper = ();
-    %lower = ();
-    while ( my $l = <$UD> ) {
-        chomp $l;
-        next if $l =~ /^\s*#/;
-        next if $l =~ /^\s*$/;
-        my @fields = split /;/, $l;
-        my $cp = hex($fields[0]);
-        # Field 12: Simple_Uppercase_Mapping (uppercase of this codepoint)
-        # Field 13: Simple_Lowercase_Mapping (lowercase of this codepoint)
-        my $uc_map = $fields[12];
-        my $lc_map = $fields[13];
-        # If this codepoint has a lowercase mapping, it's an uppercase char:
-        # %upper maps uppercase->lowercase (confusing name, see notes)
-        if ( defined $lc_map && $lc_map =~ /^[0-9A-F]+$/i ) {
-            my $lc = hex($lc_map);
-            $upper{$cp} = $lc;
-        }
-        # If this codepoint has an uppercase mapping, it's a lowercase char:
-        # %lower maps lowercase->uppercase (confusing name, see notes)
-        if ( defined $uc_map && $uc_map =~ /^[0-9A-F]+$/i ) {
-            my $uc = hex($uc_map);
-            $lower{$cp} = $uc;
-        }
-    }
-    close $UD;
-    warn sprintf("UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\n",
-        scalar keys %upper, scalar keys %lower)
-      if $verbose;
-}
 
-seek $CF, 0, 0;
-
-# 2nd scan, now process CP's in order.
-while ( my $l = <$CF> ) {
+while ( my $l = <$UD> ) {
     chomp $l;
     next if $l =~ /^\s*#/;
     next if $l =~ /^\s*$/;
-    my ( $cp, $status, $mapping, $name ) = split /;\s*/, $l;
-    my @cp = getHexArray($cp);
-    die "first column multiple codepoints" if @cp != 1;
-    $cp = $cp[0];
-    my @mapping = getHexArray($mapping);
+    my @fields = split /;/, $l;
+    my $cp = hex($fields[0]);
+
+    # Auto-detect version from the first codepoint range comment if needed
+    # (UnicodeData.txt has no version header, rely on -v or UCD fallback)
+
+    my $uc_map = $fields[12];
+    my $lc_map = $fields[13];
+
+    # %upper maps uppercase->lowercase (codepoints with a lowercase mapping)
+    if ( defined $lc_map && $lc_map =~ /^[0-9A-F]+$/i ) {
+        my $lc_val = hex($lc_map);
+        $upper{$cp} = $lc_val;
+    }
+    # %lower maps lowercase->uppercase (codepoints with an uppercase mapping)
+    if ( defined $uc_map && $uc_map =~ /^[0-9A-F]+$/i ) {
+        my $uc_val = hex($uc_map);
+        $lower{$cp} = $uc_val;
+    }
+}
+close $UD;
+
+warn sprintf("UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\n",
+    scalar keys %upper, scalar keys %lower)
+  if $verbose;
+
+# Build @map, @lace, @pair from %upper (uppercase->lowercase mappings).
+# Process in codepoint order, detecting consecutive ranges (maps, laces)
+# and isolated pairs.  This replaces the old CaseFolding.txt second scan.
+for my $cp (sort { $a <=> $b } keys %upper) {
+    $lc = $upper{$cp};
 
     if ( !@map ) {
-        add_map( \@map, $cp, $mapping[0] );    # 'A' -> 'a'
+        add_map( \@map, $cp, $lc );    # 'A' -> 'a'
     }
     else {
-        # check status. only if C
-        if ( $cp - $prev == 1 ) {              # next cp
-            if ( ( $status eq 'C' or $status eq 'S' ) and scalar @mapping == 1 )
-            {
-                $lc = $mapping[0];
-                if ( $lc - $cp == 1 ) {
+        if ( $cp - $prev == 1 ) {              # consecutive codepoint
+            if ( $lc - $cp == 1 ) {
 
-                    # check if we can convert the previous pair to a lace
-                    if (    @pair
-                        and $pair[-1][0] == $cp - 1
-                        and $pair[-1][1] == $lc - 1 )
-                    {
-                        warn(
-                            sprintf(
-                                "convert old pair to lace %04X %04X\n",
-                                $cp, $lc
-                            )
-                        ) if $verbose;
-                        pop @pair;
-                        add_lace( \@lace, $cp - 1, $lc - 1 );
-                        add_lace( \@lace, $cp,     $lc );
-                    }
-                    else {
-                        #warn "add_lace $cp $lc\n" if $verbose;
-                        add_lace( \@lace, $cp, $lc );
-                    }
+                # check if we can convert the previous pair to a lace
+                if (    @pair
+                    and $pair[-1][0] == $cp - 1
+                    and $pair[-1][1] == $lc - 1 )
+                {
+                    warn(
+                        sprintf(
+                            "convert old pair to lace %04X %04X\n",
+                            $cp, $lc
+                        )
+                    ) if $verbose;
+                    pop @pair;
+                    add_lace( \@lace, $cp - 1, $lc - 1 );
+                    add_lace( \@lace, $cp,     $lc );
                 }
                 else {
-                    # check if we can convert the previous pair to a map
-                    if (    @pair
-                        and $pair[-1][0] == $cp - 1
-                        and $pair[-1][1] == $lc - 1 )
-                    {
-                        if ($verbose) {
-                            warn
-                              sprintf( "convert old pair to map %04X, %04X\n",
-                                $cp, $lc );
-                        }
-                        pop @pair;
-                        add_map( \@map, $cp - 1, $lc - 1 );
-                        add_map( \@map, $cp,     $lc );
+                    add_lace( \@lace, $cp, $lc );
+                }
+            }
+            else {
+                # check if we can convert the previous pair to a map
+                if (    @pair
+                    and $pair[-1][0] == $cp - 1
+                    and $pair[-1][1] == $lc - 1 )
+                {
+                    if ($verbose) {
+                        warn
+                          sprintf( "convert old pair to map %04X, %04X\n",
+                            $cp, $lc );
                     }
-                    else {
-                        #warn "add_map $cp $lc\n" if $verbose;
-                        add_map( \@map, $cp, $lc );
-                    }
+                    pop @pair;
+                    add_map( \@map, $cp - 1, $lc - 1 );
+                    add_map( \@map, $cp,     $lc );
+                }
+                else {
+                    add_map( \@map, $cp, $lc );
                 }
             }
         }
-        else {    # not next cp, a hole or lace
-            if ( $status eq 'T' ) {
-                ;
+        else {    # not consecutive, a hole
+            if ( $lc - $cp == 1 ) {
+                add_lace( \@lace, $cp, $lc );
             }
-            elsif ( ( $status eq 'C' or $status eq 'S' )
-                and scalar @mapping == 1 )
-            {
-                my $to = $mapping[0];
-                if ( $to - $cp == 1 ) {
-
-                    #warn "add_lace $cp $to\n" if $verbose;
-                    add_lace( \@lace, $cp, $to );
-                }
-                else {    # add a hole
-                    warn( sprintf( "add_pair %04X, %04X\n", $cp, $to ) )
-                      if $verbose;
-                    add_pair( \@pair, $cp, $to );
-                }
+            else {    # add a hole
+                warn( sprintf( "add_pair %04X, %04X\n", $cp, $lc ) )
+                  if $verbose;
+                add_pair( \@pair, $cp, $lc );
             }
         }
     }
-    $prev = $cp if $status eq 'C' or $status eq 'S';
+    $prev = $cp;
 }
-close $CF;
+
+# Add extra pairs from %lower for towupper of characters whose
+# Simple_Uppercase_Mapping is not the reverse of any %upper entry.
+# These are asymmetric mappings (e.g., micro sign 00B5 -> 039C Mu capital,
+# but Mu capital -> 03BC mu small, not back to micro sign).
+if (!$table) {
+    for my $lc_cp (sort { $a <=> $b } keys %lower) {
+        my $uc_target = $lower{$lc_cp};
+        # Skip if already covered: the uppercase target maps back to this char
+        next if exists $upper{$uc_target} && $upper{$uc_target} == $lc_cp;
+        # Add as a pair [uc_target, lc_cp] so towupper(lc_cp) returns uc_target
+        warn(sprintf("extra pair %04X, %04X (from %%lower)\n", $uc_target, $lc_cp))
+          if $verbose;
+        push @pair, [ $uc_target, $lc_cp ];
+    }
+    # Re-sort pairs by upper codepoint (they must be sorted for the early-break optimization).
+    # When two pairs share the same upper, put the authoritative towlower mapping
+    # (from %upper) first so that the linear search finds it before the extra
+    # towupper-only pair.
+    @pair = sort {
+        $a->[0] <=> $b->[0]
+        || ( exists $upper{$a->[0]} && $upper{$a->[0]} == $a->[1] ? -1
+           : exists $upper{$b->[0]} && $upper{$b->[0]} == $b->[1] ?  1
+           : $a->[1] <=> $b->[1] )
+    } @pair;
+}
 
 my $ucd_version = "$v.0.0";
 my @h_args      = ( $Unicode::Towctrans::VERSION, $cmdline_args, $ucd_version );
@@ -751,7 +679,7 @@ EOF
 
 if ($table) {
     # --table: generate musl-new style two-level base-6 tables
-    # Uses %lower (upper->lower) and %upper (lower->upper) from CaseFolding.txt
+    # Uses %lower (lc->uc) and %upper (uc->lc) from UnicodeData.txt
 
     printf FH <<'EOF', ( $ucd_version, $v );
 
@@ -1721,9 +1649,13 @@ EOF
                 if (wc < cm->upper) // too low
                     hi = mid - 1;
                 else if (wc - cm->upper < cm->len) { // in range
-                    if (cm->lower == 1)              // is LACE
+                    if (cm->lower == 1) {            // is LACE
+                        /* Need this exception (wrong lace for titlecase digraphs).
+                           Tested from Unicode 4 to 18. */
+                        if (wc == 0x1C4 || wc == 0x1CA || wc == 0x1F1)
+                            return wc + 2;
                         return wc + 1 - ((wc - cm->upper) & 1);
-                    else
+                    } else
                         return $bits_ret;
                 } else // too high
                     lo = mid + 1;
@@ -1738,9 +1670,11 @@ EOF
                 if (wc < cm->upper) // lower
                     hi = mid - 1;
                 else if (wc - cm->upper < cm->len) { // in range
-                    if (cm->lower == 1)
+                    if (cm->lower == 1) {
+                        if (wc == 0x1C4 || wc == 0x1CA || wc == 0x1F1)
+                            return wc + 2;
                         return wc + 1 - ((wc - cm->upper) & 1);
-                    else
+                    } else
                         return wc + cm->lower;
                 } else // higher
                     lo = mid + 1;
@@ -1752,8 +1686,14 @@ EOF
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2;
             const unsigned short *p = (unsigned short *)&pairs[mid];
-            if (*p == wc)
-                return *(p + 1);
+            if (*p == wc) {
+                /* With duplicate [0] keys (extra towupper pairs), ensure we
+                   return the first match which is the authoritative towlower. */
+                int first = mid;
+                while (first > 0 && pairs[first - 1][0] == wc)
+                    first--;
+                return pairs[first][1];
+            }
             else if (*p < wc)
                 lo = mid + 1;
             else
@@ -1808,8 +1748,26 @@ EOF
         while (lo <= hi) {
             const int mid = lo + (hi - lo) / 2;
             const unsigned short *p = (unsigned short *)&pairs[pairs_upper[mid]];
-            if (p[1] == wc)
-                return p[0];
+            if (p[1] == wc) {
+                /* With duplicate [1] keys (e.g. titlecase digraphs), find the
+                   entry with the smallest [0] (true uppercase, not titlecase). */
+                unsigned short best = p[0];
+                int j = mid - 1;
+                while (j >= 0) {
+                    const unsigned short *q = (unsigned short *)&pairs[pairs_upper[j]];
+                    if (q[1] != wc) break;
+                    if (q[0] < best) best = q[0];
+                    j--;
+                }
+                j = mid + 1;
+                while (j < $SZ_PAIR_UPPER) {
+                    const unsigned short *q = (unsigned short *)&pairs[pairs_upper[j]];
+                    if (q[1] != wc) break;
+                    if (q[0] < best) best = q[0];
+                    j++;
+                }
+                return best;
+            }
             else if (p[1] < wc)
                 lo = mid + 1;
             else
@@ -1833,10 +1791,10 @@ EOF
                     lo = mid + 1;
                 else {
                     if (cm->lower == 1) {
-                        /* Need this exception (wrong lace). Tested from
-                           Unicode 4 to 18. We search pairs later. */
-                        if (wc == 0x1F3)
-                            return 0x1F1;
+                        /* Need this exception (wrong lace for titlecase digraphs).
+                           Tested from Unicode 4 to 18. We search pairs later. */
+                        if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
+                            return wc - 2;
                         return wc - ((wc - cm->upper) & 1);
                     } else {
                         return wc - cm->lower;
@@ -1858,9 +1816,11 @@ EOF
                 else if (wc > target_end)
                     lo = mid + 1;
                 else {
-                    if (cm->lower == 1)
+                    if (cm->lower == 1) {
+                        if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
+                            return wc - 2;
                         return wc - ((wc - cm->upper) & 1);
-                    else
+                    } else
                         return wc - cm->lower;
                 }
             }
@@ -1901,10 +1861,10 @@ $low_decl
             assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
             if (wc - base < casemaps[i].len) {
                 if (casemaps[i].lower == 1) {
-                    /* Need this exception (wrong lace). Tested from Unicode 4
-                       to 18. We search pairs later. */
-                    if (wc == 0x1F3)
-                        return 0x1F1;
+                    /* Need this exception (wrong lace for titlecase digraphs).
+                       Tested from Unicode 4 to 18. We search pairs later. */
+                    if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
+                        return wc - 2;
                     return wc - ((wc - casemaps[i].upper) & 1);
                 } else {
                     return wc - $CASELOW;
@@ -1916,10 +1876,10 @@ $low_decl
             assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
             if (wc - base < casemapsl[i].len) {
                 if (casemapsl[i].lower == 1) {
-                    /* Need this exception (wrong lace). Tested from Unicode 4
-                       to 18. */
-                    // if (wc == 0x1F3)
-                    //    return 0x1F1;
+                    /* Need this exception (wrong lace for titlecase digraphs).
+                       Tested from Unicode 4 to 18. */
+                    if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
+                        return wc - 2;
                     return wc - ((wc - casemapsl[i].upper) & 1);
                 } else {
                     return wc - casemapsl[i].lower;
@@ -1960,10 +1920,12 @@ $low_decl
         assert(i > 0 ? casemaps[i].upper >= casemaps[i - 1].upper : 1);
         if (wc - base < casemaps[i].len) {
             if (casemaps[i].lower == 1) {
-                /* Need this exception (wrong lace). Tested from Unicode 4
-                   to 18. We search pairs later. */
-                if (!lower && wc == 0x1F3)
-                    return 0x1F1;
+                /* Need this exception (wrong lace for titlecase digraphs).
+                   Tested from Unicode 4 to 18. We search pairs later. */
+                if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6))
+                    return wc - 2;
+                if (lower && (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4))
+                    return wc + 2;
                 return wc + lower - ((wc - casemaps[i].upper) & 1);
             } else {
                 return wc + lmul * $CASELOW;
@@ -1981,6 +1943,10 @@ EOF
 
     # TODO if 1F3 is in PAIRL, add lace exception
     print FH <<"EOF";
+                if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6))
+                    return wc - 2;
+                if (lower && (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4))
+                    return wc + 2;
                 return wc + lower - ((wc - casemapsl[i].upper) & 1);
             }
             return wc + lmul * casemapsl[i].lower;
@@ -2086,7 +2052,7 @@ __END__
 
 =head1 NAME
 
-Unicode::Towctrans - Generate small casefolding tables
+Unicode::Towctrans - Generate small case mapping tables
 
 =head1 SYNOPSIS
 
@@ -2094,7 +2060,7 @@ Unicode::Towctrans - Generate small casefolding tables
     gen_wctrans --safec
     gen_wctrans --musl
     gen_wctrans -v 15
-    gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
+    gen_wctrans -v 15 --ud UnicodeData.txt.15 --out towctrans-15.h
     gen_wctrans --lower16
     gen_wctrans --fn __towcase
     gen_wctrans --bits 18:14:10
@@ -2106,7 +2072,7 @@ Unicode::Towctrans - Generate small casefolding tables
 =head1 DESCRIPTION
 
 F<gen_wctrans> generates a F<towctrans.h> header file, which is used by C<musl>
-and C<safeclib> to generate small and efficient case folding tables, to
+and C<safeclib> to generate small and efficient case mapping tables, to
 build the libc C<towupper()> and C<towlower()> functions and its secure
 variants C<towupper_s()> and C<towlower_s()>.
 
@@ -2223,7 +2189,7 @@ However for full testing and global installation run this:
 
 =head1 DEPENDENCIES
 
-This module requires a CaseFolding.txt file from Unicode Character
+This module requires a UnicodeData.txt file from Unicode Character
 Database, which is automatically downloaded via wget if missing.
 
 =head1 AUTHOR
