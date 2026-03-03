@@ -1,5 +1,20 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.04	2026-03-06
+    - replace CaseFolding.txt (--cf) with UnicodeData.txt (--ud) for
+      correct case mappings. CaseFolding.txt provides case folding
+      (normalization for comparison), not case mapping (towlower/towupper).
+    - add --bsearch-both generator with uint8_t index arrays
+    - add --table generator (musl-new style)
+    - fix lower param convention: lower=1 means towlower, lower=0 means
+      towupper
+    - fix towupper(DZ) bug: remove spurious reverse pair [0x1F3, 0x1F1]
+    - fix simulate(): use index-based iteration instead of fragile each
+    - fix add_lace() clash: demote clashing lace to pair instead of warning
+    - add upper bound exclusion guard for towupper performance, avoiding
+      full table scans for >1M codepoints above the last cased character
+    - bench: use Unicode 10.0 data to match musl-old, add setlocale
+
 0.03	2026-02-22
     - add --musl and --safec generators
     - extend benchmark to error counting
