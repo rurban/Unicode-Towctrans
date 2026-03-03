@@ -1,12 +1,12 @@
 NAME
-    Unicode::Towctrans - Generate small casefolding tables
+    Unicode::Towctrans - Generate small case mapping tables
 
 SYNOPSIS
         gen_wctrans
         gen_wctrans --safec
         gen_wctrans --musl
         gen_wctrans -v 15
-        gen_wctrans -v 15 --cf CaseFolding.txt.15 --out towctrans-15.h
+        gen_wctrans -v 15 --ud UnicodeData.txt.15 --out towctrans-15.h
         gen_wctrans --lower16
         gen_wctrans --fn __towcase
         gen_wctrans --bits 18:14:10
@@ -17,7 +17,7 @@ SYNOPSIS
 
 DESCRIPTION
     gen_wctrans generates a towctrans.h header file, which is used by "musl"
-    and "safeclib" to generate small and efficient case folding tables, to
+    and "safeclib" to generate small and efficient case mapping tables, to
     build the libc towupper() and towlower() functions and its secure
     variants towupper_s() and towlower_s().
 
@@ -62,23 +62,23 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        140 [us] 100.00 %
-              my_low16:        111 [us] 126.13 %
-               my_bits:        127 [us] 110.24 %
-            my_bsearch:        111 [us] 126.13 %
-           my_bsearchb:        120 [us] 116.67 %
-              my_table:        123 [us] 113.82 %    216 errors
-              musl-new:        127 [us] 110.24 %    200 errors
-              musl-old:        117 [us] 119.66 %
-                 glibc:         79 [us] 177.22 %
+                    my:        577 [us] 100.00 %
+              my_low16:        597 [us] 96.65 %
+               my_bits:        613 [us] 94.13 %
+            my_bsearch:        466 [us] 123.82 %
+           my_bsearchb:        435 [us] 132.64 %
+              my_table:        117 [us] 493.16 %
+              musl-new:        108 [us] 534.26 %    9 errors
+              musl-old:        767 [us] 75.23 %     3 errors
+                 glibc:        262 [us] 220.23 %    14 errors
 
         wc -c towctrans-*.o
-          3384 towctrans-my.o
-          3496 towctrans-mylow16.o
-          3704 towctrans-mybits.o
-          3696 towctrans-mybsearch.o
-          4344 towctrans-mybsearch-both.o
-          8008 towctrans-mytable.o
+          3400 towctrans-my.o
+          3392 towctrans-mylow16.o
+          3712 towctrans-mybits.o
+          3736 towctrans-mybsearch.o
+          4496 towctrans-mybsearch-both.o
+          6784 towctrans-mytable.o
           6808 towctrans-musl-new.o
           3416 towctrans-musl-old.o
          97432 towctrans-glibc.o
@@ -129,7 +129,7 @@ INSTALLATION
        sudo make install
 
 DEPENDENCIES
-    This module requires a CaseFolding.txt file from Unicode Character
+    This module requires a UnicodeData.txt file from Unicode Character
     Database, which is automatically downloaded via wget if missing.
 
 AUTHOR

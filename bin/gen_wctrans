@@ -1355,9 +1355,10 @@ if ($bsearch_both) {
     $TARGETL_LAST  = $casel_by_target[-1][0] + $casel_by_target[-1][1] + $casel_by_target[-1][2] - 1;
 }
 
-# Also fixup pairs to enable reverse lookup
-# FIXME Need this exception (wrong lace). Tested from Unicode 4 to 18.
-add_pair( \@pair, 0x1F3, 0x1F1 );
+# The DZ digraph pair [0x1F1, 0x1F3] already handles both directions:
+# towlower(0x1F1) finds pairs[i][0]==0x1F1, returns pairs[i][1]=0x1F3
+# towupper(0x1F3) finds pairs[i][1]==0x1F3, returns pairs[i][0]=0x1F1
+# No extra reverse pair needed (same as 01C4/01CA digraphs).
 
 @PAIR  = sort { $a->[0] <=> $b->[0] } @pair;
 @PAIRL = grep { $_->[0] > 0xffff } @PAIR;
@@ -2120,23 +2121,23 @@ vary more.
 
     make -C examples
     ./bench
-                my:        140 [us] 100.00 %
-          my_low16:        111 [us] 126.13 %
-           my_bits:        127 [us] 110.24 %
-        my_bsearch:        111 [us] 126.13 %
-       my_bsearchb:        120 [us] 116.67 %
-          my_table:        123 [us] 113.82 %	216 errors
-          musl-new:        127 [us] 110.24 %	200 errors
-          musl-old:        117 [us] 119.66 %
-             glibc:         79 [us] 177.22 %
+                my:        577 [us] 100.00 %
+          my_low16:        597 [us] 96.65 %
+           my_bits:        613 [us] 94.13 %
+        my_bsearch:        466 [us] 123.82 %
+       my_bsearchb:        435 [us] 132.64 %
+          my_table:        117 [us] 493.16 %
+          musl-new:        108 [us] 534.26 %	9 errors
+          musl-old:        767 [us] 75.23 %	3 errors
+             glibc:        262 [us] 220.23 %	14 errors
 
     wc -c towctrans-*.o
-      3384 towctrans-my.o
-      3496 towctrans-mylow16.o
-      3704 towctrans-mybits.o
-      3696 towctrans-mybsearch.o
-      4344 towctrans-mybsearch-both.o
-      8008 towctrans-mytable.o
+      3400 towctrans-my.o
+      3392 towctrans-mylow16.o
+      3712 towctrans-mybits.o
+      3736 towctrans-mybsearch.o
+      4496 towctrans-mybsearch-both.o
+      6784 towctrans-mytable.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o
      97432 towctrans-glibc.o
