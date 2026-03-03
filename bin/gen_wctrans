@@ -484,6 +484,10 @@ if ( $v and !-e $cf ) {
 open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
 
 # first scan to catch all rhs lower mappings
+# Two-pass: first collect all forward mappings (upper->lower), then build
+# reverse mapping (%lower) preferring "true" uppercase letters (Lu) over
+# variant forms (Ll, Lt, Mn).  Uses Unicode::UCD to get General Category.
+my %_all_mappings;  # cp -> mapping (single-char only)
 while ( my $l = <$CF> ) {
     chomp $l;
     if ( !$v and $. == 1 ) {
@@ -498,10 +502,43 @@ while ( my $l = <$CF> ) {
     $cp = $cp[0];
     if ($mapping) {
         my @mapping = getHexArray($mapping);
-        if ( @mapping == 1 ) {
-            $lower{ $mapping[0] } = $cp;
-        }
         $upper{$cp} = $mapping[0];
+        if ( @mapping == 1 ) {
+            $_all_mappings{$cp} = $mapping[0];
+        }
+    }
+}
+# Build %lower: for each lowercase target, pick the best uppercase source.
+# Prefer Lu (uppercase letter) over Lt (titlecase) over others.
+# Among equally-qualified candidates, prefer smallest |delta|.
+{
+    require Unicode::UCD;
+    my %_candidates;  # lowercase -> [cp, ...]
+    for my $cp (keys %_all_mappings) {
+        push @{ $_candidates{ $_all_mappings{$cp} } }, $cp;
+    }
+    my %_cat_priority = ( Lu => 0, Lt => 1 );  # lower number = preferred
+    # Cache category lookups
+    my %_cat_cache;
+    for my $lc (keys %_candidates) {
+        my @cands = @{ $_candidates{$lc} };
+        if (@cands == 1) {
+            $lower{$lc} = $cands[0];
+            next;
+        }
+        # Sort by: 1) Lu first, then Lt, then others  2) smallest |delta|
+        for my $c (@cands) {
+            unless (exists $_cat_cache{$c}) {
+                my $info = Unicode::UCD::charinfo($c);
+                $_cat_cache{$c} = $info ? ($info->{category} // '') : '';
+            }
+        }
+        my @sorted = sort {
+            my $pa = $_cat_priority{ $_cat_cache{$a} } // 2;
+            my $pb = $_cat_priority{ $_cat_cache{$b} } // 2;
+            $pa <=> $pb || abs($a - $lc) <=> abs($b - $lc)
+        } @cands;
+        $lower{$lc} = $sorted[0];
     }
 }
 
@@ -657,6 +694,492 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 EOF
+
+if ($table) {
+    # --table: generate musl-new style two-level base-6 tables
+    # Uses %lower (upper->lower) and %upper (lower->upper) from CaseFolding.txt
+
+    printf FH <<'EOF', ( $ucd_version, $v );
+
+/* for Unicode %s */
+#define TOWCTRANS_UNICODE_VERSION %u
+
+EOF
+
+    # Helper: construct a rule as a 32-bit signed integer string key.
+    # rule = (delta << 8) | type, stored as a string to avoid Perl 64-bit issues.
+    # Returns the string representation of the 32-bit signed int.
+    sub rule_int32 {
+        my ($delta, $type) = @_;
+        # Compute as native int, then mask to 32 bits
+        my $val = ($delta << 8) | $type;
+        # Reinterpret as signed 32-bit
+        $val = unpack('l', pack('l', $val));
+        return $val;
+    }
+
+    # Format a rule int for C output
+    sub fmt_rule {
+        my ($r) = @_;
+        if ($r == 0) { return "0x0"; }
+        # Ensure signed 32-bit interpretation
+        $r = unpack('l', pack('l', $r));
+        if ($r >= 0) {
+            return sprintf("0x%x", $r);
+        } else {
+            return sprintf("-0x%x", -$r);
+        }
+    }
+
+    # Build a mapping from codepoint -> (delta, direction)
+    # For the musl-new scheme:
+    #   rule type 0: lowercase delta applied when dir=0 (towlower)
+    #   rule type 1: uppercase delta applied when dir=1 (towupper)
+
+    my $NBLOCKS = 512;   # covers 0x00000 - 0x1FFFF
+    my $BLOCKSZ = 256;
+
+    # Per-codepoint rule assignment.
+    # Each rule is: (delta << 8) | type, as a 32-bit signed int.
+    my %cp_rule;    # codepoint -> rule_int (32-bit signed)
+
+    # Codepoints with lowercase mappings (these are uppercase chars)
+    for my $uc (keys %lower) {
+        my $lc = $lower{$uc};
+        next if $lc == $uc;
+        $cp_rule{$uc} = rule_int32($lc - $uc, 0);
+    }
+
+    # Codepoints with uppercase mappings (these are lowercase chars)
+    for my $lc (keys %upper) {
+        my $uc = $upper{$lc};
+        next if $uc == $lc;
+        $cp_rule{$lc} = rule_int32($uc - $lc, 1);
+    }
+
+    # Codepoints with BOTH a lowercase and an uppercase mapping
+    # (e.g., titlecase characters like U+01C5).
+    my %has_both;
+    for my $cp (keys %cp_rule) {
+        if (exists $lower{$cp} && $lower{$cp} != $cp &&
+            exists $upper{$cp} && $upper{$cp} != $cp) {
+            $has_both{$cp} = 1;
+        }
+    }
+
+    # For each 256-codepoint block, collect distinct rules.
+    # Max 6 per block (base-6 encoding). Overflow -> exceptions.
+    my @block_rules;      # [$block] -> [rule_int, ...] (up to 6, may include 'EXC')
+    my @block_rule_map;   # [$block]{$cp_offset} -> rule_index (0-5)
+    my @block_exceptions; # [$block] -> [{cp_low, rule_int}, ...]
+
+    for my $blk (0 .. $NBLOCKS - 1) {
+        my $base = $blk * $BLOCKSZ;
+        my %block_rule_counts;
+        my %cp_to_rule;
+
+        for my $offset (0 .. $BLOCKSZ - 1) {
+            my $cp = $base + $offset;
+            my $rule = $cp_rule{$cp} // 0;
+            $cp_to_rule{$offset} = $rule;
+            $block_rule_counts{$rule}++;
+        }
+
+        # Distinct rules sorted by frequency (most frequent first)
+        my @distinct = sort { $block_rule_counts{$b} <=> $block_rule_counts{$a}
+                              || $a <=> $b } keys %block_rule_counts;
+
+        my @block_r;
+        my @exception_rules;
+
+        # Identity (0x0) must always be first if present
+        if (exists $block_rule_counts{0}) {
+            push @block_r, 0;
+            @distinct = grep { $_ != 0 } @distinct;
+        }
+
+        for my $r (@distinct) {
+            if (@block_r < 6) {
+                push @block_r, $r;
+            } else {
+                push @exception_rules, $r;
+            }
+        }
+
+        # Build exception list
+        my @exc;
+        my %exc_rules_set = map { $_ => 1 } @exception_rules;
+        for my $offset (0 .. $BLOCKSZ - 1) {
+            my $cp = $base + $offset;
+            if ($has_both{$cp}) {
+                my $lc_delta = $lower{$cp} - $cp;
+                my $uc_delta = $upper{$cp} - $cp;
+                if ($lc_delta == 1 && $uc_delta == -1) {
+                    # Titlecase: type 3
+                    push @exc, { cp_low => $offset, rule_int => 0x3 };
+                } else {
+                    push @exc, { cp_low => $offset, rule_int => $cp_rule{$cp} };
+                }
+                $cp_to_rule{$offset} = undef;
+            } elsif ($exc_rules_set{$cp_to_rule{$offset} // 0}) {
+                push @exc, { cp_low => $offset, rule_int => $cp_to_rule{$offset} };
+                $cp_to_rule{$offset} = undef;
+            }
+        }
+
+        # If we have exceptions, we need an EXC rule slot in block_r
+        my $exc_rule_idx;
+        if (@exc) {
+            if (@block_r >= 6) {
+                # Evict the least-frequent non-identity rule
+                my $evicted = pop @block_r;
+                for my $offset (0 .. $BLOCKSZ - 1) {
+                    if (defined $cp_to_rule{$offset} && $cp_to_rule{$offset} == $evicted) {
+                        push @exc, { cp_low => $offset, rule_int => $evicted };
+                        $cp_to_rule{$offset} = undef;
+                    }
+                }
+            }
+            $exc_rule_idx = scalar @block_r;
+            push @block_r, 'EXC';
+        }
+
+        # Build the rule_map for this block (cp_offset -> 0-5 index)
+        my %rule_map;
+        my %rule_pos;
+        for my $ri (0 .. $#block_r) {
+            $rule_pos{$block_r[$ri]} = $ri if $block_r[$ri] ne 'EXC';
+        }
+
+        for my $offset (0 .. $BLOCKSZ - 1) {
+            if (!defined $cp_to_rule{$offset}) {
+                # Exception codepoint
+                $rule_map{$offset} = $exc_rule_idx // 0;
+            } else {
+                $rule_map{$offset} = $rule_pos{$cp_to_rule{$offset}} // 0;
+            }
+        }
+
+        $block_rules[$blk]      = \@block_r;
+        $block_rule_map[$blk]   = \%rule_map;
+        $block_exceptions[$blk] = \@exc;
+    }
+
+    # Build the global rules[] array.
+    # Strategy: rules[] is a single flat array containing:
+    #   1. Deduplicated block rule sequences (contiguous per block)
+    #   2. Exception-referenced rules (deduplicated globally)
+    # rulebases[b] points to where block b's rules start in rules[].
+    # Blocks with identical rule sequences share the same rulebase.
+    #
+    # Two passes:
+    # Pass 1: Build block rule sequences (without EXC rules, which need
+    #         exception indices not yet known). Deduplicate sequences.
+    # Pass 2: Add exception-referenced rules, then fill in EXC rule entries.
+
+    my @g_rules;       # the rules[] array emitted to C
+    my @g_rulebases;   # one per block
+    my @g_exceptions;  # [{cp_low, rule_idx}]
+
+    # For each block, build its rule sequence key (for deduplication).
+    # A block's rule sequence is its list of non-EXC rule values.
+    # Blocks with the same non-EXC rules AND no exceptions can share a rulebase.
+    # Blocks with exceptions get unique entries (because the EXC rule encodes
+    # block-specific exception offsets).
+
+    my %seq_to_base;   # rule-sequence-key -> index in @g_rules
+
+    # Pass 1: Allocate rule sequences
+    for my $blk (0 .. $NBLOCKS - 1) {
+        my $block_r   = $block_rules[$blk];
+        my $block_exc = $block_exceptions[$blk];
+        my $has_exc   = grep { $_ eq 'EXC' } @$block_r;
+
+        # Build the non-EXC rule sequence
+        my @non_exc = map { $_ eq 'EXC' ? () : $_ } @$block_r;
+        my $seq_key = join(',', @non_exc);
+
+        if (!$has_exc && exists $seq_to_base{$seq_key}) {
+            # Reuse existing rulebase
+            $g_rulebases[$blk] = $seq_to_base{$seq_key};
+        } else {
+            $g_rulebases[$blk] = scalar @g_rules;
+            $seq_to_base{$seq_key} = $g_rulebases[$blk] unless $has_exc;
+
+            for my $ri (0 .. $#$block_r) {
+                if ($block_r->[$ri] eq 'EXC') {
+                    # Placeholder — will be filled in pass 2
+                    push @g_rules, 'EXC_PLACEHOLDER';
+                    # Remember where this placeholder is and which block
+                    $block_rules[$blk][$ri] = { _exc_pos => $#g_rules, _blk => $blk };
+                } else {
+                    push @g_rules, $block_r->[$ri];
+                }
+            }
+        }
+    }
+
+    # Pass 2: Add exception-referenced rules to @g_rules (deduplicated),
+    # then fill in EXC placeholders.
+    my %exc_rule_to_gidx;  # rule_int -> index in @g_rules
+
+    for my $blk (0 .. $NBLOCKS - 1) {
+        my $block_r   = $block_rules[$blk];
+        my $block_exc = $block_exceptions[$blk];
+
+        for my $ri (0 .. $#$block_r) {
+            next unless ref $block_r->[$ri] && exists $block_r->[$ri]{_exc_pos};
+            my $exc_pos = $block_r->[$ri]{_exc_pos};
+
+            my $xb = scalar @g_exceptions;
+            my $xn = scalar @$block_exc;
+
+            # Sort exceptions by cp_low for binary search
+            my @sorted_exc = sort { $a->{cp_low} <=> $b->{cp_low} } @$block_exc;
+
+            for my $exc (@sorted_exc) {
+                my $r = $exc->{rule_int};
+                if (!exists $exc_rule_to_gidx{$r}) {
+                    $exc_rule_to_gidx{$r} = scalar @g_rules;
+                    push @g_rules, $r;
+                }
+                push @g_exceptions, {
+                    cp_low   => $exc->{cp_low},
+                    rule_idx => $exc_rule_to_gidx{$r}
+                };
+            }
+
+            # Fill in the EXC placeholder: type 2, delta = (xb << 8 | xn)
+            my $exc_rule = (($xb << 8) | $xn) << 8 | 2;
+            $g_rules[$exc_pos] = $exc_rule;
+        }
+    }
+
+    # Build tab[]: two-level base-6 table
+    # Level 1: 512 bytes (one per block), value * 86 + x indexes into combined array
+    # Level 2: 86-byte blocks appended after level 1
+    # The level 1 values must be offset so that val*86 reaches past the 512-byte
+    # level 1 region into the level 2 data.
+    # Minimum usable index: ceil(512/86) = 6 (6*86 = 516 > 512)
+
+    use POSIX qw(ceil);
+    my $L2_OFFSET = ceil($NBLOCKS / 86);  # = 6
+
+    my @tab_l2_blocks;  # array of 86-byte arrayrefs
+    my %tab_l2_dedup;   # block-string -> index (0-based, before offset)
+    my @tab_l1;         # 512 entries
+
+    for my $blk (0 .. $NBLOCKS - 1) {
+        my $rule_map = $block_rule_map[$blk];
+        my @block86;
+
+        for my $x (0 .. 85) {
+            my @vals;
+            for my $y (0 .. 2) {
+                my $offset = $x * 3 + $y;
+                if ($offset < $BLOCKSZ) {
+                    push @vals, ($rule_map->{$offset} // 0);
+                } else {
+                    push @vals, 0;
+                }
+            }
+            # Encode 3 values (0-5) into one byte using reversed order
+            # for compatibility with the mt[] decode: v[2]*36 + v[1]*6 + v[0]
+            my $byte = $vals[2] * 36 + $vals[1] * 6 + $vals[0];
+            push @block86, $byte;
+        }
+
+        # Deduplication
+        my $key = join(',', @block86);
+        if (!exists $tab_l2_dedup{$key}) {
+            $tab_l2_dedup{$key} = scalar @tab_l2_blocks;
+            push @tab_l2_blocks, \@block86;
+        }
+        # Level 1 value = dedup index + L2_OFFSET
+        $tab_l1[$blk] = $tab_l2_dedup{$key} + $L2_OFFSET;
+    }
+
+    # The combined tab[] array:
+    # bytes 0..511: level 1 (block indices with offset)
+    # bytes 512..(512 + nblocks*86 - 1): level 2 blocks
+    # But level 2 starts at byte L2_OFFSET*86 = 516, so bytes 512..515 are padding.
+    # We need to pad with zeros between level 1 end and level 2 start.
+    my $l2_start_byte = $L2_OFFSET * 86;  # = 516
+    my $pad_bytes = $l2_start_byte - $NBLOCKS;  # = 4
+
+    # --- Emit tab[] ---
+    print FH "static const unsigned char tab[] = {\n";
+
+    # Level 1: 512 block indices
+    for my $row (0 .. ($NBLOCKS / 16) - 1) {
+        my @vals = @tab_l1[$row * 16 .. $row * 16 + 15];
+        printf FH "\t%s,\n", join(', ', @vals);
+    }
+
+    # Padding bytes between level 1 and level 2
+    if ($pad_bytes > 0) {
+        printf FH "\t%s,\n", join(', ', (0) x $pad_bytes);
+    }
+
+    # Level 2: 86-byte blocks
+    for my $bi (0 .. $#tab_l2_blocks) {
+        my $block = $tab_l2_blocks[$bi];
+        for my $row (0 .. int(85 / 16)) {
+            my $end = $row * 16 + 15;
+            $end = 85 if $end > 85;
+            my @vals = @$block[$row * 16 .. $end];
+            printf FH "\t%s,\n", join(', ', @vals);
+        }
+    }
+    print FH "};\n";
+
+    # --- Emit rules[] ---
+    print FH "static const int rules[] = {\n";
+    my @rule_strs = map { fmt_rule($_) } @g_rules;
+    for my $row (0 .. int($#g_rules / 6)) {
+        my $end = $row * 6 + 5;
+        $end = $#g_rules if $end > $#g_rules;
+        printf FH "\t%s,\n", join(', ', @rule_strs[$row * 6 .. $end]);
+    }
+    print FH "};\n";
+
+    # --- Emit rulebases[] ---
+    my $max_rb = 0;
+    for my $rb (@g_rulebases) { $max_rb = $rb if $rb > $max_rb; }
+    my $rb_type = $max_rb > 255 ? "unsigned short" : "unsigned char";
+    printf FH "static const %s rulebases[] = {\n", $rb_type;
+    for my $row (0 .. ($NBLOCKS / 16) - 1) {
+        my @vals = @g_rulebases[$row * 16 .. $row * 16 + 15];
+        printf FH "\t%s,\n", join(', ', @vals);
+    }
+    print FH "};\n";
+
+    # --- Emit exceptions[][] ---
+    my $max_exc_idx = 0;
+    for my $e (@g_exceptions) {
+        $max_exc_idx = $e->{rule_idx} if $e->{rule_idx} > $max_exc_idx;
+    }
+    my $exc_type = $max_exc_idx > 255 ? "unsigned short" : "unsigned char";
+    printf FH "static const %s exceptions[][2] = {\n", $exc_type;
+    for my $row (0 .. int($#g_exceptions / 4)) {
+        my $end = $row * 4 + 3;
+        $end = $#g_exceptions if $end > $#g_exceptions;
+        my @entries;
+        for my $i ($row * 4 .. $end) {
+            push @entries, sprintf("{ %u, %u }", $g_exceptions[$i]{cp_low}, $g_exceptions[$i]{rule_idx});
+        }
+        printf FH "\t%s,\n", join(', ', @entries);
+    }
+    print FH "};\n";
+
+    # --- casemap() function ---
+    print FH "\n";
+    printf FH "static int %s(unsigned c, int dir)\n", $fn;
+    print FH <<'EOF';
+{
+	unsigned b, x, y, v, rt, xb, xn;
+	int r, rd, c0 = c;
+
+	if (c >= 0x20000) return c;
+
+	b = c>>8;
+	c &= 255;
+	x = c/3;
+	y = c%3;
+
+	/* lookup entry in two-level base-6 table */
+	v = tab[tab[b]*86+x];
+	static const int mt[] = { 2048, 342, 57 };
+	v = (v*mt[y]>>11)%6;
+
+	/* use the bit vector out of the tables as an index into
+	 * a block-specific set of rules and decode the rule into
+	 * a type and a case-mapping delta. */
+	r = rules[rulebases[b]+v];
+	rt = r & 255;
+	rd = r >> 8;
+
+	/* rules 0/1 are simple lower/upper case with a delta.
+	 * apply according to desired mapping direction. */
+	if (rt < 2) return c0 + (rd & -(rt^dir));
+
+	/* binary search. endpoints of the binary search for
+	 * this block are stored in the rule delta field. */
+	xn = rd & 0xff;
+	xb = (unsigned)rd >> 8;
+	while (xn) {
+		unsigned try = exceptions[xb+xn/2][0];
+		if (try == c) {
+			r = rules[exceptions[xb+xn/2][1]];
+			rt = r & 255;
+			rd = r >> 8;
+			if (rt < 2) return c0 + (rd & -(rt^dir));
+			/* Hard-coded for the four exceptional titlecase */
+			return c0 + (dir ? -1 : 1);
+		} else if (try > c) {
+			xn /= 2;
+		} else {
+			xb += xn/2;
+			xn -= xn/2;
+		}
+	}
+	return c0;
+}
+
+EOF
+
+    # Wrapper functions
+    if ($musl) {
+        print FH <<"EOF";
+
+wint_t towupper(wint_t wc)
+{
+	return (unsigned)wc < 128 ? toupper(wc) : (wint_t)$fn(wc, 1);
+}
+
+wint_t towlower(wint_t wc)
+{
+	return (unsigned)wc < 128 ? tolower(wc) : (wint_t)$fn(wc, 0);
+}
+
+wint_t __towupper_l(wint_t c, locale_t l)
+{
+	return towupper(c);
+}
+
+wint_t __towlower_l(wint_t c, locale_t l)
+{
+	return towlower(c);
+}
+
+weak_alias(__towupper_l, towupper_l);
+weak_alias(__towlower_l, towlower_l);
+EOF
+    }
+    elsif ($safec) {
+        print FH <<"EOF";
+
+EXPORT uint32_t _towupper(uint32_t wc) {
+    return wc < 128 ? (uint32_t)toupper(wc) : (uint32_t)$fn(wc, 1);
+}
+#ifndef HAVE_TOWUPPER
+EXPORT uint32_t towupper(uint32_t wc) {
+    return wc < 128 ? (uint32_t)toupper(wc) : (uint32_t)$fn(wc, 1);
+}
+#endif
+
+#ifndef HAVE_TOWLOWER
+EXPORT uint32_t towlower(uint32_t wc) {
+    return (unsigned)wc < 128 ? (wint_t)tolower(wc) : (wint_t)$fn(wc, 0);
+}
+#endif
+EOF
+    }
+
+    close FH;
+    chmod 0444, $out;
+    exit 0;
+}
 
 if ($use_bitfields) {
     print FH <<'EOF';
@@ -1549,7 +2072,7 @@ to be able to binary search it.
 
 With C<--table>, the musl-new style, the size is much bigger, as we
 have to store mappings for all blocks. The lookup is much faster
-though. I<TODO>.
+though.
 
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
 safeclib. As the single-byte C<towupper> and C<towlower> conversions
@@ -1569,14 +2092,15 @@ vary more.
 
     make -C examples
     ./bench
-                my:        185 [us] 100.00 %
-          my_low16:        175 [us] 105.71 %
-           my_bits:        149 [us] 124.16 %
-        my_bsearch:        172 [us] 107.56 %
-       my_bsearchb:        166 [us] 111.45 %
-          musl-new:        126 [us] 146.83 %	210 errors
-          musl-old:        112 [us] 165.18 %	10 errors
-             glibc:         75 [us] 246.67 %	10 errors
+                my:        142 [us] 100.00 %
+          my_low16:        106 [us] 133.96 %
+           my_bits:        121 [us] 117.36 %
+        my_bsearch:        103 [us] 137.86 %
+       my_bsearchb:        117 [us] 121.37 %
+          my_table:        125 [us] 113.60 %	225 errors
+          musl-new:        126 [us] 112.70 %	210 errors
+          musl-old:        108 [us] 131.48 %	10 errors
+             glibc:         83 [us] 171.08 %	10 errors
 
     wc -c towctrans-*.o
       3384 towctrans-my.o
@@ -1584,6 +2108,7 @@ vary more.
       3704 towctrans-mybits.o
       3696 towctrans-mybsearch.o
       4344 towctrans-mybsearch-both.o
+      8008 towctrans-mytable.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o
      97432 towctrans-glibc.o

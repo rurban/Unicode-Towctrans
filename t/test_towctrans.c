@@ -11,6 +11,8 @@
 #include "towctrans-low16.h"
 #elif defined BITS
 #include "towctrans-bits.h"
+#elif defined TABLE
+#include "towctrans-table.h"
 #elif defined BSEARCH_BOTH
 #include "towctrans-bsearch-both.h"
 #elif defined BSEARCH
@@ -20,8 +22,13 @@
 #endif
 #define CFOLD "CaseFolding.txt"
 
+#ifdef TABLE
+uint32_t my_towlower(uint32_t wc) { return (uint32_t)_towcase(wc, 0); }
+uint32_t my_towupper(uint32_t wc) { return (uint32_t)_towcase(wc, 1); }
+#else
 uint32_t my_towlower(uint32_t wc) { return _towcase(wc, 1); }
 uint32_t my_towupper(uint32_t wc) { return _towcase(wc, 0); }
+#endif
 
 int main(void) {
     int errs = 0;

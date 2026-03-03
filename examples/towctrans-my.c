@@ -51,6 +51,15 @@ wint_t my_bsearchb_towupper(wint_t wc) { return _towcase_bsearchb(wc, 1); }
 char *my_bsearchb_stats(void) { STATS; }
 #endif
 
+#elif defined TABLE
+
+#include "towctrans-table.h"
+wint_t my_table_towlower(wint_t wc) { return _towcase_table(wc, 0); }
+wint_t my_table_towupper(wint_t wc) { return _towcase_table(wc, 1); }
+#ifdef BITS_STATS
+char *my_table_stats(void) { STATS; }
+#endif
+
 #else
 
 #include "towctrans-15.h"

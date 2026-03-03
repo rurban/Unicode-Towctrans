@@ -22,6 +22,10 @@ wint_t my_towupper(wint_t wc) { return (wint_t)_towcase_bits(wc, 0); }
 #include "../towctrans-bsearch.h"
 wint_t my_towlower(wint_t wc) { return (wint_t)_towcase_bsearch(wc, 1); }
 wint_t my_towupper(wint_t wc) { return (wint_t)_towcase_bsearch(wc, 0); }
+#elif defined TABLE
+#include "../towctrans-table.h"
+wint_t my_towlower(wint_t wc) { return (wint_t)_towcase_table(wc, 1); }
+wint_t my_towupper(wint_t wc) { return (wint_t)_towcase_table(wc, 0); }
 #else
 uint32_t _towcase(uint32_t wc, int lower);
 wint_t my_towlower(wint_t wc) { return (wint_t)_towcase(wc, 1); }

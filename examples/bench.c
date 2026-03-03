@@ -15,6 +15,8 @@ extern wint_t my_bsearch_towlower(wint_t wc);
 extern wint_t my_bsearch_towupper(wint_t wc);
 extern wint_t my_bsearchb_towlower(wint_t wc);
 extern wint_t my_bsearchb_towupper(wint_t wc);
+extern wint_t my_table_towlower(wint_t wc);
+extern wint_t my_table_towupper(wint_t wc);
 extern wint_t musl_towupper(wint_t wc); /* towctrans-musl-new */
 extern wint_t musl_towlower(wint_t wc);
 extern wint_t old_towupper(wint_t wc); /* towctrans-musl-old */
@@ -98,6 +100,7 @@ int main(void) {
     BENCH("my_bits", my_bits_towlower, my_bits_towupper);
     BENCH("my_bsearch", my_bsearch_towlower, my_bsearch_towupper);
     BENCH("my_bsearchb", my_bsearchb_towlower, my_bsearchb_towupper);
+    BENCH("my_table", my_table_towlower, my_table_towupper);
     BENCH("musl-new", musl_towlower, musl_towupper);
     if (perc > 300)
         perf_errs++;

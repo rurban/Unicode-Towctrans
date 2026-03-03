@@ -25,6 +25,7 @@ t/c-bits.t
 t/c-bsearch-both.t
 t/c-bsearch.t
 t/c-lower16.t
+t/c-table.t
 t/c.t
 t/changes.t
 t/kwalitee.t

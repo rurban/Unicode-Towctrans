@@ -45,7 +45,6 @@ DESCRIPTION
 
     With "--table", the musl-new style, the size is much bigger, as we have
     to store mappings for all blocks. The lookup is much faster though.
-    *TODO*.
 
     Planned also for the multi-byte folding tables for wcsfc_s() for
     safeclib. As the single-byte "towupper" and "towlower" conversions are
@@ -63,14 +62,15 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        185 [us] 100.00 %
-              my_low16:        175 [us] 105.71 %
-               my_bits:        149 [us] 124.16 %
-            my_bsearch:        172 [us] 107.56 %
-           my_bsearchb:        166 [us] 111.45 %
-              musl-new:        126 [us] 146.83 %    210 errors
-              musl-old:        112 [us] 165.18 %    10 errors
-                 glibc:         75 [us] 246.67 %    10 errors
+                    my:        142 [us] 100.00 %
+              my_low16:        106 [us] 133.96 %
+               my_bits:        121 [us] 117.36 %
+            my_bsearch:        103 [us] 137.86 %
+           my_bsearchb:        117 [us] 121.37 %
+              my_table:        125 [us] 113.60 %    225 errors
+              musl-new:        126 [us] 112.70 %    210 errors
+              musl-old:        108 [us] 131.48 %    10 errors
+                 glibc:         83 [us] 171.08 %    10 errors
 
         wc -c towctrans-*.o
           3384 towctrans-my.o
@@ -78,6 +78,7 @@ PERFORMANCE
           3704 towctrans-mybits.o
           3696 towctrans-mybsearch.o
           4344 towctrans-mybsearch-both.o
+          8008 towctrans-mytable.o
           6808 towctrans-musl-new.o
           3416 towctrans-musl-old.o
          97432 towctrans-glibc.o
