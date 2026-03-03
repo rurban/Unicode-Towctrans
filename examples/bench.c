@@ -1,3 +1,4 @@
+#include <locale.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +46,7 @@ static inline long TEST_TIME(void) { return GetTickCount(); }
 int main(void) {
     int i;
     wint_t *ws, *lw, *up;
+    setlocale(LC_ALL, "");
     wint_t *ps;
     long t0, t1;
     int errs = 0, perf_errs = 0;

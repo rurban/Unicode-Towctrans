@@ -23,22 +23,22 @@ update-bench:
 	../$(GEN)
 .c.o:
 	$(CC) -c $(CFLAGS_BENCH) $<
-../CaseFolding.txt.15 towctrans-15.h :: ../$(GEN)
-	cd .. && $(GEN) --with-iswalpha -v 15 --out examples/towctrans-15.h --cf CaseFolding.txt.15
-towctrans-15.h :: ../CaseFolding.txt.15
-# Note: the 3 bench objects merge different CaseFolding.txt.15 together. serialize them
-towctrans-low16.h :: ../CaseFolding.txt.15
-	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 15 --out examples/$@ --cf CaseFolding.txt.15
-towctrans-bits.h :: ../CaseFolding.txt.15
-	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 15 --out examples/$@ --cf CaseFolding.txt.15
-towctrans-bsearch.h :: ../CaseFolding.txt.15
-	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 15 --out examples/$@ --cf CaseFolding.txt.15
-towctrans-bsearch-both.h :: ../CaseFolding.txt.15
-	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 15 --out examples/$@ --cf CaseFolding.txt.15
-towctrans-table.h :: ../CaseFolding.txt.15
-	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 15 --out examples/$@ --cf CaseFolding.txt.15
+../CaseFolding.txt.10 towctrans-10.h :: ../$(GEN)
+	cd .. && $(GEN) --with-iswalpha -v 10 --out examples/towctrans-10.h --cf CaseFolding.txt.10
+towctrans-10.h :: ../CaseFolding.txt.10
+# Note: the 3 bench objects merge different CaseFolding.txt.10 together. serialize them
+towctrans-low16.h :: ../CaseFolding.txt.10
+	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 10 --out examples/$@ --cf CaseFolding.txt.10
+towctrans-bits.h :: ../CaseFolding.txt.10
+	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 10 --out examples/$@ --cf CaseFolding.txt.10
+towctrans-bsearch.h :: ../CaseFolding.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --cf CaseFolding.txt.10
+towctrans-bsearch-both.h :: ../CaseFolding.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --cf CaseFolding.txt.10
+towctrans-table.h :: ../CaseFolding.txt.10
+	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --cf CaseFolding.txt.10
 
-towctrans-my.o: towctrans-my.c towctrans-15.h
+towctrans-my.o: towctrans-my.c towctrans-10.h
 	$(CC) -c $(CFLAGS_BENCH) $< -o $@
 towctrans-mylow16.o: towctrans-my.c towctrans-low16.h
 	$(CC) -c -DLOW16 $(CFLAGS_BENCH) $< -o $@

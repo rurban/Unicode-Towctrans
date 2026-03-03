@@ -62,7 +62,7 @@ char *my_table_stats(void) { STATS; }
 
 #else
 
-#include "towctrans-15.h"
+#include "towctrans-10.h"
 wint_t my_towlower(wint_t wc) { return _towcase(wc, 1); }
 wint_t my_towupper(wint_t wc) { return _towcase(wc, 0); }
 #ifdef BITS_STATS
