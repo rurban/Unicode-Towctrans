@@ -185,13 +185,15 @@ sub simulate {
     # skip the turkish checks
     my $lmul  = 2 * $lower - 1;    # 1 for lower, -1 for upper
     my $lmask = $lower - 1;        # 0 for lower, -1/0xffff for upper
-                                   # interleave laces and maps
-    my ( $i, $m ) = each @map;
-    my ( $j, $l ) = each @lace;
-    while ( defined($i) or defined($j) ) {
+    # interleave maps and laces using index-based iteration
+    my $i = 0;
+    my $j = 0;
+    while ( $i < @map or $j < @lace ) {
+        my $m = $i < @map  ? $map[$i]  : undef;
+        my $l = $j < @lace ? $lace[$j] : undef;
 
-        # MAP or LACE
-        if ( defined($i) and ( !defined($j) or $m->[0] < $l->[0] ) ) {
+        # MAP or LACE (pick whichever has the lower base)
+        if ( defined($m) and ( !defined($l) or $m->[0] < $l->[0] ) ) {
             my $lower = map_lower($m);
             my $len   = map_len($m);
             my $base  = $m->[0] + ( $lmask & $lower );
@@ -206,16 +208,12 @@ sub simulate {
                     return $wc + $lmul * $lower;
                 }
             }
-
-            # FIXME we really should merge them earlier
             elsif ( $lower && $m->[0] > $wc ) {
-
-                # exhaust @map iterator
-                while ( each @map ) { ; }
+                last;    # maps are sorted; no later entry can match
             }
-            ( $i, $m ) = each @map;
+            $i++;
         }
-        elsif ( defined($j) ) {
+        elsif ( defined($l) ) {
             my $lower = lace_lower($l);
             my $len   = lace_len_1($l);
             my $base  = $l->[0] + ( $lmask & $lower );
@@ -230,14 +228,10 @@ sub simulate {
                     return $wc + $lmul * $lower;
                 }
             }
-
-            # FIXME we really should merge them earlier
             elsif ( $lower && $l->[0] > $wc ) {
-
-                # exhaust @lace iterator
-                while ( each @lace ) { ; }
+                last;    # laces are sorted; no later entry can match
             }
-            ( $j, $l ) = each @lace;
+            $j++;
         }
     }
 
@@ -423,16 +417,20 @@ sub add_lace {
     }
     else {
         if ( map_clashes( $map[-1], [ $base, $to ] ) ) {
+            # Clash with last map: demote to pair instead of lace
             warn(
                 sprintf(
-"FIXME new lace %04X, %04X clashes with last map %04X, %04X\n",
+"new lace %04X, %04X clashes with last map %04X, %04X => pair\n",
                     $base, $to, $map[-1][0], $map[-1][2]
                 )
-            );
+            ) if $verbose;
+            add_pair( \@pair, $base, $to );
         }
-        push @$lace, [ $base, $to ];
-        if ($verbose) {
-            warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
+        else {
+            push @$lace, [ $base, $to ];
+            if ($verbose) {
+                warn sprintf( "new lace %04X, %04X\n", @{ $lace->[-1] } );
+            }
         }
     }
 }
