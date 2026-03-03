@@ -23,8 +23,8 @@
 #define CFOLD "CaseFolding.txt"
 
 #ifdef TABLE
-uint32_t my_towlower(uint32_t wc) { return (uint32_t)_towcase(wc, 0); }
-uint32_t my_towupper(uint32_t wc) { return (uint32_t)_towcase(wc, 1); }
+uint32_t my_towlower(uint32_t wc) { return (uint32_t)_towcase(wc, 1); }
+uint32_t my_towupper(uint32_t wc) { return (uint32_t)_towcase(wc, 0); }
 #else
 uint32_t my_towlower(uint32_t wc) { return _towcase(wc, 1); }
 uint32_t my_towupper(uint32_t wc) { return _towcase(wc, 0); }

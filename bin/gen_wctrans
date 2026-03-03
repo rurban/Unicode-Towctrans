@@ -732,9 +732,10 @@ EOF
     }
 
     # Build a mapping from codepoint -> (delta, direction)
-    # For the musl-new scheme:
-    #   rule type 0: lowercase delta applied when dir=0 (towlower)
-    #   rule type 1: uppercase delta applied when dir=1 (towupper)
+    # Uses the musl-old convention: lower=1 means towlower, lower=0 means towupper.
+    # With the rt^dir formula:
+    #   rule type 0: lowercase delta, applied when dir=1 (towlower)
+    #   rule type 1: uppercase delta, applied when dir=0 (towupper)
 
     my $NBLOCKS = 512;   # covers 0x00000 - 0x1FFFF
     my $BLOCKSZ = 256;
@@ -743,18 +744,23 @@ EOF
     # Each rule is: (delta << 8) | type, as a 32-bit signed int.
     my %cp_rule;    # codepoint -> rule_int (32-bit signed)
 
-    # Codepoints with lowercase mappings (these are uppercase chars)
+    # %lower maps lowercase->uppercase, %upper maps uppercase->lowercase
+    # (variable names below are historical and misleading)
+
+    # Codepoints in %lower (lowercase chars): delta goes uppercase-ward.
+    # type 1: applied when dir=0 (towupper)
     for my $uc (keys %lower) {
         my $lc = $lower{$uc};
         next if $lc == $uc;
-        $cp_rule{$uc} = rule_int32($lc - $uc, 0);
+        $cp_rule{$uc} = rule_int32($lc - $uc, 1);
     }
 
-    # Codepoints with uppercase mappings (these are lowercase chars)
+    # Codepoints in %upper (uppercase chars): delta goes lowercase-ward.
+    # type 0: applied when dir=1 (towlower)
     for my $lc (keys %upper) {
         my $uc = $upper{$lc};
         next if $uc == $lc;
-        $cp_rule{$lc} = rule_int32($uc - $lc, 1);
+        $cp_rule{$lc} = rule_int32($uc - $lc, 0);
     }
 
     # Codepoints with BOTH a lowercase and an uppercase mapping
@@ -1074,7 +1080,7 @@ EOF
 
     # --- casemap() function ---
     print FH "\n";
-    printf FH "static int %s(unsigned c, int dir)\n", $fn;
+    printf FH "static int %s(unsigned c, int lower)\n", $fn;
     print FH <<'EOF';
 {
 	unsigned b, x, y, v, rt, xb, xn;
@@ -1100,8 +1106,9 @@ EOF
 	rd = r >> 8;
 
 	/* rules 0/1 are simple lower/upper case with a delta.
-	 * apply according to desired mapping direction. */
-	if (rt < 2) return c0 + (rd & -(rt^dir));
+	 * apply according to desired mapping direction.
+	 * lower=1: towlower, lower=0: towupper. */
+	if (rt < 2) return c0 + (rd & -(rt^lower));
 
 	/* binary search. endpoints of the binary search for
 	 * this block are stored in the rule delta field. */
@@ -1113,9 +1120,9 @@ EOF
 			r = rules[exceptions[xb+xn/2][1]];
 			rt = r & 255;
 			rd = r >> 8;
-			if (rt < 2) return c0 + (rd & -(rt^dir));
+			if (rt < 2) return c0 + (rd & -(rt^lower));
 			/* Hard-coded for the four exceptional titlecase */
-			return c0 + (dir ? -1 : 1);
+			return c0 + (lower ? 1 : -1);
 		} else if (try > c) {
 			xn /= 2;
 		} else {
@@ -2092,15 +2099,15 @@ vary more.
 
     make -C examples
     ./bench
-                my:        142 [us] 100.00 %
-          my_low16:        106 [us] 133.96 %
-           my_bits:        121 [us] 117.36 %
-        my_bsearch:        103 [us] 137.86 %
-       my_bsearchb:        117 [us] 121.37 %
-          my_table:        125 [us] 113.60 %	225 errors
-          musl-new:        126 [us] 112.70 %	210 errors
-          musl-old:        108 [us] 131.48 %	10 errors
-             glibc:         83 [us] 171.08 %	10 errors
+                my:        140 [us] 100.00 %
+          my_low16:        111 [us] 126.13 %
+           my_bits:        127 [us] 110.24 %
+        my_bsearch:        111 [us] 126.13 %
+       my_bsearchb:        120 [us] 116.67 %
+          my_table:        123 [us] 113.82 %	216 errors
+          musl-new:        127 [us] 110.24 %	200 errors
+          musl-old:        117 [us] 119.66 %
+             glibc:         79 [us] 177.22 %
 
     wc -c towctrans-*.o
       3384 towctrans-my.o
