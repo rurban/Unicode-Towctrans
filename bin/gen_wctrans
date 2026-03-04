@@ -38,7 +38,7 @@ BEGIN {
     }
 }
 our $PACKAGE = 'Unicode::Towctrans';
-$Unicode::Towctrans::VERSION = '0.03';
+$Unicode::Towctrans::VERSION = '0.04';
 
 use Getopt::Long;
 my (

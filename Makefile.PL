@@ -32,7 +32,7 @@ my $clean = {
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
 WriteMakefile(
     'AUTHOR'       => 'Reini Urban <rurban@cpan.org>',
-    'ABSTRACT'     => 'Generate Unicode Case Transformation Tables',
+    'ABSTRACT'     => 'Generate Wide-Char Unicode Case Mapping Tables',
     'INSTALLDIRS'  => 'site',
     'LICENSE'      => 'perl',
     'NAME'         => 'Unicode::Towctrans',
