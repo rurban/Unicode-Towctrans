@@ -134,8 +134,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - run: choco install -y wget
       - run: perl -V
+      - name: install cpan deps
+        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
+        with:
+          install: |
+            LWP::Simple
       - run: perl bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test TEST_VERBOSE=1 2>&1 | tee make.log

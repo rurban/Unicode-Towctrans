@@ -18,6 +18,7 @@ Revision history for the Perl package Unicode::Towctrans.
     - emit titlecase digraph lace exceptions only into the loop(s) where
       the digraphs actually land (casemaps vs casemapsl depends on --bits)
     - bench: use Unicode 10.0 data to match musl-old, add setlocale
+    - try more downloaders, like curl or LWP::Simple if wget fails.
 
 0.03	2026-02-22
     - add --musl and --safec generators

@@ -477,8 +477,20 @@ sub add_excl {
 if ( $v and !-s $ud ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
     `wget $url -O $ud`
-      or `wget --no-check-certificate $url -O $ud`;
-    die "$PACKAGE: failed to download $url: $!" unless -s $ud;
+        or `wget --no-check-certificate $url -O $ud`;
+    unless (-s $ud) {
+        `curl --silent $url -O $ud`;
+    }
+    unless (-s $ud) {
+        require LWP::Simple;
+        my $content = LWP::Simple::get($url);
+        open my $fh, ">", $ud or die "$PACKAGE: failed to download $url";
+        print $fh $content;
+        close $fh;
+    }
+    unless (-s $ud) {
+        die "$PACKAGE: failed to download $url: $!" unless -s $ud;
+    }
 }
 open my $UD, "<", $ud or croak "$PACKAGE: $ud can't be read $!";
 
@@ -2134,6 +2146,7 @@ Unicode::Towctrans - Generate small case mapping tables
     gen_wctrans -v 15 --ud UnicodeData.txt.15 --out towctrans-15.h
     gen_wctrans --lower16
     gen_wctrans --fn __towcase
+    gen_wctrans --min-excl 10000
     gen_wctrans --bits 18:14:10
     gen_wctrans --lower16
     gen_wctrans --bsearch
@@ -2217,16 +2230,16 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        586 [us]  100.00 %
-           my_excl:        468 [us]  125.21 %
-          my_low16:        568 [us]  103.17 %
-           my_bits:        605 [us]   96.86 %
-        my_bsearch:        445 [us]  131.69 %
-       my_bsearchb:        389 [us]  150.64 %
-          my_table:         99 [us]  591.92 %
-          musl-new:        107 [us]  547.66 %	9 errors
-          musl-old:        836 [us]   70.10 %	3 errors
-             glibc:         98 [us]  597.96 %	15 errors
+                my:        552 [us]  100.00 %
+           my_excl:        595 [us]   92.77 %
+          my_low16:        594 [us]   92.93 %
+           my_bits:        571 [us]   96.67 %
+        my_bsearch:        477 [us]  115.72 %
+       my_bsearchb:        556 [us]   99.28 %
+          my_table:        257 [us]  214.79 %
+          musl-new:        209 [us]  264.11 %	9 errors
+          musl-old:       1406 [us]   39.26 %	3 errors
+             glibc:        149 [us]  370.47 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o
@@ -2277,7 +2290,7 @@ the best being twice as fast as the default.
 
 Perl 5.12 or later is required.
 
-This module does not need to be installed. running gen_wctrans is enough.
+This module does not need to be installed. Running gen_wctrans is enough.
 However for full testing and global installation run this:
 
    perl Makefile.PL
@@ -2289,7 +2302,7 @@ However for full testing and global installation run this:
 =head1 DEPENDENCIES
 
 This module requires a UnicodeData.txt file from Unicode Character
-Database, which is automatically downloaded via wget if missing.
+Database, which is automatically downloaded if missing.
 
 =head1 AUTHOR
 
