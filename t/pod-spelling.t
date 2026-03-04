@@ -22,6 +22,10 @@ close $fh;
 all_pod_files_spelling_ok(@manifest);
 
 __DATA__
+0x1C90
+0x1CBF
+0x24B6
+0x24E9
 Adlam
 CBF
 CaseFolding

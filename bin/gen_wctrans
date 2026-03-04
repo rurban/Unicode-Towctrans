@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# This script creates a towctrans.h header (or C source) file, musl old-style.
+# This script creates a towctrans.h header (or C source) file, musl old-style,
 # for simple case mapping as implemented in towlower() and towupper().
 # Used for building musl and safeclib for fast and small upper/lowercasing
 # tables for towlower() and towupper() and its secure variants
@@ -13,7 +13,7 @@
 #    gen_wctrans [-v 17] [--out towctrans.h] [--ud UnicodeData.txt] [--help]
 #
 # Input files (will be downloaded if missing):
-#    UnicodeData.txt  (primary: Simple_Uppercase/Lowercase_Mapping fields 12/13)
+#    UnicodeData.txt  (primary: Simple_Uppercase/Lowercase_Mapping fields)
 #
 # Output files:
 #    towctrans.h or towctrans.c
@@ -73,14 +73,14 @@ GetOptions(
 if ($help) {
     print <<'EOF';
 gen_wctrans [OPTIONS]
-Generate case mapping C header file
+Generate wide-char case mapping C header file
 OPTIONS
--v NUM                Unicode major version number
+-v NUM                for Unicode major version number
 --ud UnicodeData.txt  input filename. default: UnicodeData.txt
                       Downloaded if not found.
 --out filename        default: towctrans.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
---min-excl 10000      exclude ranges lower than 10000 (default: 2500)
+--min-excl NUM        exclude ranges lower than NUM (default: 2500)
 --lower16             use 16bit shorts for casemap.lower instead of 8.
                       moves more ranges from the long to the short first check.
 --bits 16:10:8        set other bitsizes for the casemaps struct members
@@ -1514,8 +1514,8 @@ EOF
 }
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
     print FH
-"    /* !iswalpha(wc) is broken on most locales, at least with glibc. */\n";
-    print FH "    if (!iswalpha(wc) ||";
+"    /* !iswalpha(wc) only works with musl. */\n";
+    print FH "    if (!iswalpha(wc)\n";
 }
 else {
     # print larger exclusion ranges. iswalpha is useless with glibc
@@ -1529,9 +1529,9 @@ $alpha{$_}++ for keys %upper;
 my @sorted = sort { $a <=> $b } keys %alpha;
 my $first  = $sorted[0];
 my $last   = $sorted[-1];
-@excl = ( [ 0, $first - 1 ] );
+@excl = ( [ 1, $first - 1 ] );
 
-for ( $first + 1 .. $last - 1 ) {
+for ( $first + 0 .. $last - 1 ) {
     if ( !exists $alpha{$_} ) {
         add_excl( \@excl, $_ );
     }
@@ -1587,7 +1587,7 @@ for my $i ( 1 .. $#excl ) {
 
 # sort ranges by size. GH #2
 printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
-  $excl[0]->[1];
+  $excl[0]->[1] unless $with_iswalpha;
 # upper bound: everything above the last cased codepoint
 printf FH "        || wc > 0x%x                      /* >%u */\n",
   $last, $last;
@@ -2208,33 +2208,37 @@ Additional cased characters introduced after Unicode 10.0 (Osage,
 Adlam, etc.) are present in musl-new but absent from our Unicode 10.0
 tables.
 
-=back
+=item glibc errors
 
 glibc errors are caused by glibc ignoring cased characters from
 non-latin locales entirely.
 
+=back
+
     make -C examples
     ./bench
-                my:        588 [us]  100.00 %
-          my_low16:        641 [us]   91.73 %
-           my_bits:        682 [us]   86.22 %
-        my_bsearch:        517 [us]  113.73 %
-       my_bsearchb:        437 [us]  134.55 %
-          my_table:        124 [us]  474.19 %
-          musl-new:        135 [us]  435.56 %	9 errors
-          musl-old:       1088 [us]   54.04 %	3 errors
-             glibc:        105 [us]  560.00 %	14 errors
+                my:        586 [us]  100.00 %
+           my_excl:        468 [us]  125.21 %
+          my_low16:        568 [us]  103.17 %
+           my_bits:        605 [us]   96.86 %
+        my_bsearch:        445 [us]  131.69 %
+       my_bsearchb:        389 [us]  150.64 %
+          my_table:         99 [us]  591.92 %
+          musl-new:        107 [us]  547.66 %	9 errors
+          musl-old:        836 [us]   70.10 %	3 errors
+             glibc:         98 [us]  597.96 %	15 errors
 
     wc -c towctrans-*.o
-      3336 towctrans-my.o
-      3424 towctrans-mylow16.o
-      3648 towctrans-mybits.o
-      3704 towctrans-mybsearch.o
-      4528 towctrans-mybsearch-both.o
-      6784 towctrans-mytable.o
-      6808 towctrans-musl-new.o
-      3416 towctrans-musl-old.o
-     97432 towctrans-glibc.o
+      3528 towctrans-my.o
+      3608 towctrans-myexcl.o
+      3632 towctrans-mylow16.o
+      3920 towctrans-mybits.o
+      3968 towctrans-mybsearch.o
+      4864 towctrans-mybsearch-both.o
+      6816 towctrans-mytable.o
+      6848 towctrans-musl-new.o
+      3464 towctrans-musl-old.o
+     97440 towctrans-glibc.o
 
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.

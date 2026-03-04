@@ -6,27 +6,24 @@
 #include <wchar.h>
 
 extern uint32_t _towcase(uint32_t wc, int lower); /* towctrans-my */
-extern wint_t my_towlower(wint_t wc);
-extern wint_t my_towupper(wint_t wc);
-extern wint_t my_low16_towlower(wint_t wc);
-extern wint_t my_low16_towupper(wint_t wc);
-extern wint_t my_bits_towlower(wint_t wc);
-extern wint_t my_bits_towupper(wint_t wc);
-extern wint_t my_bsearch_towlower(wint_t wc);
-extern wint_t my_bsearch_towupper(wint_t wc);
-extern wint_t my_bsearchb_towlower(wint_t wc);
-extern wint_t my_bsearchb_towupper(wint_t wc);
-extern wint_t my_table_towlower(wint_t wc);
-extern wint_t my_table_towupper(wint_t wc);
-extern wint_t musl_towupper(wint_t wc); /* towctrans-musl-new */
-extern wint_t musl_towlower(wint_t wc);
-extern wint_t old_towupper(wint_t wc); /* towctrans-musl-old */
-extern wint_t old_towlower(wint_t wc);
-// our workaround via locales does not work
-// #define glibc_towlower towlower
-// #define glibc_towupper towupper
-extern wint_t glibc_towupper(wint_t wc); /* towctrans-glibc */
-extern wint_t glibc_towlower(wint_t wc);
+
+#define CAT(a, b) a##b
+#define PASTE(a, b) CAT(a, b)
+#define JOIN(prefix, name) PASTE(prefix, name)
+#define DECL_BENCH(name, fn)                                                   \
+    extern wint_t JOIN(fn, _towlower)(wint_t wc);                              \
+    extern wint_t JOIN(fn, _towupper)(wint_t wc)
+
+DECL_BENCH("my", my);
+DECL_BENCH("my_excl", my_excl);
+DECL_BENCH("my_low16", my_low16);
+DECL_BENCH("my_bits", my_bits);
+DECL_BENCH("my_bsearch", my_bsearch);
+DECL_BENCH("my_bsearchb", my_bsearchb);
+DECL_BENCH("my_table", my_table);
+DECL_BENCH("musl-new", musl);
+DECL_BENCH("musl-old", old);
+DECL_BENCH("glibc", glibc);
 
 #define MAX_UNI 0x1ffff
 #define SIZE 10000
@@ -50,7 +47,7 @@ int main(void) {
     wint_t *ps;
     long t0, t1;
     int errs = 0, perf_errs = 0;
-    long t, t_my = 0;
+    long t, t_my = 0, t_my_table;
     double perc;
 
     srandom(0U);
@@ -67,14 +64,16 @@ int main(void) {
         lw[i] = my_towlower(i);
         up[i] = my_towupper(i);
     }
-
-#define BENCH(name, locasefn, upcasefn)                                        \
+#define CAT(a, b) a##b
+#define PASTE(a, b) CAT(a, b)
+#define JOIN(prefix, name) PASTE(prefix, name)
+#define BENCH(name, fn)                                                        \
     t0 = TEST_TIME();                                                          \
     errs = 0;                                                                  \
     for (int j = 0; j < RETRIES; j++) {                                        \
         for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
-            wint_t n = locasefn(wc);                                           \
+            wint_t n = JOIN(fn, _towlower)(wc);                                \
             if (n != lw[wc])                                                   \
                 errs++;                                                        \
         }                                                                      \
@@ -82,7 +81,7 @@ int main(void) {
     for (int j = 0; j < RETRIES; j++) {                                        \
         for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
-            wint_t n = upcasefn(wc);                                           \
+            wint_t n = JOIN(fn, _towupper)(wc);                                \
             if (n != up[wc])                                                   \
                 errs++;                                                        \
         }                                                                      \
@@ -96,23 +95,24 @@ int main(void) {
     else                                                                       \
         printf("  %12s: %10ld [us] %7.02f %%\n", name, t1, perc)
 
-    BENCH("my", my_towlower, my_towupper);
+    BENCH("my", my);
     t_my = t1;
-    BENCH("my_low16", my_low16_towlower, my_low16_towupper);
-    BENCH("my_bits", my_bits_towlower, my_bits_towupper);
-    BENCH("my_bsearch", my_bsearch_towlower, my_bsearch_towupper);
-    BENCH("my_bsearchb", my_bsearchb_towlower, my_bsearchb_towupper);
-    BENCH("my_table", my_table_towlower, my_table_towupper);
-    long t_my_table = t1;
-    BENCH("musl-new", musl_towlower, musl_towupper);
+    BENCH("my_excl", my_excl);
+    BENCH("my_low16", my_low16);
+    BENCH("my_bits", my_bits);
+    BENCH("my_bsearch", my_bsearch);
+    BENCH("my_bsearchb", my_bsearchb);
+    BENCH("my_table", my_table);
+    t_my_table = t1;
+    BENCH("musl-new", musl);
     /* compare my_table against musl-new (both O(1) table lookup) */
     if (t_my_table > t1 * 4)
         perf_errs++;
-    BENCH("musl-old", old_towlower, old_towupper);
+    BENCH("musl-old", old);
     /* compare my against musl-old (both linear search) */
     if (t_my > t1 * 3)
         perf_errs++;
-    BENCH("glibc", glibc_towlower, glibc_towupper);
+    BENCH("glibc", glibc);
     /* compare my_table against glibc (both O(1) table lookup) */
     if (t_my_table > t1 * 4)
         perf_errs++;

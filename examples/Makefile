@@ -3,8 +3,8 @@ CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I. -DNDEBUG
 CFLAGS = -g -Wall -Wextra $(DEFINES)
-OBJ = towctrans-my.o towctrans-mylow16.o towctrans-mybits.o towctrans-mybsearch.o \
-      towctrans-mybsearch-both.o towctrans-mytable.o \
+OBJ = towctrans-my.o towctrans-myexcl.o towctrans-mylow16.o towctrans-mybits.o \
+      towctrans-mybsearch.o towctrans-mybsearch-both.o towctrans-mytable.o \
       towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
@@ -23,23 +23,27 @@ update-bench:
 	../$(GEN)
 .c.o:
 	$(CC) -c $(CFLAGS_BENCH) $<
-../UnicodeData.txt.10 towctrans-10.h :: ../$(GEN)
+../UnicodeData.txt.10 :: ../$(GEN)
 	cd .. && $(GEN) --with-iswalpha -v 10 --out examples/towctrans-10.h --ud UnicodeData.txt.10
 towctrans-10.h :: ../UnicodeData.txt.10
 # Note: the 3 bench objects merge different UnicodeData.txt.10 together. serialize them
-towctrans-low16.h :: ../UnicodeData.txt.10
+towctrans-low16.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 10 --out examples/$@ --ud UnicodeData.txt.10
-towctrans-bits.h :: ../UnicodeData.txt.10
+towctrans-bits.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 10 --out examples/$@ --ud UnicodeData.txt.10
-towctrans-bsearch.h :: ../UnicodeData.txt.10
+towctrans-excl.h :: ../UnicodeData.txt.10 Makefile
+	cd .. && $(GEN) --with-iswalpha --min-excl 1000 --fn=_towcase_excl -v 10 --out examples/$@ --ud UnicodeData.txt.10
+towctrans-bsearch.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --ud UnicodeData.txt.10
-towctrans-bsearch-both.h :: ../UnicodeData.txt.10
+towctrans-bsearch-both.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --ud UnicodeData.txt.10
-towctrans-table.h :: ../UnicodeData.txt.10
+towctrans-table.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10
 
 towctrans-my.o: towctrans-my.c towctrans-10.h
 	$(CC) -c $(CFLAGS_BENCH) $< -o $@
+towctrans-myexcl.o: towctrans-my.c towctrans-excl.h
+	$(CC) -c -DEXCL $(CFLAGS_BENCH) $< -o $@
 towctrans-mylow16.o: towctrans-my.c towctrans-low16.h
 	$(CC) -c -DLOW16 $(CFLAGS_BENCH) $< -o $@
 towctrans-mybits.o: towctrans-my.c towctrans-bits.h

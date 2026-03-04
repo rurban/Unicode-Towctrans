@@ -75,31 +75,34 @@ PERFORMANCE
         Adlam, etc.) are present in musl-new but absent from our Unicode
         10.0 tables.
 
-    glibc errors are caused by glibc ignoring cased characters from
-    non-latin locales entirely.
+    glibc errors
+        glibc errors are caused by glibc ignoring cased characters from
+        non-latin locales entirely.
 
         make -C examples
         ./bench
-                    my:        588 [us]  100.00 %
-              my_low16:        641 [us]   91.73 %
-               my_bits:        682 [us]   86.22 %
-            my_bsearch:        517 [us]  113.73 %
-           my_bsearchb:        437 [us]  134.55 %
-              my_table:        124 [us]  474.19 %
-              musl-new:        135 [us]  435.56 %   9 errors
-              musl-old:       1088 [us]   54.04 %   3 errors
-                 glibc:        105 [us]  560.00 %   14 errors
+                    my:        586 [us]  100.00 %
+               my_excl:        468 [us]  125.21 %
+              my_low16:        568 [us]  103.17 %
+               my_bits:        605 [us]   96.86 %
+            my_bsearch:        445 [us]  131.69 %
+           my_bsearchb:        389 [us]  150.64 %
+              my_table:         99 [us]  591.92 %
+              musl-new:        107 [us]  547.66 %   9 errors
+              musl-old:        836 [us]   70.10 %   3 errors
+                 glibc:         98 [us]  597.96 %   15 errors
 
         wc -c towctrans-*.o
-          3336 towctrans-my.o
-          3424 towctrans-mylow16.o
-          3648 towctrans-mybits.o
-          3704 towctrans-mybsearch.o
-          4528 towctrans-mybsearch-both.o
-          6784 towctrans-mytable.o
-          6808 towctrans-musl-new.o
-          3416 towctrans-musl-old.o
-         97432 towctrans-glibc.o
+          3528 towctrans-my.o
+          3608 towctrans-myexcl.o
+          3632 towctrans-mylow16.o
+          3920 towctrans-mybits.o
+          3968 towctrans-mybsearch.o
+          4864 towctrans-mybsearch-both.o
+          6816 towctrans-mytable.o
+          6848 towctrans-musl-new.o
+          3464 towctrans-musl-old.o
+         97440 towctrans-glibc.o
 
     Results with more various "--bits" size combinations. They need just
     some logical fixups for the 5 errors.
