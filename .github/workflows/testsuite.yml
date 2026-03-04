@@ -24,11 +24,28 @@ jobs:
       - run: perl -V
       - run: |
           sudo apt update -y
-          sudo apt install -y libperl-dev wget
+          sudo apt install -y libperl-dev wget aspell-en
+      - name: install cpan deps
+        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
+        with:
+          install: |
+            Test::MinimumVersion::Fast
+            Perl::MinimumVersion::Fast
+            Test::CPAN::Meta
+            Test::Pod
+            Test::Pod::Coverage
+            Test::Spelling
+            Pod::Spell::CommonMistakes
+            Test::CPAN::Changes
+            Test::CheckChanges
+            Class::XSAccessor
+            Text::CSV_XS
+            List::MoreUtils
+            Test::Kwalitee
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test || make test TEST_VERBOSE=1
-      - run: make -C examples -B bench
+      - run: make bench
 
   linux:
     name: "perl ${{ matrix.perl-version }}"
@@ -124,7 +141,7 @@ jobs:
       - run: make test TEST_VERBOSE=1 2>&1 | tee make.log
         # continue-on-error: true
       - name: Upload Failure
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: failure()
         with:
           name: artifacts
