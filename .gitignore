@@ -31,6 +31,10 @@ t/t_low16
 t/t_bits
 t/t_bsearch
 t/t_bsearch_both
+t/c-if-tree-search_even
+t/c-if-tree-search_even.c
+t/c-if-tree-search_odd
+t/c-if-tree-search_odd.c
 /Unicode-Towctrans-*
 /diffs.log
 examples/bench

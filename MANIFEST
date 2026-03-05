@@ -24,10 +24,11 @@ t/c-asan.t
 t/c-bits.t
 t/c-bsearch-both.t
 t/c-bsearch.t
+t/c-if-tree.t
 t/c-lower16.t
-t/nested-ifs.t
 t/c-table.t
 t/c.t
+t/if-tree.t
 t/test_towctrans.c
 towctrans.h
 xt/changes.t

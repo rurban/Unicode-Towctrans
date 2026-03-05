@@ -21,12 +21,14 @@ push @cf, "towctrans.h.$_", "UnicodeData.txt.$_" for 5 .. 18;
 push @cf, "examples/test-$_" for 5 .. 18;
 my $clean = {
     FILES => [
-        't/towctrans',          'diffs',
-        @cf,                    'examples/test-glibc',
-        glob('t/*.bak'),        glob('examples/tow*.o'),
-        'examples/towctrans.h', glob('examples/bits-*.[ch]'),
-        'examples/bits.h',      'examples/bench-bits',
-        'examples/bench-bits.h'
+        't/towctrans',               'diffs',
+        @cf,                         'examples/test-glibc',
+        glob('t/*.bak'),             glob('examples/tow*.o'),
+        'examples/towctrans.h',      glob('examples/bits-*.[ch]'),
+        'examples/bits.h',           'examples/bench-bits',
+        'examples/bench-bits.h',     't/c-if-tree-search_even',
+        't/c-if-tree-search_even.c', 't/c-if-tree-search_odd',
+        't/c-if-tree-search_odd.c'
     ]
 };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
