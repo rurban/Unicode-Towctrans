@@ -100,7 +100,8 @@ all :: towctrans.h README
         ? ""
         : '
 .PHONY: test-precommit
-test :: test-precommit
+xtest :: test-precommit
+	prove xt/*.t
 test-precommit :
 	if command -v prek; then prek run -a; \
 	elif command -v pre-commit; then pre-commit run -a; \
@@ -108,7 +109,11 @@ test-precommit :
 '
         ) . '
 README: bin/gen_wctrans
-	make -C examples update-bench
+	cp towctrans.h towctrans.h.bak
+	bin/gen_wctrans
+	if ! cmp towctrans.h towctrans.h.bak 2>/dev/null; then \
+	  make -C examples update-bench; fi
+	rm -f towctrans.h.bak
 	pod2text $< >$@
 tidy:
 	perltidy -b bin/gen_wctrans
