@@ -9,7 +9,7 @@ BEGIN {
 }
 
 my @MODULES = (
-    'Perl::MinimumVersion::Fast 0.03',
+    'Perl::MinimumVersion::Fast 0.22',
     'Test::MinimumVersion::Fast 0.04',
     'YAML::Tiny 1.40',
     'File::Find::Rule',
@@ -34,7 +34,8 @@ foreach my $MODULE (@MODULES) {
 
 all_minimum_version_ok(
     "5.012",
-    {   skip => [
+    {   paths => [qw(bin/gen_wctrans t examples Makefile.PL)],
+        skip  => [
             qw(t/changes.t t/kwalitee.t t/manifest.t t/meta.t t/perl_minimum_version.t
                 t/pod-coverage.t t/pod-spell-mistakes.t t/pod-spelling.t t/pod.t)
         ]

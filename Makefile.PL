@@ -16,19 +16,19 @@ if ( !-f "towctrans.h" ) {
     do 'bin/gen_wctrans' or die;
 }
 
-my @cf;
-push @cf, "towctrans.h.$_", "UnicodeData.txt.$_" for 5 .. 18;
-push @cf, "examples/test-$_" for 5 .. 18;
+my @ud;
+push @ud, "towctrans.h.$_", "UnicodeData.txt.$_" for 5 .. 18;
+push @ud, "examples/test-$_" for 5 .. 18;
 my $clean = {
     FILES => [
-        't/towctrans',               'diffs',
-        @cf,                         'examples/test-glibc',
-        glob('t/*.bak'),             glob('examples/tow*.o'),
-        'examples/towctrans.h',      glob('examples/bits-*.[ch]'),
-        'examples/bits.h',           'examples/bench-bits',
-        'examples/bench-bits.h',     't/c-if-tree-search_even',
-        't/c-if-tree-search_even.c', 't/c-if-tree-search_odd',
-        't/c-if-tree-search_odd.c'
+        't/towctrans',                'diffs',
+        @ud,                          'examples/test-glibc',
+        'bin/gen_wctrans.bak',        glob('t/*.bak'),
+        glob('examples/tow*.o'),      'examples/towctrans.h',
+        glob('examples/bits-*.[ch]'), 'examples/bits.h',
+        'examples/bench-bits',        'examples/bench-bits.h',
+        't/c-if-tree-search_even',    't/c-if-tree-search_even.c',
+        't/c-if-tree-search_odd',     't/c-if-tree-search_odd.c'
     ]
 };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;
@@ -102,8 +102,10 @@ all :: towctrans.h README
         ? ""
         : '
 .PHONY: test-precommit
-xtest :: test-precommit
+xt xtest :: test-precommit test-checkmake
 	prove xt/*.t
+test-checkmake :
+	if command -v checkmake; then checkmake examples/Makefile; fi
 test-precommit :
 	if command -v prek; then prek run -a; \
 	elif command -v pre-commit; then pre-commit run -a; \

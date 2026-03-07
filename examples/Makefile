@@ -1,4 +1,4 @@
-.PHONY: all clean update-bench
+.PHONY: all clean test update-bench
 CC = cc
 DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I. -DNDEBUG
