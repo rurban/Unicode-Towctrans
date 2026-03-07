@@ -31,6 +31,9 @@ jobs:
           install: |
             Test::MinimumVersion::Fast
             Perl::MinimumVersion::Fast
+            YAML::Tiny
+            File::Find::Rule
+            File::Find::Rule::Perl
             Test::CPAN::Meta
             Test::Pod
             Test::Pod::Coverage
@@ -45,6 +48,7 @@ jobs:
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test || make test TEST_VERBOSE=1
+      - run: make xtest
       - run: make bench
 
   linux:
