@@ -1535,7 +1535,7 @@ if ($bsearch_both) {
     my $casel_idx_t = idx_type( scalar @CASEL );
 
     warn scalar @PAIR_UPPER . " PAIR_UPPER entries\n" if $verbose;
-    if (@PAIR_UPPER) {
+    if ( @PAIR_UPPER && @PAIR_UPPER > $UNROLL ) {
         printf FH "\n/* indices into pairs[], sorted by lower (target) */\n";
         printf FH "static const %s pairs_upper[%u] = {\n"
           . "    /* lower: 0x%x - 0x%x */\n", $pair_idx_t, scalar @PAIR_UPPER,
@@ -1549,7 +1549,7 @@ if ($bsearch_both) {
         print FH "};\n";
     }
     warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
-    if (@PAIRL_UPPER) {
+    if ( @PAIRL_UPPER && @PAIRL_UPPER > $UNROLL ) {
         printf FH "/* indices into pairl[], sorted by lower (target) */\n";
         printf FH "static const %s pairl_upper[%u] = {\n"
           . "    /* lower: 0x%x - 0x%x */\n", $pairl_idx_t,
@@ -1563,56 +1563,59 @@ if ($bsearch_both) {
         print FH "};\n";
     }
 
-# Generate casemaps_upper[] as index array sorted by target for upper binary search
-# Assign original indices to @CASE_RAW entries
-    my @case_indexed;
+    # Generate casemaps_upper[] as index array sorted by target for
+    # upper binary search Assign original indices to @CASE_RAW entries
+    my @CASE_IDX;
     for my $ci ( 0 .. $#CASE_RAW ) {
-        push @case_indexed, [ $ci, @{ $CASE_RAW[$ci] } ];
+        push @CASE_IDX, [ $ci, @{ $CASE_RAW[$ci] } ];
 
         # [orig_idx, upper, lower, len, str]
     }
-    my @case_by_target =
-      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @case_indexed;
-    warn scalar @case_by_target . " CASE_UPPER entries\n" if $verbose;
-    printf FH "/* indices into casemaps[], sorted by target (upper+lower) */\n";
-    printf FH "static const %s casemaps_upper[%u] = {\n"
-      . "    /* target: 0x%x - 0x%x */\n",
-      $case_idx_t,
-      scalar @case_by_target,
-      $case_by_target[0][1] + $case_by_target[0][2],
-      $case_by_target[-1][1] +
-      $case_by_target[-1][2] +
-      $case_by_target[-1][3] - 1;
-    my $j = 0;
-    for my $r (@case_by_target) {
-        my $target = $r->[1] + $r->[2];
-        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++, $target;
+    my @CASE_UPPER =
+      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @CASE_IDX;
+    warn scalar @CASE_UPPER . " CASE_UPPER entries\n" if $verbose;
+    if ( @CASE_UPPER && @CASE_UPPER > $UNROLL ) {
+        printf FH
+          "/* indices into casemaps[], sorted by target (upper+lower) */\n";
+        printf FH "static const %s casemaps_upper[%u] = {\n"
+          . "    /* target: 0x%x - 0x%x */\n",
+          $case_idx_t,
+          scalar @CASE_UPPER,
+          $CASE_UPPER[0][1] + $CASE_UPPER[0][2],
+          $CASE_UPPER[-1][1] + $CASE_UPPER[-1][2] + $CASE_UPPER[-1][3] - 1;
+        my $j = 0;
+        for my $r (@CASE_UPPER) {
+            my $target = $r->[1] + $r->[2];
+            printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++,
+              $target;
+        }
+        print FH "};\n";
     }
-    print FH "};\n";
 
-    my @casel_indexed;
+    my @CASEL_IDX;
     for my $ci ( 0 .. $#CASEL_RAW ) {
-        push @casel_indexed, [ $ci, @{ $CASEL_RAW[$ci] } ];
+        push @CASEL_IDX, [ $ci, @{ $CASEL_RAW[$ci] } ];
     }
-    my @casel_by_target =
-      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @casel_indexed;
-    warn scalar @casel_by_target . " CASEL_UPPER entries\n" if $verbose;
-    printf FH
-      "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
-    printf FH "static const %s casemapsl_upper[%u] = {\n"
-      . "    /* target: 0x%x - 0x%x */\n",
-      $casel_idx_t,
-      scalar @casel_by_target,
-      $casel_by_target[0][1] + $casel_by_target[0][2],
-      $casel_by_target[-1][1] +
-      $casel_by_target[-1][2] +
-      $casel_by_target[-1][3] - 1;
-    $j = 0;
-    for my $r (@casel_by_target) {
-        my $target = $r->[1] + $r->[2];
-        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++, $target;
+    my @CASEL_UPPER =
+      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @CASEL_IDX;
+    warn scalar @CASEL_UPPER . " CASEL_UPPER entries\n" if $verbose;
+    if ( @CASEL_UPPER && @CASEL_UPPER > $UNROLL ) {
+        printf FH
+          "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
+        printf FH "static const %s casemapsl_upper[%u] = {\n"
+          . "    /* target: 0x%x - 0x%x */\n",
+          $casel_idx_t,
+          scalar @CASEL_UPPER,
+          $CASEL_UPPER[0][1] + $CASEL_UPPER[0][2],
+          $CASEL_UPPER[-1][1] + $CASEL_UPPER[-1][2] + $CASEL_UPPER[-1][3] - 1;
+        my $j = 0;
+        for my $r (@CASEL_UPPER) {
+            my $target = $r->[1] + $r->[2];
+            printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++,
+              $target;
+        }
+        print FH "};\n";
     }
-    print FH "};\n";
 }
 print FH "\n";
 
