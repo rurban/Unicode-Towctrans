@@ -1483,10 +1483,6 @@ print FH "};\n";
 warn scalar @PAIR . " PAIR entries\n" if $verbose;
 
 if ( @PAIRL && @PAIRL > $UNROLL ) {
-    if ($bsearch) {
-        print FH "#define HAVE_PAIRL\n";
-        printf FH "#define PAIRL_SZ %u\n", scalar @PAIRL;
-    }
     printf FH "static const unsigned int pairl[%u][2] = {\n"
       . "    /* upper: 0x%x - 0x%x */\n"
       . "    /* upper, lower */\n", scalar @PAIRL, $PAIRL[0][0], $PAIRL[-1][0];
