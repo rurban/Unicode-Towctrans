@@ -10,6 +10,7 @@ SYNOPSIS
         gen_wctrans --lower16
         gen_wctrans --fn __towcase
         gen_wctrans --min-excl 10000
+        gen_wctrans --unroll 6
         gen_wctrans --bits 18:14:10
         gen_wctrans --lower16
         gen_wctrans --bsearch
@@ -32,9 +33,8 @@ DESCRIPTION
 
     With "--lower16" it creates larger and more "casemaps" tables, with less
     long "casemapl" tables. Thus it finds those ranges earlier, at the cost
-    of more caches misses. Currently "--lower16" is the best performance and
-    size combination. For "--bits" the fastest are 18:14:10 and 12:12:8, the
-    smallest is the default 16:8:8.
+    of more caches misses. For "--bits" the fastest are 18:14:10 and
+    12:12:8, the smallest is the default 16:8:8.
 
     With "--bsearch" the tolower check is done with a binary search, the
     toupper check does a linear search without early exit. It needs more
@@ -46,6 +46,12 @@ DESCRIPTION
 
     With "--table", the musl-new style, the size is much bigger, as we have
     to store mappings for all blocks. The lookup is much faster though.
+
+    More tuning options are "--min-excl" and "--unroll". "--min-excl" gives
+    a threshold for the size for the very first exclusion checks. The range
+    must be larger than the given threshold. Default is 2500. "--unroll"
+    sets the maximum array size for its loops to be unrolled and inlined.
+    Default is 5.
 
     Planned also for the multi-byte folding tables for wcsfc_s() for
     safeclib. As the single-byte "towupper" and "towlower" conversions are
@@ -82,16 +88,16 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        552 [us]  100.00 %
-               my_excl:        595 [us]   92.77 %
-              my_low16:        594 [us]   92.93 %
-               my_bits:        571 [us]   96.67 %
-            my_bsearch:        477 [us]  115.72 %
-           my_bsearchb:        556 [us]   99.28 %
-              my_table:        257 [us]  214.79 %
-              musl-new:        209 [us]  264.11 %   9 errors
-              musl-old:       1406 [us]   39.26 %   3 errors
-                 glibc:        149 [us]  370.47 %   15 errors
+                    my:       1044 [us]  100.00 %
+               my_excl:        702 [us]  148.72 %
+              my_low16:        750 [us]  139.20 %
+               my_bits:       1261 [us]   82.79 %
+            my_bsearch:        725 [us]  144.00 %
+           my_bsearchb:        842 [us]  123.99 %
+              my_table:        146 [us]  715.07 %
+              musl-new:        147 [us]  710.20 %   9 errors
+              musl-old:       1598 [us]   65.33 %   3 errors
+                 glibc:        149 [us]  700.67 %   15 errors
 
         wc -c towctrans-*.o
           3528 towctrans-my.o

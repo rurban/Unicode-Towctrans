@@ -24,10 +24,14 @@ use strict;
 use warnings;
 use Carp;
 
-# Minimum size of and excluded range. The more ranges we have, the slower.
+# Minimum size of excluded range. The more ranges we have, the slower.
 # The larger the ranges, the more misses in holes we might have, going through
 # all checks. musl-old had ~2500. Tested via bench
 my $MIN_ECXL = 2500;
+
+# Maximum array size for its loops to be unrolled and inlined. Default
+# to 5. Tested via bench
+my $UNROLL = 5;
 
 BEGIN {
     unless ( 'A' eq pack( 'U', 0x41 ) ) {
@@ -59,6 +63,7 @@ GetOptions(
     "out|o=s"       => \$out,              # string
     "with-iswalpha" => \$with_iswalpha,    # flag
     "min-excl=i"    => \$MIN_ECXL,         # numeric
+    "unroll=i"      => \$UNROLL,           # numeric
     "lower16"       => \$lower16,          # flag
     "bits=s"        => \$bits,             # string
     "bsearch"       => \$bsearch,          # flag
@@ -1325,8 +1330,11 @@ printf FH <<"EOF", scalar @CASE, $case_min->[0], $case_max->[0];
     /* from, until, to */
 EOF
 print FH $_ for @CASE;
-printf FH <<"EOF", scalar @CASEL, $casel_min->[0], $casel_max->[0];
-};
+print FH "};\n";
+warn scalar @CASE . " CASEMAP entries\n" if $verbose;
+
+if (@CASEL && @CASEL > $UNROLL) {
+    printf FH <<"EOF", scalar @CASEL, $casel_min->[0], $casel_max->[0];
 static const struct casemapsl_s {
     uint32_t upper; /* base */
     int lower;      /* distance from upper to lower. 1 with LACE */
@@ -1335,8 +1343,16 @@ static const struct casemapsl_s {
     /* upper: 0x%x - 0x%x */
     /* from, until, to */
 EOF
-print FH $_ for @CASEL;
-print FH "};\n";
+    print FH $_ for @CASEL;
+    print FH "};\n";
+    warn scalar @CASEL . " long CASEMAP entries\n" if $verbose;
+} elsif ($verbose) {
+    if (@CASEL) {
+        warn scalar @CASEL . " long CASEMAP entries unrolled\n";
+    } else {
+        warn "No long CASEMAP entries\n";
+    }
+}
 
 my (
     $MAP_FIRST,    $MAPL_FIRST, $MAP_LAST,
@@ -1406,7 +1422,9 @@ for my $p (@PAIR) {
     printf FH "    {0x%04x, 0x%04x},%s\n", $p->[0], $p->[1], $cmt;
 }
 print FH "};\n";
-if (@PAIRL) {
+warn scalar @PAIR . " PAIR entries\n" if $verbose;
+
+if (@PAIRL && @PAIRL > $UNROLL) {
     if ($bsearch) {
         print FH "#define HAVE_PAIRL\n";
         printf FH "#define PAIRL_SZ %u\n", scalar @PAIRL;
@@ -1419,6 +1437,13 @@ if (@PAIRL) {
         printf FH "    {0x%05x, 0x%05x},%s\n", $p->[0], $p->[1], $cmt;
     }
     print FH "};\n";
+    warn scalar @PAIRL . " long PAIR entries\n" if $verbose;
+} elsif ($verbose) {
+    if (@PAIRL) {
+        warn scalar @PAIRL . " long PAIR entries unrolled\n";
+    } else {
+        warn "No long PAIR entries\n";
+    }
 }
 # Create reverse-sorted index tables for upper (target) lookups for --bsearch-both.
 # Instead of duplicating the full tables, store only indices into the lower tables.
@@ -1445,6 +1470,7 @@ if ($bsearch_both) {
     my $case_idx_t  = idx_type(scalar @CASE);
     my $casel_idx_t = idx_type(scalar @CASEL);
 
+    warn scalar @PAIR_UPPER . " PAIR_UPPER entries\n" if $verbose;
     if (@PAIR_UPPER) {
         printf FH "\n/* indices into pairs[], sorted by lower (target) */\n";
         printf FH "static const %s pairs_upper[%u] = {\n"
@@ -1456,6 +1482,7 @@ if ($bsearch_both) {
         }
         print FH "};\n";
     }
+    warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
     if (@PAIRL_UPPER) {
         printf FH "/* indices into pairl[], sorted by lower (target) */\n";
         printf FH "static const %s pairl_upper[%u] = {\n"
@@ -1475,6 +1502,7 @@ if ($bsearch_both) {
         # [orig_idx, upper, lower, len, str]
     }
     my @case_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @case_indexed;
+    warn scalar @case_by_target . " CASE_UPPER entries\n" if $verbose;
     printf FH "/* indices into casemaps[], sorted by target (upper+lower) */\n";
     printf FH "static const %s casemaps_upper[%u] = {\n"
       . "    /* target: 0x%x - 0x%x */\n",
@@ -1493,6 +1521,7 @@ if ($bsearch_both) {
         push @casel_indexed, [$ci, @{$CASEL_RAW[$ci]}];
     }
     my @casel_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @casel_indexed;
+    warn scalar @casel_by_target . " CASEL_UPPER entries\n" if $verbose;
     printf FH "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
     printf FH "static const %s casemapsl_upper[%u] = {\n"
       . "    /* target: 0x%x - 0x%x */\n",
@@ -1596,6 +1625,7 @@ for my $i ( 1 .. $#excl ) {
         push @new_excl, $e unless $skip;
     }
 }
+warn scalar @new_excl . " exclusion entries\n" if $verbose;
 
 # sort ranges by size. GH #2
 printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
@@ -2147,6 +2177,7 @@ Unicode::Towctrans - Generate small case mapping tables
     gen_wctrans --lower16
     gen_wctrans --fn __towcase
     gen_wctrans --min-excl 10000
+    gen_wctrans --unroll 6
     gen_wctrans --bits 18:14:10
     gen_wctrans --lower16
     gen_wctrans --bsearch
@@ -2168,11 +2199,10 @@ If you know that your C<iswalpha()> works correctly (only with musl),
 then use C<--with_iswalpha> to get a lightly faster function. E.g. for
 benchmarking.
 
-With C<--lower16> it creates larger and more C<casemaps> tables, with less
-long C<casemapl> tables. Thus it finds those ranges earlier, at the cost of
-more caches misses. Currently C<--lower16> is the best performance and size
-combination. For C<--bits> the fastest are 18:14:10 and 12:12:8, the smallest
-is the default 16:8:8.
+With C<--lower16> it creates larger and more C<casemaps> tables, with
+less long C<casemapl> tables. Thus it finds those ranges earlier, at
+the cost of more caches misses. For C<--bits> the fastest are 18:14:10
+and 12:12:8, the smallest is the default 16:8:8.
 
 With C<--bsearch> the tolower check is done with a binary search, the
 toupper check does a linear search without early exit. It needs more
@@ -2185,6 +2215,12 @@ to be able to binary search it.
 With C<--table>, the musl-new style, the size is much bigger, as we
 have to store mappings for all blocks. The lookup is much faster
 though.
+
+More tuning options are C<--min-excl> and C<--unroll>. C<--min-excl>
+gives a threshold for the size for the very first exclusion checks.
+The range must be larger than the given threshold. Default is 2500.
+C<--unroll> sets the maximum array size for its loops to be unrolled
+and inlined. Default is 5.
 
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
 safeclib. As the single-byte C<towupper> and C<towlower> conversions
@@ -2230,16 +2266,16 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        552 [us]  100.00 %
-           my_excl:        595 [us]   92.77 %
-          my_low16:        594 [us]   92.93 %
-           my_bits:        571 [us]   96.67 %
-        my_bsearch:        477 [us]  115.72 %
-       my_bsearchb:        556 [us]   99.28 %
-          my_table:        257 [us]  214.79 %
-          musl-new:        209 [us]  264.11 %	9 errors
-          musl-old:       1406 [us]   39.26 %	3 errors
-             glibc:        149 [us]  370.47 %	15 errors
+                my:       1044 [us]  100.00 %
+           my_excl:        702 [us]  148.72 %
+          my_low16:        750 [us]  139.20 %
+           my_bits:       1261 [us]   82.79 %
+        my_bsearch:        725 [us]  144.00 %
+       my_bsearchb:        842 [us]  123.99 %
+          my_table:        146 [us]  715.07 %
+          musl-new:        147 [us]  710.20 %	9 errors
+          musl-old:       1598 [us]   65.33 %	3 errors
+             glibc:        149 [us]  700.67 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o
