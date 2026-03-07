@@ -46,9 +46,8 @@ $Unicode::Towctrans::VERSION = '0.04';
 
 use Getopt::Long;
 my (
-    $v,     $lower16, $bits,    $help, $verbose,
-    $safec, $musl,    $bsearch, $bsearch_both,
-    $table
+    $v,     $lower16, $bits,    $help,         $verbose,
+    $safec, $musl,    $bsearch, $bsearch_both, $table
 );
 my $ud            = "UnicodeData.txt";
 my $out           = "towctrans.h";
@@ -102,10 +101,10 @@ EOF
 }
 
 if ($table) {
-    die "cannot --bsearch with --table" if $bsearch;
+    die "cannot --bsearch with --table"      if $bsearch;
     die "cannot --bsearch-both with --table" if $bsearch_both;
-    die "cannot --lower16 with --table" if $lower16;
-    die "cannot --bits with --table" if $bits;
+    die "cannot --lower16 with --table"      if $lower16;
+    die "cannot --bits with --table"         if $bits;
 }
 if ($musl) {
     $with_iswalpha = 1;
@@ -157,9 +156,9 @@ else {
 binmode *STDOUT, ':utf8';
 binmode *STDERR, ':utf8';
 my (
-    @map,   @excl, @pair,  $prev, $lc,
-    %upper, %lower, @CASE, @CASEL, @PAIR, @PAIRL,
-    @CASE_RAW, @CASEL_RAW
+    @map,   @excl,     @pair, $prev,  $lc,
+    %upper, %lower,    @CASE, @CASEL, @PAIR,
+    @PAIRL, @CASE_RAW, @CASEL_RAW
 );
 
 ########## helpers ##########
@@ -208,9 +207,10 @@ sub simulate {
     # skip the turkish checks
     my $lmul  = 2 * $lower - 1;    # 1 for lower, -1 for upper
     my $lmask = $lower - 1;        # 0 for lower, -1/0xffff for upper
-    # single loop over @map: 3-member = map, 2-member = lace
+        # single loop over @map: 3-member = map, 2-member = lace
     for my $m (@map) {
         if ( @$m == 3 ) {
+
             # MAP entry
             my $lower = map_lower($m);
             my $len   = map_len($m);
@@ -228,9 +228,10 @@ sub simulate {
             }
         }
         elsif ( @$m == 2 ) {
+
             # LACE entry
-            my $lower = 1;    # lace_lower is always 1
-            my $len   = $m->[1] - $m->[0];    # lace_len_1
+            my $lower = 1;                              # lace_lower is always 1
+            my $len   = $m->[1] - $m->[0];              # lace_len_1
             my $base  = $m->[0] + ( $lmask & $lower );
             if ( $wc - $base < $len ) {
 
@@ -297,11 +298,12 @@ sub map_clashes {
     # Handles both 2-member (lace) and 3-member (map) entries.
     my ( $m, $l ) = @_;
     return 0 if !defined($m) or !defined($l);
+
     # normalize lace (2-member) to 3-member for comparison
-    my $l3 = @$l == 2 ? [ $l->[0], $l->[1], $l->[0] + 1 ] : $l;
+    my $l3    = @$l == 2 ? [ $l->[0], $l->[1], $l->[0] + 1 ] : $l;
     my $l_len = map_len($l3);
     my $l_max = $l3->[1] + $l_len;
-    my $m3 = @$m == 2 ? [ $m->[0], $m->[1], $m->[0] + 1 ] : $m;
+    my $m3    = @$m == 2 ? [ $m->[0], $m->[1], $m->[0] + 1 ] : $m;
     return 1 if $m3->[0] >= $l3->[0] && $m3->[2] <= $l_max;
 }
 
@@ -405,15 +407,12 @@ sub add_lace {
             warn(
                 sprintf(
                     "last lace %04X, %04X clashes with last map %04X, %04X\n",
-                    @$ll,
-                    $lm->[0], $lm->[2]
+                    @$ll, $lm->[0], $lm->[2]
                 )
             ) if $verbose;
         }
-        warn(
-            sprintf( "convert short lace to pair %04X, %04X\n",
-                @$ll )
-        ) if $verbose;
+        warn( sprintf( "convert short lace to pair %04X, %04X\n", @$ll ) )
+          if $verbose;
         add_pair( \@pair, $ll->[0], $ll->[1] );
         $ll->[0] = $base;
         $ll->[1] = $to;
@@ -423,6 +422,7 @@ sub add_lace {
     else {
         my $lm = last_map3($map);
         if ( map_clashes( $lm, [ $base, $to ] ) ) {
+
             # Clash with last map: demote to pair instead of lace
             warn(
                 sprintf(
@@ -482,18 +482,18 @@ sub add_excl {
 if ( $v and !-s $ud ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
     `wget $url -O $ud`
-        or `wget --no-check-certificate $url -O $ud`;
-    unless (-s $ud) {
+      or `wget --no-check-certificate $url -O $ud`;
+    unless ( -s $ud ) {
         `curl --silent $url -O $ud`;
     }
-    unless (-s $ud) {
+    unless ( -s $ud ) {
         require LWP::Simple;
         my $content = LWP::Simple::get($url);
         open my $fh, ">", $ud or die "$PACKAGE: failed to download $url";
         print $fh $content;
         close $fh;
     }
-    unless (-s $ud) {
+    unless ( -s $ud ) {
         die "$PACKAGE: failed to download $url: $!" unless -s $ud;
     }
 }
@@ -514,7 +514,7 @@ while ( my $l = <$UD> ) {
     next if $l =~ /^\s*#/;
     next if $l =~ /^\s*$/;
     my @fields = split /;/, $l;
-    my $cp = hex($fields[0]);
+    my $cp     = hex( $fields[0] );
 
     # Auto-detect version from the first codepoint range comment if needed
     # (UnicodeData.txt has no version header, rely on -v or UCD fallback)
@@ -527,6 +527,7 @@ while ( my $l = <$UD> ) {
         my $lc_val = hex($lc_map);
         $upper{$cp} = $lc_val;
     }
+
     # %lower maps lowercase->uppercase (codepoints with an uppercase mapping)
     if ( defined $uc_map && $uc_map =~ /^[0-9A-F]+$/i ) {
         my $uc_val = hex($uc_map);
@@ -535,22 +536,24 @@ while ( my $l = <$UD> ) {
 }
 close $UD;
 
-warn sprintf("UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\n",
-    scalar keys %upper, scalar keys %lower)
-  if $verbose;
+warn sprintf(
+    "UnicodeData.txt: %d upper (uc->lc) and %d lower (lc->uc) mappings\n",
+    scalar keys %upper,
+    scalar keys %lower
+) if $verbose;
 
 # Build @map, @pair from %upper (uppercase->lowercase mappings).
 # Process in codepoint order, detecting consecutive ranges (maps, laces)
 # and isolated pairs.  This replaces the old CaseFolding.txt second scan.
 # @map now contains both 3-member maps and 2-member laces.
-for my $cp (sort { $a <=> $b } keys %upper) {
+for my $cp ( sort { $a <=> $b } keys %upper ) {
     $lc = $upper{$cp};
 
     if ( !@map ) {
         add_map( \@map, $cp, $lc );    # 'A' -> 'a'
     }
     else {
-        if ( $cp - $prev == 1 ) {              # consecutive codepoint
+        if ( $cp - $prev == 1 ) {      # consecutive codepoint
             if ( $lc - $cp == 1 ) {
 
                 # check if we can convert the previous pair to a lace
@@ -579,8 +582,7 @@ for my $cp (sort { $a <=> $b } keys %upper) {
                     and $pair[-1][1] == $lc - 1 )
                 {
                     if ($verbose) {
-                        warn
-                          sprintf( "convert old pair to map %04X, %04X\n",
+                        warn sprintf( "convert old pair to map %04X, %04X\n",
                             $cp, $lc );
                     }
                     pop @pair;
@@ -610,25 +612,34 @@ for my $cp (sort { $a <=> $b } keys %upper) {
 # Simple_Uppercase_Mapping is not the reverse of any %upper entry.
 # These are asymmetric mappings (e.g., micro sign 00B5 -> 039C Mu capital,
 # but Mu capital -> 03BC mu small, not back to micro sign).
-if (!$table) {
-    for my $lc_cp (sort { $a <=> $b } keys %lower) {
+if ( !$table ) {
+    for my $lc_cp ( sort { $a <=> $b } keys %lower ) {
         my $uc_target = $lower{$lc_cp};
+
         # Skip if already covered: the uppercase target maps back to this char
         next if exists $upper{$uc_target} && $upper{$uc_target} == $lc_cp;
+
         # Add as a pair [uc_target, lc_cp] so towupper(lc_cp) returns uc_target
-        warn(sprintf("extra pair %04X, %04X (from %%lower)\n", $uc_target, $lc_cp))
-          if $verbose;
+        warn(
+            sprintf(
+                "extra pair %04X, %04X (from %%lower)\n",
+                $uc_target, $lc_cp
+            )
+        ) if $verbose;
         push @pair, [ $uc_target, $lc_cp ];
     }
-    # Re-sort pairs by upper codepoint (they must be sorted for the early-break optimization).
-    # When two pairs share the same upper, put the authoritative towlower mapping
-    # (from %upper) first so that the linear search finds it before the extra
-    # towupper-only pair.
+
+# Re-sort pairs by upper codepoint (they must be sorted for the early-break optimization).
+# When two pairs share the same upper, put the authoritative towlower mapping
+# (from %upper) first so that the linear search finds it before the extra
+# towupper-only pair.
     @pair = sort {
         $a->[0] <=> $b->[0]
-        || ( exists $upper{$a->[0]} && $upper{$a->[0]} == $a->[1] ? -1
-           : exists $upper{$b->[0]} && $upper{$b->[0]} == $b->[1] ?  1
-           : $a->[1] <=> $b->[1] )
+          || (
+              exists $upper{ $a->[0] } && $upper{ $a->[0] } == $a->[1] ? -1
+            : exists $upper{ $b->[0] } && $upper{ $b->[0] } == $b->[1] ? 1
+            :                            $a->[1] <=> $b->[1]
+          )
     } @pair;
 }
 
@@ -695,6 +706,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 EOF
 
 if ($table) {
+
     # --table: generate musl-new style two-level base-6 tables
     # Uses %lower (lc->uc) and %upper (uc->lc) from UnicodeData.txt
 
@@ -705,38 +717,42 @@ if ($table) {
 
 EOF
 
-    # Helper: construct a rule as a 32-bit signed integer string key.
-    # rule = (delta << 8) | type, stored as a string to avoid Perl 64-bit issues.
-    # Returns the string representation of the 32-bit signed int.
+   # Helper: construct a rule as a 32-bit signed integer string key.
+   # rule = (delta << 8) | type, stored as a string to avoid Perl 64-bit issues.
+   # Returns the string representation of the 32-bit signed int.
     sub rule_int32 {
-        my ($delta, $type) = @_;
+        my ( $delta, $type ) = @_;
+
         # Compute as native int, then mask to 32 bits
-        my $val = ($delta << 8) | $type;
+        my $val = ( $delta << 8 ) | $type;
+
         # Reinterpret as signed 32-bit
-        $val = unpack('l', pack('l', $val));
+        $val = unpack( 'l', pack( 'l', $val ) );
         return $val;
     }
 
     # Format a rule int for C output
     sub fmt_rule {
         my ($r) = @_;
-        if ($r == 0) { return "0x0"; }
+        if ( $r == 0 ) { return "0x0"; }
+
         # Ensure signed 32-bit interpretation
-        $r = unpack('l', pack('l', $r));
-        if ($r >= 0) {
-            return sprintf("0x%x", $r);
-        } else {
-            return sprintf("-0x%x", -$r);
+        $r = unpack( 'l', pack( 'l', $r ) );
+        if ( $r >= 0 ) {
+            return sprintf( "0x%x", $r );
+        }
+        else {
+            return sprintf( "-0x%x", -$r );
         }
     }
 
-    # Build a mapping from codepoint -> (delta, direction)
-    # Uses the musl-old convention: lower=1 means towlower, lower=0 means towupper.
-    # With the rt^dir formula:
-    #   rule type 0: lowercase delta, applied when dir=1 (towlower)
-    #   rule type 1: uppercase delta, applied when dir=0 (towupper)
+ # Build a mapping from codepoint -> (delta, direction)
+ # Uses the musl-old convention: lower=1 means towlower, lower=0 means towupper.
+ # With the rt^dir formula:
+ #   rule type 0: lowercase delta, applied when dir=1 (towlower)
+ #   rule type 1: uppercase delta, applied when dir=0 (towupper)
 
-    my $NBLOCKS = 512;   # covers 0x00000 - 0x1FFFF
+    my $NBLOCKS = 512;    # covers 0x00000 - 0x1FFFF
     my $BLOCKSZ = 256;
 
     # Per-codepoint rule assignment.
@@ -748,65 +764,71 @@ EOF
 
     # Codepoints in %lower (lowercase chars): delta goes uppercase-ward.
     # type 1: applied when dir=0 (towupper)
-    for my $uc (keys %lower) {
+    for my $uc ( keys %lower ) {
         my $lc = $lower{$uc};
         next if $lc == $uc;
-        $cp_rule{$uc} = rule_int32($lc - $uc, 1);
+        $cp_rule{$uc} = rule_int32( $lc - $uc, 1 );
     }
 
     # Codepoints in %upper (uppercase chars): delta goes lowercase-ward.
     # type 0: applied when dir=1 (towlower)
-    for my $lc (keys %upper) {
+    for my $lc ( keys %upper ) {
         my $uc = $upper{$lc};
         next if $uc == $lc;
-        $cp_rule{$lc} = rule_int32($uc - $lc, 0);
+        $cp_rule{$lc} = rule_int32( $uc - $lc, 0 );
     }
 
     # Codepoints with BOTH a lowercase and an uppercase mapping
     # (e.g., titlecase characters like U+01C5).
     my %has_both;
-    for my $cp (keys %cp_rule) {
-        if (exists $lower{$cp} && $lower{$cp} != $cp &&
-            exists $upper{$cp} && $upper{$cp} != $cp) {
+    for my $cp ( keys %cp_rule ) {
+        if (   exists $lower{$cp}
+            && $lower{$cp} != $cp
+            && exists $upper{$cp}
+            && $upper{$cp} != $cp )
+        {
             $has_both{$cp} = 1;
         }
     }
 
     # For each 256-codepoint block, collect distinct rules.
     # Max 6 per block (base-6 encoding). Overflow -> exceptions.
-    my @block_rules;      # [$block] -> [rule_int, ...] (up to 6, may include 'EXC')
-    my @block_rule_map;   # [$block]{$cp_offset} -> rule_index (0-5)
-    my @block_exceptions; # [$block] -> [{cp_low, rule_int}, ...]
+    my @block_rules;  # [$block] -> [rule_int, ...] (up to 6, may include 'EXC')
+    my @block_rule_map;      # [$block]{$cp_offset} -> rule_index (0-5)
+    my @block_exceptions;    # [$block] -> [{cp_low, rule_int}, ...]
 
-    for my $blk (0 .. $NBLOCKS - 1) {
+    for my $blk ( 0 .. $NBLOCKS - 1 ) {
         my $base = $blk * $BLOCKSZ;
         my %block_rule_counts;
         my %cp_to_rule;
 
-        for my $offset (0 .. $BLOCKSZ - 1) {
-            my $cp = $base + $offset;
+        for my $offset ( 0 .. $BLOCKSZ - 1 ) {
+            my $cp   = $base + $offset;
             my $rule = $cp_rule{$cp} // 0;
             $cp_to_rule{$offset} = $rule;
             $block_rule_counts{$rule}++;
         }
 
         # Distinct rules sorted by frequency (most frequent first)
-        my @distinct = sort { $block_rule_counts{$b} <=> $block_rule_counts{$a}
-                              || $a <=> $b } keys %block_rule_counts;
+        my @distinct = sort {
+                 $block_rule_counts{$b} <=> $block_rule_counts{$a}
+              || $a <=> $b
+        } keys %block_rule_counts;
 
         my @block_r;
         my @exception_rules;
 
         # Identity (0x0) must always be first if present
-        if (exists $block_rule_counts{0}) {
+        if ( exists $block_rule_counts{0} ) {
             push @block_r, 0;
             @distinct = grep { $_ != 0 } @distinct;
         }
 
         for my $r (@distinct) {
-            if (@block_r < 6) {
+            if ( @block_r < 6 ) {
                 push @block_r, $r;
-            } else {
+            }
+            else {
                 push @exception_rules, $r;
             }
         }
@@ -814,21 +836,26 @@ EOF
         # Build exception list
         my @exc;
         my %exc_rules_set = map { $_ => 1 } @exception_rules;
-        for my $offset (0 .. $BLOCKSZ - 1) {
+        for my $offset ( 0 .. $BLOCKSZ - 1 ) {
             my $cp = $base + $offset;
-            if ($has_both{$cp}) {
+            if ( $has_both{$cp} ) {
+
                 # %lower maps lc->uc, %upper maps uc->lc (confusing names)
-                my $uc_target_delta = $lower{$cp} - $cp;  # delta to uppercase
-                my $lc_target_delta = $upper{$cp} - $cp;  # delta to lowercase
-                if ($uc_target_delta == -1 && $lc_target_delta == 1) {
+                my $uc_target_delta = $lower{$cp} - $cp;    # delta to uppercase
+                my $lc_target_delta = $upper{$cp} - $cp;    # delta to lowercase
+                if ( $uc_target_delta == -1 && $lc_target_delta == 1 ) {
+
                     # Titlecase: type 3 (towlower: +1, towupper: -1)
                     push @exc, { cp_low => $offset, rule_int => 0x3 };
-                } else {
+                }
+                else {
                     push @exc, { cp_low => $offset, rule_int => $cp_rule{$cp} };
                 }
                 $cp_to_rule{$offset} = undef;
-            } elsif ($exc_rules_set{$cp_to_rule{$offset} // 0}) {
-                push @exc, { cp_low => $offset, rule_int => $cp_to_rule{$offset} };
+            }
+            elsif ( $exc_rules_set{ $cp_to_rule{$offset} // 0 } ) {
+                push @exc,
+                  { cp_low => $offset, rule_int => $cp_to_rule{$offset} };
                 $cp_to_rule{$offset} = undef;
             }
         }
@@ -836,11 +863,14 @@ EOF
         # If we have exceptions, we need an EXC rule slot in block_r
         my $exc_rule_idx;
         if (@exc) {
-            if (@block_r >= 6) {
+            if ( @block_r >= 6 ) {
+
                 # Evict the least-frequent non-identity rule
                 my $evicted = pop @block_r;
-                for my $offset (0 .. $BLOCKSZ - 1) {
-                    if (defined $cp_to_rule{$offset} && $cp_to_rule{$offset} == $evicted) {
+                for my $offset ( 0 .. $BLOCKSZ - 1 ) {
+                    if ( defined $cp_to_rule{$offset}
+                        && $cp_to_rule{$offset} == $evicted )
+                    {
                         push @exc, { cp_low => $offset, rule_int => $evicted };
                         $cp_to_rule{$offset} = undef;
                     }
@@ -853,16 +883,18 @@ EOF
         # Build the rule_map for this block (cp_offset -> 0-5 index)
         my %rule_map;
         my %rule_pos;
-        for my $ri (0 .. $#block_r) {
-            $rule_pos{$block_r[$ri]} = $ri if $block_r[$ri] ne 'EXC';
+        for my $ri ( 0 .. $#block_r ) {
+            $rule_pos{ $block_r[$ri] } = $ri if $block_r[$ri] ne 'EXC';
         }
 
-        for my $offset (0 .. $BLOCKSZ - 1) {
-            if (!defined $cp_to_rule{$offset}) {
+        for my $offset ( 0 .. $BLOCKSZ - 1 ) {
+            if ( !defined $cp_to_rule{$offset} ) {
+
                 # Exception codepoint
                 $rule_map{$offset} = $exc_rule_idx // 0;
-            } else {
-                $rule_map{$offset} = $rule_pos{$cp_to_rule{$offset}} // 0;
+            }
+            else {
+                $rule_map{$offset} = $rule_pos{ $cp_to_rule{$offset} } // 0;
             }
         }
 
@@ -883,9 +915,9 @@ EOF
     #         exception indices not yet known). Deduplicate sequences.
     # Pass 2: Add exception-referenced rules, then fill in EXC rule entries.
 
-    my @g_rules;       # the rules[] array emitted to C
-    my @g_rulebases;   # one per block
-    my @g_exceptions;  # [{cp_low, rule_idx}]
+    my @g_rules;         # the rules[] array emitted to C
+    my @g_rulebases;     # one per block
+    my @g_exceptions;    # [{cp_low, rule_idx}]
 
     # For each block, build its rule sequence key (for deduplication).
     # A block's rule sequence is its list of non-EXC rule values.
@@ -893,32 +925,38 @@ EOF
     # Blocks with exceptions get unique entries (because the EXC rule encodes
     # block-specific exception offsets).
 
-    my %seq_to_base;   # rule-sequence-key -> index in @g_rules
+    my %seq_to_base;    # rule-sequence-key -> index in @g_rules
 
     # Pass 1: Allocate rule sequences
-    for my $blk (0 .. $NBLOCKS - 1) {
+    for my $blk ( 0 .. $NBLOCKS - 1 ) {
         my $block_r   = $block_rules[$blk];
         my $block_exc = $block_exceptions[$blk];
         my $has_exc   = grep { $_ eq 'EXC' } @$block_r;
 
         # Build the non-EXC rule sequence
         my @non_exc = map { $_ eq 'EXC' ? () : $_ } @$block_r;
-        my $seq_key = join(',', @non_exc);
+        my $seq_key = join( ',', @non_exc );
 
-        if (!$has_exc && exists $seq_to_base{$seq_key}) {
+        if ( !$has_exc && exists $seq_to_base{$seq_key} ) {
+
             # Reuse existing rulebase
             $g_rulebases[$blk] = $seq_to_base{$seq_key};
-        } else {
+        }
+        else {
             $g_rulebases[$blk] = scalar @g_rules;
             $seq_to_base{$seq_key} = $g_rulebases[$blk] unless $has_exc;
 
-            for my $ri (0 .. $#$block_r) {
-                if ($block_r->[$ri] eq 'EXC') {
+            for my $ri ( 0 .. $#$block_r ) {
+                if ( $block_r->[$ri] eq 'EXC' ) {
+
                     # Placeholder — will be filled in pass 2
                     push @g_rules, 'EXC_PLACEHOLDER';
+
                     # Remember where this placeholder is and which block
-                    $block_rules[$blk][$ri] = { _exc_pos => $#g_rules, _blk => $blk };
-                } else {
+                    $block_rules[$blk][$ri] =
+                      { _exc_pos => $#g_rules, _blk => $blk };
+                }
+                else {
                     push @g_rules, $block_r->[$ri];
                 }
             }
@@ -927,13 +965,13 @@ EOF
 
     # Pass 2: Add exception-referenced rules to @g_rules (deduplicated),
     # then fill in EXC placeholders.
-    my %exc_rule_to_gidx;  # rule_int -> index in @g_rules
+    my %exc_rule_to_gidx;    # rule_int -> index in @g_rules
 
-    for my $blk (0 .. $NBLOCKS - 1) {
+    for my $blk ( 0 .. $NBLOCKS - 1 ) {
         my $block_r   = $block_rules[$blk];
         my $block_exc = $block_exceptions[$blk];
 
-        for my $ri (0 .. $#$block_r) {
+        for my $ri ( 0 .. $#$block_r ) {
             next unless ref $block_r->[$ri] && exists $block_r->[$ri]{_exc_pos};
             my $exc_pos = $block_r->[$ri]{_exc_pos};
 
@@ -945,50 +983,53 @@ EOF
 
             for my $exc (@sorted_exc) {
                 my $r = $exc->{rule_int};
-                if (!exists $exc_rule_to_gidx{$r}) {
+                if ( !exists $exc_rule_to_gidx{$r} ) {
                     $exc_rule_to_gidx{$r} = scalar @g_rules;
                     push @g_rules, $r;
                 }
-                push @g_exceptions, {
+                push @g_exceptions,
+                  {
                     cp_low   => $exc->{cp_low},
                     rule_idx => $exc_rule_to_gidx{$r}
-                };
+                  };
             }
 
             # Fill in the EXC placeholder: type 2, delta = (xb << 8 | xn)
-            my $exc_rule = (($xb << 8) | $xn) << 8 | 2;
+            my $exc_rule = ( ( $xb << 8 ) | $xn ) << 8 | 2;
             $g_rules[$exc_pos] = $exc_rule;
         }
     }
 
-    # Build tab[]: two-level base-6 table
-    # Level 1: 512 bytes (one per block), value * 86 + x indexes into combined array
-    # Level 2: 86-byte blocks appended after level 1
-    # The level 1 values must be offset so that val*86 reaches past the 512-byte
-    # level 1 region into the level 2 data.
-    # Minimum usable index: ceil(512/86) = 6 (6*86 = 516 > 512)
+# Build tab[]: two-level base-6 table
+# Level 1: 512 bytes (one per block), value * 86 + x indexes into combined array
+# Level 2: 86-byte blocks appended after level 1
+# The level 1 values must be offset so that val*86 reaches past the 512-byte
+# level 1 region into the level 2 data.
+# Minimum usable index: ceil(512/86) = 6 (6*86 = 516 > 512)
 
     use POSIX qw(ceil);
-    my $L2_OFFSET = ceil($NBLOCKS / 86);  # = 6
+    my $L2_OFFSET = ceil( $NBLOCKS / 86 );    # = 6
 
-    my @tab_l2_blocks;  # array of 86-byte arrayrefs
-    my %tab_l2_dedup;   # block-string -> index (0-based, before offset)
-    my @tab_l1;         # 512 entries
+    my @tab_l2_blocks;    # array of 86-byte arrayrefs
+    my %tab_l2_dedup;     # block-string -> index (0-based, before offset)
+    my @tab_l1;           # 512 entries
 
-    for my $blk (0 .. $NBLOCKS - 1) {
+    for my $blk ( 0 .. $NBLOCKS - 1 ) {
         my $rule_map = $block_rule_map[$blk];
         my @block86;
 
-        for my $x (0 .. 85) {
+        for my $x ( 0 .. 85 ) {
             my @vals;
-            for my $y (0 .. 2) {
+            for my $y ( 0 .. 2 ) {
                 my $offset = $x * 3 + $y;
-                if ($offset < $BLOCKSZ) {
-                    push @vals, ($rule_map->{$offset} // 0);
-                } else {
+                if ( $offset < $BLOCKSZ ) {
+                    push @vals, ( $rule_map->{$offset} // 0 );
+                }
+                else {
                     push @vals, 0;
                 }
             }
+
             # Encode 3 values (0-5) into one byte using reversed order
             # for compatibility with the mt[] decode: v[2]*36 + v[1]*6 + v[0]
             my $byte = $vals[2] * 36 + $vals[1] * 6 + $vals[0];
@@ -996,45 +1037,46 @@ EOF
         }
 
         # Deduplication
-        my $key = join(',', @block86);
-        if (!exists $tab_l2_dedup{$key}) {
+        my $key = join( ',', @block86 );
+        if ( !exists $tab_l2_dedup{$key} ) {
             $tab_l2_dedup{$key} = scalar @tab_l2_blocks;
             push @tab_l2_blocks, \@block86;
         }
+
         # Level 1 value = dedup index + L2_OFFSET
         $tab_l1[$blk] = $tab_l2_dedup{$key} + $L2_OFFSET;
     }
 
-    # The combined tab[] array:
-    # bytes 0..511: level 1 (block indices with offset)
-    # bytes 512..(512 + nblocks*86 - 1): level 2 blocks
-    # But level 2 starts at byte L2_OFFSET*86 = 516, so bytes 512..515 are padding.
-    # We need to pad with zeros between level 1 end and level 2 start.
-    my $l2_start_byte = $L2_OFFSET * 86;  # = 516
-    my $pad_bytes = $l2_start_byte - $NBLOCKS;  # = 4
+ # The combined tab[] array:
+ # bytes 0..511: level 1 (block indices with offset)
+ # bytes 512..(512 + nblocks*86 - 1): level 2 blocks
+ # But level 2 starts at byte L2_OFFSET*86 = 516, so bytes 512..515 are padding.
+ # We need to pad with zeros between level 1 end and level 2 start.
+    my $l2_start_byte = $L2_OFFSET * 86;              # = 516
+    my $pad_bytes     = $l2_start_byte - $NBLOCKS;    # = 4
 
     # --- Emit tab[] ---
     print FH "static const unsigned char tab[] = {\n";
 
     # Level 1: 512 block indices
-    for my $row (0 .. ($NBLOCKS / 16) - 1) {
-        my @vals = @tab_l1[$row * 16 .. $row * 16 + 15];
-        printf FH "\t%s,\n", join(', ', @vals);
+    for my $row ( 0 .. ( $NBLOCKS / 16 ) - 1 ) {
+        my @vals = @tab_l1[ $row * 16 .. $row * 16 + 15 ];
+        printf FH "\t%s,\n", join( ', ', @vals );
     }
 
     # Padding bytes between level 1 and level 2
-    if ($pad_bytes > 0) {
-        printf FH "\t%s,\n", join(', ', (0) x $pad_bytes);
+    if ( $pad_bytes > 0 ) {
+        printf FH "\t%s,\n", join( ', ', (0) x $pad_bytes );
     }
 
     # Level 2: 86-byte blocks
-    for my $bi (0 .. $#tab_l2_blocks) {
+    for my $bi ( 0 .. $#tab_l2_blocks ) {
         my $block = $tab_l2_blocks[$bi];
-        for my $row (0 .. int(85 / 16)) {
+        for my $row ( 0 .. int( 85 / 16 ) ) {
             my $end = $row * 16 + 15;
             $end = 85 if $end > 85;
-            my @vals = @$block[$row * 16 .. $end];
-            printf FH "\t%s,\n", join(', ', @vals);
+            my @vals = @$block[ $row * 16 .. $end ];
+            printf FH "\t%s,\n", join( ', ', @vals );
         }
     }
     print FH "};\n";
@@ -1042,10 +1084,10 @@ EOF
     # --- Emit rules[] ---
     print FH "static const int rules[] = {\n";
     my @rule_strs = map { fmt_rule($_) } @g_rules;
-    for my $row (0 .. int($#g_rules / 6)) {
+    for my $row ( 0 .. int( $#g_rules / 6 ) ) {
         my $end = $row * 6 + 5;
         $end = $#g_rules if $end > $#g_rules;
-        printf FH "\t%s,\n", join(', ', @rule_strs[$row * 6 .. $end]);
+        printf FH "\t%s,\n", join( ', ', @rule_strs[ $row * 6 .. $end ] );
     }
     print FH "};\n";
 
@@ -1054,9 +1096,9 @@ EOF
     for my $rb (@g_rulebases) { $max_rb = $rb if $rb > $max_rb; }
     my $rb_type = $max_rb > 255 ? "unsigned short" : "unsigned char";
     printf FH "static const %s rulebases[] = {\n", $rb_type;
-    for my $row (0 .. ($NBLOCKS / 16) - 1) {
-        my @vals = @g_rulebases[$row * 16 .. $row * 16 + 15];
-        printf FH "\t%s,\n", join(', ', @vals);
+    for my $row ( 0 .. ( $NBLOCKS / 16 ) - 1 ) {
+        my @vals = @g_rulebases[ $row * 16 .. $row * 16 + 15 ];
+        printf FH "\t%s,\n", join( ', ', @vals );
     }
     print FH "};\n";
 
@@ -1067,14 +1109,17 @@ EOF
     }
     my $exc_type = $max_exc_idx > 255 ? "unsigned short" : "unsigned char";
     printf FH "static const %s exceptions[][2] = {\n", $exc_type;
-    for my $row (0 .. int($#g_exceptions / 4)) {
+    for my $row ( 0 .. int( $#g_exceptions / 4 ) ) {
         my $end = $row * 4 + 3;
         $end = $#g_exceptions if $end > $#g_exceptions;
         my @entries;
-        for my $i ($row * 4 .. $end) {
-            push @entries, sprintf("{ %u, %u }", $g_exceptions[$i]{cp_low}, $g_exceptions[$i]{rule_idx});
+        for my $i ( $row * 4 .. $end ) {
+            push @entries,
+              sprintf( "{ %u, %u }",
+                $g_exceptions[$i]{cp_low},
+                $g_exceptions[$i]{rule_idx} );
         }
-        printf FH "\t%s,\n", join(', ', @entries);
+        printf FH "\t%s,\n", join( ', ', @entries );
     }
     print FH "};\n";
 
@@ -1231,8 +1276,9 @@ my $max_len   = ( 2**$bits[2] ) - 1;             # 8: 255;
 for my $entry (@sorted_map) {
 
     if ( @$entry == 3 ) {
+
         # MAP entry
-        my $m = $entry;
+        my $m     = $entry;
         my $lower = map_lower($m);
         my $len   = map_len($m);
 
@@ -1257,8 +1303,8 @@ for my $entry (@sorted_map) {
               $m->[0], $m->[1], $m->[2], $cmt;
 
             #warn "defer overflow $s0 to casemapl\n" if $verbose;
-            push @CASEL, $s;
-            push @CASEL_RAW, [$m->[0], $lower, $len, $s];
+            push @CASEL,     $s;
+            push @CASEL_RAW, [ $m->[0], $lower, $len, $s ];
         }
         else {
             my $CASEMAP = "CASEMAP";
@@ -1268,16 +1314,18 @@ for my $entry (@sorted_map) {
             my $s = sprintf "    $CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n",
               $m->[0],
               $m->[1], $m->[2], $cmt;
-            push @CASE, $s;
-            push @CASE_RAW, [$m->[0], $lower, $len, $s];
+            push @CASE,     $s;
+            push @CASE_RAW, [ $m->[0], $lower, $len, $s ];
         }
     }
     elsif ( @$entry == 2 ) {
+
         # LACE entry
         my $l = $entry;
         $l->[1] = $l->[1] - 1;
-        my $lower   = 1;    # lace_lower is always 1
-        my $len     = $l->[1] - $l->[0] + 1;    # map_len of [$l->[0], $l->[1], $l->[0]+1]
+        my $lower = 1;    # lace_lower is always 1
+        my $len =
+          $l->[1] - $l->[0] + 1;    # map_len of [$l->[0], $l->[1], $l->[0]+1]
         my $is_long = (
                  $l->[0] > $max_upper
               or $lower > $max_lower
@@ -1299,7 +1347,7 @@ for my $entry (@sorted_map) {
             push @CASEL,
               sprintf( "    $CASELACE(0x%05x, 0x%05x),%s\n",
                 $l->[0], $l->[1], $cmt );
-            push @CASEL_RAW, [$l->[0], $lower, $len, $CASEL[-1]];
+            push @CASEL_RAW, [ $l->[0], $lower, $len, $CASEL[-1] ];
         }
         else {
             $case_min = $l unless @CASE;
@@ -1310,7 +1358,7 @@ for my $entry (@sorted_map) {
             push @CASE,
               sprintf( "    CASELACE(0x%04x, 0x%04x),%s\n",
                 $l->[0], $l->[1], $cmt );
-            push @CASE_RAW, [$l->[0], $lower, $len, $CASE[-1]];
+            push @CASE_RAW, [ $l->[0], $lower, $len, $CASE[-1] ];
         }
     }
 }
@@ -1333,7 +1381,7 @@ print FH $_ for @CASE;
 print FH "};\n";
 warn scalar @CASE . " CASEMAP entries\n" if $verbose;
 
-if (@CASEL && @CASEL > $UNROLL) {
+if ( @CASEL && @CASEL > $UNROLL ) {
     printf FH <<"EOF", scalar @CASEL, $casel_min->[0], $casel_max->[0];
 static const struct casemapsl_s {
     uint32_t upper; /* base */
@@ -1346,20 +1394,22 @@ EOF
     print FH $_ for @CASEL;
     print FH "};\n";
     warn scalar @CASEL . " long CASEMAP entries\n" if $verbose;
-} elsif ($verbose) {
+}
+elsif ($verbose) {
     if (@CASEL) {
         warn scalar @CASEL . " long CASEMAP entries unrolled\n";
-    } else {
+    }
+    else {
         warn "No long CASEMAP entries\n";
     }
 }
 
 my (
-    $MAP_FIRST,    $MAPL_FIRST, $MAP_LAST,
-    $MAP_LAST_LEN, $MAPL_LAST,  $MAPL_LAST_LEN,
-    $TARGET_FIRST, $TARGETL_FIRST, $TARGET_LAST, $TARGETL_LAST
+    $MAP_FIRST,   $MAPL_FIRST,    $MAP_LAST,     $MAP_LAST_LEN,
+    $MAPL_LAST,   $MAPL_LAST_LEN, $TARGET_FIRST, $TARGETL_FIRST,
+    $TARGET_LAST, $TARGETL_LAST
 );
-if ($bsearch || $bsearch_both) {
+if ( $bsearch || $bsearch_both ) {
     $MAP_FIRST  = $case_min->[0];
     $MAPL_FIRST = $casel_min->[0];
     $MAP_LAST   = $case_max->[0];
@@ -1373,13 +1423,21 @@ if ($bsearch || $bsearch_both) {
 }
 if ($bsearch_both) {
     $bsearch = 1;    # --bsearch-both implies --bsearch
-    # Sort casemaps raw data by target (upper + lower) for upper binary search
-    my @case_by_target = sort { ($a->[0] + $a->[1]) <=> ($b->[0] + $b->[1]) } @CASE_RAW;
-    my @casel_by_target = sort { ($a->[0] + $a->[1]) <=> ($b->[0] + $b->[1]) } @CASEL_RAW;
-    $TARGET_FIRST  = $case_by_target[0][0]  + $case_by_target[0][1];
-    $TARGET_LAST   = $case_by_target[-1][0] + $case_by_target[-1][1] + $case_by_target[-1][2] - 1;
-    $TARGETL_FIRST = $casel_by_target[0][0]  + $casel_by_target[0][1];
-    $TARGETL_LAST  = $casel_by_target[-1][0] + $casel_by_target[-1][1] + $casel_by_target[-1][2] - 1;
+      # Sort casemaps raw data by target (upper + lower) for upper binary search
+    my @case_by_target =
+      sort { ( $a->[0] + $a->[1] ) <=> ( $b->[0] + $b->[1] ) } @CASE_RAW;
+    my @casel_by_target =
+      sort { ( $a->[0] + $a->[1] ) <=> ( $b->[0] + $b->[1] ) } @CASEL_RAW;
+    $TARGET_FIRST = $case_by_target[0][0] + $case_by_target[0][1];
+    $TARGET_LAST =
+      $case_by_target[-1][0] +
+      $case_by_target[-1][1] +
+      $case_by_target[-1][2] - 1;
+    $TARGETL_FIRST = $casel_by_target[0][0] + $casel_by_target[0][1];
+    $TARGETL_LAST =
+      $casel_by_target[-1][0] +
+      $casel_by_target[-1][1] +
+      $casel_by_target[-1][2] - 1;
 }
 
 # The DZ digraph pair [0x1F1, 0x1F3] already handles both directions:
@@ -1424,7 +1482,7 @@ for my $p (@PAIR) {
 print FH "};\n";
 warn scalar @PAIR . " PAIR entries\n" if $verbose;
 
-if (@PAIRL && @PAIRL > $UNROLL) {
+if ( @PAIRL && @PAIRL > $UNROLL ) {
     if ($bsearch) {
         print FH "#define HAVE_PAIRL\n";
         printf FH "#define PAIRL_SZ %u\n", scalar @PAIRL;
@@ -1438,46 +1496,54 @@ if (@PAIRL && @PAIRL > $UNROLL) {
     }
     print FH "};\n";
     warn scalar @PAIRL . " long PAIR entries\n" if $verbose;
-} elsif ($verbose) {
+}
+elsif ($verbose) {
     if (@PAIRL) {
         warn scalar @PAIRL . " long PAIR entries unrolled\n";
-    } else {
+    }
+    else {
         warn "No long PAIR entries\n";
     }
 }
+
 # Create reverse-sorted index tables for upper (target) lookups for --bsearch-both.
 # Instead of duplicating the full tables, store only indices into the lower tables.
 # Choose the smallest index type that fits the array size.
 sub idx_type { $_[0] <= 256 ? "uint8_t" : "uint16_t" }
 
-my (@PAIR_UPPER, @PAIRL_UPPER);
+my ( @PAIR_UPPER, @PAIRL_UPPER );
 if ($bsearch_both) {
+
     # Build a lookup from [upper,lower] pair to index in @PAIR
     my %pair_idx;
-    for my $pi (0 .. $#PAIR) {
-        $pair_idx{$PAIR[$pi][0]}{$PAIR[$pi][1]} = $pi;
+    for my $pi ( 0 .. $#PAIR ) {
+        $pair_idx{ $PAIR[$pi][0] }{ $PAIR[$pi][1] } = $pi;
     }
     my %pairl_idx;
-    for my $pi (0 .. $#PAIRL) {
-        $pairl_idx{$PAIRL[$pi][0]}{$PAIRL[$pi][1]} = $pi;
+    for my $pi ( 0 .. $#PAIRL ) {
+        $pairl_idx{ $PAIRL[$pi][0] }{ $PAIRL[$pi][1] } = $pi;
     }
 
-    @PAIR_UPPER  = sort { $a->[1] <=> $b->[1] } grep { $_->[0] <= 0xffff && $_->[1] <= 0xffff } @pair;
-    @PAIRL_UPPER = sort { $a->[1] <=> $b->[1] } grep { $_->[0] > 0xffff || $_->[1] > 0xffff } @pair;
+    @PAIR_UPPER = sort { $a->[1] <=> $b->[1] }
+      grep { $_->[0] <= 0xffff && $_->[1] <= 0xffff } @pair;
+    @PAIRL_UPPER = sort { $a->[1] <=> $b->[1] }
+      grep { $_->[0] > 0xffff || $_->[1] > 0xffff } @pair;
 
-    my $pair_idx_t  = idx_type(scalar @PAIR);
-    my $pairl_idx_t = idx_type(scalar @PAIRL);
-    my $case_idx_t  = idx_type(scalar @CASE);
-    my $casel_idx_t = idx_type(scalar @CASEL);
+    my $pair_idx_t  = idx_type( scalar @PAIR );
+    my $pairl_idx_t = idx_type( scalar @PAIRL );
+    my $case_idx_t  = idx_type( scalar @CASE );
+    my $casel_idx_t = idx_type( scalar @CASEL );
 
     warn scalar @PAIR_UPPER . " PAIR_UPPER entries\n" if $verbose;
     if (@PAIR_UPPER) {
         printf FH "\n/* indices into pairs[], sorted by lower (target) */\n";
         printf FH "static const %s pairs_upper[%u] = {\n"
-          . "    /* lower: 0x%x - 0x%x */\n", $pair_idx_t, scalar @PAIR_UPPER, $PAIR_UPPER[0][1], $PAIR_UPPER[-1][1];
+          . "    /* lower: 0x%x - 0x%x */\n", $pair_idx_t, scalar @PAIR_UPPER,
+          $PAIR_UPPER[0][1], $PAIR_UPPER[-1][1];
         for my $p (@PAIR_UPPER) {
-            my $idx = $pair_idx{$p->[0]}{$p->[1]};
-            my $cmt = sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
+            my $idx = $pair_idx{ $p->[0] }{ $p->[1] };
+            my $cmt =
+              sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
             printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
@@ -1486,22 +1552,27 @@ if ($bsearch_both) {
     if (@PAIRL_UPPER) {
         printf FH "/* indices into pairl[], sorted by lower (target) */\n";
         printf FH "static const %s pairl_upper[%u] = {\n"
-          . "    /* lower: 0x%x - 0x%x */\n", $pairl_idx_t, scalar @PAIRL_UPPER, $PAIRL_UPPER[0][1], $PAIRL_UPPER[-1][1];
+          . "    /* lower: 0x%x - 0x%x */\n", $pairl_idx_t,
+          scalar @PAIRL_UPPER, $PAIRL_UPPER[0][1], $PAIRL_UPPER[-1][1];
         for my $p (@PAIRL_UPPER) {
-            my $idx = $pairl_idx{$p->[0]}{$p->[1]};
-            my $cmt = sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
+            my $idx = $pairl_idx{ $p->[0] }{ $p->[1] };
+            my $cmt =
+              sprintf( " /* [%u] '%c' <- '%c' */", $idx, $p->[0], $p->[1] );
             printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
     }
-    # Generate casemaps_upper[] as index array sorted by target for upper binary search
-    # Assign original indices to @CASE_RAW entries
+
+# Generate casemaps_upper[] as index array sorted by target for upper binary search
+# Assign original indices to @CASE_RAW entries
     my @case_indexed;
-    for my $ci (0 .. $#CASE_RAW) {
-        push @case_indexed, [$ci, @{$CASE_RAW[$ci]}];
+    for my $ci ( 0 .. $#CASE_RAW ) {
+        push @case_indexed, [ $ci, @{ $CASE_RAW[$ci] } ];
+
         # [orig_idx, upper, lower, len, str]
     }
-    my @case_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @case_indexed;
+    my @case_by_target =
+      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @case_indexed;
     warn scalar @case_by_target . " CASE_UPPER entries\n" if $verbose;
     printf FH "/* indices into casemaps[], sorted by target (upper+lower) */\n";
     printf FH "static const %s casemaps_upper[%u] = {\n"
@@ -1509,29 +1580,37 @@ if ($bsearch_both) {
       $case_idx_t,
       scalar @case_by_target,
       $case_by_target[0][1] + $case_by_target[0][2],
-      $case_by_target[-1][1] + $case_by_target[-1][2] + $case_by_target[-1][3] - 1;
+      $case_by_target[-1][1] +
+      $case_by_target[-1][2] +
+      $case_by_target[-1][3] - 1;
+    my $j = 0;
     for my $r (@case_by_target) {
         my $target = $r->[1] + $r->[2];
-        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $r->[0], $target;
+        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++, $target;
     }
     print FH "};\n";
 
     my @casel_indexed;
-    for my $ci (0 .. $#CASEL_RAW) {
-        push @casel_indexed, [$ci, @{$CASEL_RAW[$ci]}];
+    for my $ci ( 0 .. $#CASEL_RAW ) {
+        push @casel_indexed, [ $ci, @{ $CASEL_RAW[$ci] } ];
     }
-    my @casel_by_target = sort { ($a->[1] + $a->[2]) <=> ($b->[1] + $b->[2]) } @casel_indexed;
+    my @casel_by_target =
+      sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @casel_indexed;
     warn scalar @casel_by_target . " CASEL_UPPER entries\n" if $verbose;
-    printf FH "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
+    printf FH
+      "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
     printf FH "static const %s casemapsl_upper[%u] = {\n"
       . "    /* target: 0x%x - 0x%x */\n",
       $casel_idx_t,
       scalar @casel_by_target,
       $casel_by_target[0][1] + $casel_by_target[0][2],
-      $casel_by_target[-1][1] + $casel_by_target[-1][2] + $casel_by_target[-1][3] - 1;
+      $casel_by_target[-1][1] +
+      $casel_by_target[-1][2] +
+      $casel_by_target[-1][3] - 1;
+    $j = 0;
     for my $r (@casel_by_target) {
         my $target = $r->[1] + $r->[2];
-        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $r->[0], $target;
+        printf FH "    %u, /* [%u] target 0x%x */\n", $r->[0], $j++, $target;
     }
     print FH "};\n";
 }
@@ -1554,8 +1633,7 @@ else {
 EOF
 }
 if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
-    print FH
-"    /* !iswalpha(wc) only works with musl. */\n";
+    print FH "    /* !iswalpha(wc) only works with musl. */\n";
     print FH "    if (!iswalpha(wc)\n";
 }
 else {
@@ -1629,10 +1707,11 @@ warn scalar @new_excl . " exclusion entries\n" if $verbose;
 
 # sort ranges by size. GH #2
 printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
-  $excl[0]->[1] unless $with_iswalpha;
+  $excl[0]->[1]
+  unless $with_iswalpha;
+
 # upper bound: everything above the last cased codepoint
-printf FH "        || wc > 0x%x                      /* >%u */\n",
-  $last, $last;
+printf FH "        || wc > 0x%x                      /* >%u */\n", $last, $last;
 shift @new_excl;
 my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
 for my $e (@ex) {
@@ -1668,10 +1747,10 @@ print FH <<'EOF';
 
 EOF
 
-my $SZ_CASE  = scalar(@CASE);
-my $SZ_CASEL = scalar(@CASEL);
-my $SZ_PAIR  = scalar(@PAIR);
-my $SZ_PAIRL = scalar(@PAIRL);
+my $SZ_CASE        = scalar(@CASE);
+my $SZ_CASEL       = scalar(@CASEL);
+my $SZ_PAIR        = scalar(@PAIR);
+my $SZ_PAIRL       = scalar(@PAIRL);
 my $SZ_PAIR_UPPER  = scalar(@PAIR_UPPER);
 my $SZ_PAIRL_UPPER = scalar(@PAIRL_UPPER);
 
@@ -1682,7 +1761,8 @@ if ($bsearch) {
     my $bits_ret =
       $use_bitfields
       ? "cm->sign ? wc - cm->lower : wc + cm->lower;\n"
-        : "wc + cm->lower";
+      : "wc + cm->lower";
+
     # fast search lower pairl
     my $pairl_search = "";
     if ( $SZ_PAIRL == 1 ) {
@@ -1718,15 +1798,15 @@ EOF
                 else if (wc - cm->upper < cm->len) { // in range
                     if (cm->lower == 1) {            // is LACE
 EOF
-        if ($case_has_digraph_lace) {
-            print FH <<'EOF';
+    if ($case_has_digraph_lace) {
+        print FH <<'EOF';
                         /* Need this exception (wrong lace for titlecase digraphs).
                            Tested from Unicode 4 to 18. */
                         if (wc == 0x1C4 || wc == 0x1CA || wc == 0x1F1)
                             return wc + 2;
 EOF
-        }
-        print FH <<"EOF";
+    }
+    print FH <<"EOF";
                         return wc + 1 - ((wc - cm->upper) & 1);
                     } else
                         return $bits_ret;
@@ -1745,13 +1825,13 @@ EOF
                 else if (wc - cm->upper < cm->len) { // in range
                     if (cm->lower == 1) {
 EOF
-        if ($casel_has_digraph_lace) {
-            print FH <<'EOF';
+    if ($casel_has_digraph_lace) {
+        print FH <<'EOF';
                         if (wc == 0x1C4 || wc == 0x1CA || wc == 0x1F1)
                             return wc + 2;
 EOF
-        }
-        print FH <<"EOF";
+    }
+    print FH <<"EOF";
                         return wc + 1 - ((wc - cm->upper) & 1);
                     } else
                         return wc + cm->lower;
@@ -1782,9 +1862,10 @@ $pairl_search
     } else {
 EOF
     if ($bsearch_both) {
+
         # binary search upper via index into lower tables
         my $pairl_upper_search = "";
-        if ($SZ_PAIRL_UPPER == 1) {
+        if ( $SZ_PAIRL_UPPER == 1 ) {
             $pairl_upper_search = <<'EOF';
         {
             const unsigned int *p = (unsigned int *)&pairl[pairl_upper[0]];
@@ -1793,7 +1874,7 @@ EOF
         }
 EOF
         }
-        elsif ($SZ_PAIRL_UPPER > 1) {
+        elsif ( $SZ_PAIRL_UPPER > 1 ) {
             $pairl_upper_search = <<"EOF";
         lo = 0;
         hi = $SZ_PAIRL_UPPER - 1;
@@ -1810,7 +1891,7 @@ EOF
 EOF
         }
         my $pair_upper_search = "";
-        if ($SZ_PAIR_UPPER == 1) {
+        if ( $SZ_PAIR_UPPER == 1 ) {
             $pair_upper_search = <<'EOF';
         {
             const unsigned short *p = (unsigned short *)&pairs[pairs_upper[0]];
@@ -1819,7 +1900,7 @@ EOF
         }
 EOF
         }
-        elsif ($SZ_PAIR_UPPER > 1) {
+        elsif ( $SZ_PAIR_UPPER > 1 ) {
             $pair_upper_search = <<"EOF";
         /* binary search upper pairs via index */
         lo = 0;
@@ -1926,7 +2007,7 @@ EOF
           $use_bitfields
           ? "        const int low = casemaps[i].sign ? -(casemaps[i].lower) : casemaps[i].lower;"
           : "";
-        my $CASELOW      = $use_bitfields ? "low" : "casemaps[i].lower";
+        my $CASELOW = $use_bitfields ? "low" : "casemaps[i].lower";
         $pairl_search = "";
         if ( $SZ_PAIRL == 1 ) {
             $pairl_search = <<'EOF';
@@ -1935,6 +2016,7 @@ EOF
 EOF
         }
         elsif ( $SZ_PAIRL > 1 ) {
+
             # upper only
             $pairl_search = <<"EOF";
         for (i = 0; i < $SZ_PAIRL; i++) {
