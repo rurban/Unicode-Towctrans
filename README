@@ -5,8 +5,8 @@ SYNOPSIS
         gen_wctrans
         gen_wctrans --safec
         gen_wctrans --musl
-        gen_wctrans -v 15
-        gen_wctrans -v 15 --ud UnicodeData.txt.15 --out towctrans-15.h
+        gen_wctrans -v 10
+        gen_wctrans -v 10 --ud UnicodeData.txt.10 --out towctrans-10.h
         gen_wctrans --lower16
         gen_wctrans --fn __towcase
         gen_wctrans --min-excl 10000

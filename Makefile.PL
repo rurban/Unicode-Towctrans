@@ -121,7 +121,7 @@ tidy:
 	perltidy -b bin/gen_wctrans
 UnicodeData.txt:
 	 bin/gen_wctrans
-UnicodeData.txt.8 towctrans-8.h UnicodeData.txt.15:
+UnicodeData.txt.8 towctrans-8.h:
 	for v in `seq 5 18`; do $(FULLPERLRUN) bin/gen_wctrans --out towctrans-$$v.h -v $$v --ud UnicodeData.txt.$$v; done
 test-all : bin/gen_wctrans UnicodeData.txt.8 towctrans-8.h
 	for v in `seq 5 18`; do \
@@ -133,9 +133,10 @@ diffs : bin/gen_wctrans UnicodeData.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans-$$v.h towctrans-$$n.h; done
 towctrans.h: bin/gen_wctrans
 	$(FULLPERLRUN) bin/gen_wctrans
-towctrans-15.h:
-	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-15.h -v 15 --ud UnicodeData.txt.15
-bench: towctrans-15.h
+UnicodeData.txt.10:
+	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-10.h -v 10 --ud UnicodeData.txt.10
+towctrans-10.h: UnicodeData.txt.10
+bench: towctrans-10.h
 	@if test -f examples/bench; then rm examples/bench; fi
 	make -C examples bench
 update-bench:
