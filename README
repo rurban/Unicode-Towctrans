@@ -88,16 +88,16 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:       1044 [us]  100.00 %
-               my_excl:        702 [us]  148.72 %
-              my_low16:        750 [us]  139.20 %
-               my_bits:       1261 [us]   82.79 %
-            my_bsearch:        725 [us]  144.00 %
-           my_bsearchb:        842 [us]  123.99 %
-              my_table:        146 [us]  715.07 %
-              musl-new:        147 [us]  710.20 %   9 errors
-              musl-old:       1598 [us]   65.33 %   3 errors
-                 glibc:        149 [us]  700.67 %   15 errors
+                    my:       1037 [us]  100.00 %
+               my_excl:        713 [us]  145.44 %
+              my_low16:        813 [us]  127.55 %
+               my_bits:       1150 [us]   90.17 %
+            my_bsearch:        772 [us]  134.33 %
+           my_bsearchb:        630 [us]  164.60 %
+              my_table:        228 [us]  454.82 %
+              musl-new:        156 [us]  664.74 %   9 errors
+              musl-old:       1468 [us]   70.64 %   3 errors
+                 glibc:        238 [us]  435.71 %   15 errors
 
         wc -c towctrans-*.o
           3528 towctrans-my.o
@@ -118,31 +118,32 @@ PERFORMANCE
     being twice as fast as the default.
 
          ./bench-bits.sh
-              16:8:8:        251 [us] 100.0 % 67 21 142 0 6
-             16:16:8:        125 [us] 200.8 % 76 12 142 0 6
-             16:10:8:        119 [us] 210.9 % 67 21 142 0 6
-            18:14:10:        118 [us] 212.7 % 85 3 142 0 6      5 errors
-             18:14:8:        138 [us] 181.9 % 85 3 142 0 6      5 errors
-            18:12:10:        120 [us] 209.2 % 81 7 142 0 6      5 errors
-             18:12:8:        180 [us] 139.4 % 81 7 142 0 6      5 errors
-             16:12:6:        193 [us] 130.1 % 67 21 142 0 6     5 errors
-             16:10:6:        133 [us] 188.7 % 67 21 142 0 6     5 errors
-             14:10:8:        127 [us] 197.6 % 58 30 142 0 6     5 errors
-             14:12:6:        135 [us] 185.9 % 54 34 142 0 6     5 errors
-             12:12:8:        119 [us] 210.9 % 34 54 142 0 6     5 errors
+                                                    C  CL P  PL EX
+              16:8:8:        560 [us] 100.0 %       66 12 120 0 6
+             16:16:8:        462 [us] 121.2 %       72 6 120 0 6
+             16:10:8:        271 [us] 206.6 %       66 12 120 0 6
+            18:14:10:        237 [us] 236.3 %       76 2 120 0 6    5 errors
+             18:14:8:        257 [us] 217.9 %       76 2 120 0 6    5 errors
+            18:12:10:        349 [us] 160.5 %       75 3 120 0 6    5 errors
+             18:12:8:        225 [us] 248.9 %       75 3 120 0 6    5 errors
+             16:12:6:        167 [us] 335.3 %       66 12 120 0 6   5 errors
+             16:10:6:        252 [us] 222.2 %       66 12 120 0 6   5 errors
+             14:10:8:        237 [us] 236.3 %       60 18 120 0 6   5 errors
+             14:12:6:        244 [us] 229.5 %       56 22 120 0 6   5 errors
+             12:12:8:        238 [us] 235.3 %       33 45 120 0 6   5 errors
 
-         4880 towctrans-bmy.o (16:8:8)
-         5024 towctrans-bmylow16.o (16:16:8)
-         5232 towctrans-bmybits.o (16:10:8)
-         5408 bits-12_12_8.o
-         5312 bits-14_12_6.o
-         5312 bits-14_10_8.o
-         5256 bits-16_10_6.o
-         5256 bits-16_12_6.o
-         5176 bits-18_12_8.o
-         5208 bits-18_12_10.o
-         5208 bits-18_14_8.o
-         5240 bits-18_14_10.o
+         5248 towctrans-bmy.o (16:8:8)
+         5320 towctrans-bmylow16.o (16:16:8)
+         5656 towctrans-bmybits.o (16:10:8)
+         5832 bits-12_12_8.o
+         5760 bits-14_12_6.o
+         5728 bits-14_10_8.o
+         5680 bits-16_10_6.o
+         5680 bits-16_12_6.o
+         5440 bits-18_12_8.o
+         5456 bits-18_12_10.o
+         5352 bits-18_14_8.o
+         5368 bits-18_14_10.o
 
 INSTALLATION
     Perl 5.12 or later is required.

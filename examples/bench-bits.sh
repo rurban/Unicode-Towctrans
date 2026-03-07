@@ -27,7 +27,7 @@ echo "" >bench-bits.h
 test(){
     bits="$1"
     s="$(echo $bits | sed 's/:/_/g')"
-    $GEN --with-iswalpha --bits $bits --fn=_towcase_bits_$s -v 15 --out bits-$s.h --cf ../CaseFolding.txt.15
+    $GEN --with-iswalpha --bits $bits --fn=_towcase_bits_$s -v 10 --out bits-$s.h --ud ../UnicodeData.txt.10 --unroll 0
     echo "wint_t bits_${s}_towlower(wint_t wc);" >>bits.h
     echo "wint_t bits_${s}_towupper(wint_t wc);" >>bits.h
     echo "char *bits_${s}_stats(void);" >>bits.h

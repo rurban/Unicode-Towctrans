@@ -44,6 +44,7 @@ int main(void) {
         lw[i] = my_towlower(i);
         up[i] = my_towupper(i);
     }
+    printf("  %10s  %10s            \tC  CL P  PL EX\n", "", "");
 
 #define BENCH(name, prefix)                                                    \
     t0 = TEST_TIME();                                                          \
