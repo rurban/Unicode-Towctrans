@@ -23,10 +23,18 @@
 #elif defined UNROLL2
 #define UNROLL
 #include "towctrans-unroll2.h"
+#elif defined UNROLL3
+#define UNROLL
+#include "towctrans-unroll3.h"
 #else
 #include "towctrans.h"
 #endif
+
+#ifdef UNROLL
+#define UDATA "UnicodeData.txt.18"
+#else
 #define UDATA "UnicodeData.txt"
+#endif
 
 #ifdef TABLE
 uint32_t my_towlower(uint32_t wc) { return (uint32_t)_towcase(wc, 1); }

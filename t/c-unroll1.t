@@ -7,6 +7,6 @@ BEGIN {
 
 # unrolls 6x casemapsl
 our $suff = 'unroll1';
-our $opts = "--unroll 6 --lower16 --out towctrans-$suff.h";
+our $opts = "--unroll 6 -v 18 --lower16 --out towctrans-$suff.h";
 
 do './c-unroll.pl';

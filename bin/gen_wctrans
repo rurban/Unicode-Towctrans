@@ -1552,8 +1552,8 @@ if ($bsearch_both) {
         }
         print FH "};\n";
     }
-    warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
     if ( @PAIRL_UPPER && @PAIRL_UPPER > $UNROLL ) {
+        warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
         printf FH "/* indices into pairl[], sorted by lower (target) */\n";
         printf FH "static const %s pairl_upper[%u] = {\n"
           . "    /* lower: 0x%x - 0x%x */\n", $pairl_idx_t,
@@ -1565,6 +1565,10 @@ if ($bsearch_both) {
             printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
+    } elsif (@PAIRL_UPPER <= $UNROLL) {
+        warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries unrolled\n";
+    } else {
+        warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
     }
 
     # Generate casemaps_upper[] as index array sorted by target for
@@ -1988,15 +1992,24 @@ EOF
         # binary search upper via index into lower tables
         my $pairl_upper_search = "";
         if ( $SZ_PAIRL_UPPER == 1 ) {
-            $pairl_upper_search = <<'EOF';
-        {
-            const unsigned int *p = (unsigned int *)&pairl[pairl_upper[0]];
-            if (p[1] == wc)
-                return p[0];
-        }
+            my $p0 = sprintf("0x%x", $PAIRL_UPPER[0]->[0]);
+            my $p1 = sprintf("0x%x", $PAIRL_UPPER[0]->[1]);
+            $pairl_upper_search = <<"EOF";
+        if ($p1 == wc)
+            return $p0;
 EOF
         }
-        elsif ( $SZ_PAIRL_UPPER > 1 ) {
+        elsif ( $SZ_PAIRL_UPPER <= $UNROLL ) {
+            for my $p (@PAIRL_UPPER) {
+                my $p0 = sprintf("0x%x", $p->[0]);
+                my $p1 = sprintf("0x%x", $p->[1]);
+                $pairl_upper_search .= <<"EOF";
+        if ($p1 == wc)
+            return $p0;
+EOF
+            }
+        }
+        else {
             $pairl_upper_search = <<"EOF";
         lo = 0;
         hi = $SZ_PAIRL_UPPER - 1;
@@ -2082,7 +2095,7 @@ EOF
                             return wc - 2;
 EOF
         }
-        print FH <<"EOF";
+        print FH <<'EOF';
                         return wc - ((wc - cm->upper) & 1);
                     } else {
                         return wc - cm->lower;
@@ -2090,6 +2103,9 @@ EOF
                 }
             }
         }
+EOF
+        if ( @CASEL && @CASEL > $UNROLL ) {
+            print FH <<"EOF";
         /* binary search upper via index: casemapsl_upper */
         if (wc >= $TARGETL_FIRST && wc <= $TARGETL_LAST) {
             lo = 0;
@@ -2106,19 +2122,24 @@ EOF
                 else {
                     if (cm->lower == 1) {
 EOF
-        if ($casel_has_digraph_lace) {
-            print FH <<'EOF';
+            if ($casel_has_digraph_lace) {
+                print FH <<'EOF';
                         if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
                             return wc - 2;
 EOF
-        }
-        print FH <<"EOF";
+            }
+            print FH <<"EOF";
                         return wc - ((wc - cm->upper) & 1);
                     } else
                         return wc - cm->lower;
                 }
             }
         }
+EOF
+        } else {
+            unroll_casel('upper-only');
+        }
+        print FH <<"EOF";
 $pair_upper_search
 $pairl_upper_search
 EOF
