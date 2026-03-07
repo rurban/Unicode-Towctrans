@@ -215,7 +215,7 @@ sub simulate {
             my $lower = map_lower($m);
             my $len   = map_len($m);
             my $base  = $m->[0] + ( $lmask & $lower );
-            if ( $wc - $base < $len ) {
+            if ( $wc - $base < $len ) { # fixme if negative
 
                 # The only reverse fixup needed. Tested from Unicode 4 to 18.
                 # clashes with 1E9B; C; 1E61 */
@@ -287,6 +287,11 @@ sub map_len {
 
 sub map_range {
     my $m = shift;
+    return ( $m->[0], $m->[2] );
+}
+
+sub in_map_range {
+    my ($wc, $m) = @_;
     return ( $m->[0], $m->[2] );
 }
 
@@ -1396,6 +1401,13 @@ EOF
     warn scalar @CASEL . " long CASEMAP entries\n" if $verbose;
 }
 elsif (@CASEL) {
+    printf FH <<"EOF", scalar @CASEL;
+/* unrolled casemapsl[%u] */
+#if 0
+    /* from, until, to */
+EOF
+    print FH $_ for @CASEL;
+    print FH "#endif\n";
     warn scalar @CASEL . " long CASEMAP entries unrolled\n";
 }
 else {
@@ -1749,6 +1761,113 @@ my $SZ_PAIRL       = scalar(@PAIRL);
 my $SZ_PAIR_UPPER  = scalar(@PAIR_UPPER);
 my $SZ_PAIRL_UPPER = scalar(@PAIRL_UPPER);
 
+sub unroll_casel {
+    my $opts = shift;
+    print FH "    " if $opts;
+    printf FH <<'EOF', $SZ_CASEL;
+    /* unrolled casemapsl[%u] */
+EOF
+    my %di_u = map {$_=>1} (0x1F3, 0x1CC, 0x1C6);
+    my %di_l = map {$_=>1} (0x1F1, 0x1CA, 0x1C4);
+    for my $m (@CASEL_RAW) {
+        my $upper = sprintf("0x%x", $m->[0]);
+        my $lower = sprintf("%d", $m->[1]);
+        my $len   = sprintf("%d", $m->[2]);
+        my $cmt   = $m->[3];
+        $cmt =~ s{^.+/\*}{/*};
+        $cmt =~ s{\n}{};
+        my $found_digraph = 0;
+        if (!$opts) { # upper and lower decided at run-time
+            if ($casel_has_digraph_lace) {
+                for (keys %di_u, keys %di_l) {
+                    $found_digraph = $found_digraph || in_map_range($m);
+                }
+            }
+            print FH <<"EOF";
+    $cmt
+    if (wc - ($upper + (lmask & $lower)) < $len) {
+EOF
+            if ($found_digraph) {
+                print FH <<"EOF";
+        if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6))
+            return wc - 2;
+        if (lower && (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4))
+            return wc + 2;
+EOF
+            }
+            if ($m->[1] == 1) { # ie LACE lower == 1
+                print FH <<"EOF";
+         return wc + lower - ((wc - $upper) & 1);
+    }
+EOF
+            } else {
+                print FH <<"EOF";
+        return wc + lmul * $lower;
+    }
+EOF
+            }
+        } elsif ($opts eq 'lower-only') {
+            if ($casel_has_digraph_lace) {
+                for (keys %di_l) {
+                    $found_digraph = $found_digraph || in_map_range($m);
+                }
+            }
+            # lmul: 1
+            # lmask: 0
+            print FH <<"EOF";
+        $cmt
+        if (wc - $upper < $len) {
+EOF
+            if ($found_digraph) {
+                print FH <<"EOF";
+            if (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4)
+                return wc + 2;
+EOF
+            }
+            if ($m->[1] == 1) { # ie LACE lower == 1
+                print FH <<"EOF";
+            return wc + lower - ((wc - $upper) & 1);
+        }
+EOF
+            } else {
+                print FH <<"EOF";
+            return wc + $lower;
+        }
+EOF
+            }
+        } elsif ($opts eq 'upper-only') {
+            if ($casel_has_digraph_lace) {
+                for (keys %di_u) {
+                    $found_digraph = $found_digraph || in_map_range($m);
+                }
+            }
+            # lmul: -1
+            # lmask: -1
+            print FH <<"EOF";
+        $cmt
+        if (wc - ($upper + $lower) < $len) {
+EOF
+            if ($found_digraph) {
+                print FH <<"EOF";
+            if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6)
+                return wc - 2;
+EOF
+            }
+            if ($m->[1] == 1) { # ie LACE lower == 1
+                print FH <<"EOF";
+            return wc + lower - ((wc - $upper) & 1);
+        }
+EOF
+            } else {
+                print FH <<"EOF";
+            return wc - $lower;
+        }
+EOF
+            }
+        } # else $opts
+    } # for @CASEL
+}
+
 if ($bsearch) {
 
 #my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
@@ -1809,6 +1928,9 @@ EOF
                     lo = mid + 1;
             }
         }
+EOF
+    if (@CASEL && @CASEL > $UNROLL) {
+        print FH <<"EOF";
         if (wc - $MAPL_FIRST <= ($MAPL_LAST + $MAPL_LAST_LEN) - $MAPL_FIRST) {
             lo = 0;
             hi = $SZ_CASEL - 1;
@@ -1834,6 +1956,11 @@ EOF
                     lo = mid + 1;
             }
         }
+EOF
+    } else {
+        unroll_casel('lower-only');
+    }
+    print FH <<"EOF";
         /* binary search pairs lower */
         lo = 0;
         hi = $SZ_PAIR - 1;
@@ -2045,6 +2172,9 @@ EOF
                 }
             }
         }
+EOF
+        if (@CASEL && @CASEL > $UNROLL) {
+            print FH <<"EOF";
         for (i = 0; i < $SZ_CASEL; i++) {
             unsigned long base = casemapsl[i].upper + casemapsl[i].lower;
             assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
@@ -2066,6 +2196,11 @@ EOF
                 }
             }
         }
+EOF
+        } else {
+            unroll_casel('upper-only');
+        }
+        print FH <<"EOF";
         /* upper: full linear search */
         for (i = 0; i < $SZ_PAIR; i++) {
             assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
@@ -2121,13 +2256,15 @@ EOF
         if (lower && casemaps[i].upper > wc)
             break;
     }
+EOF
+    if (@CASEL && @CASEL > $UNROLL) {
+        print FH <<"EOF";
     for (i = 0; i < $SZ_CASEL; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
         if (wc - base < casemapsl[i].len) {
             if (casemapsl[i].lower == 1) {
 EOF
-
     if ($casel_has_digraph_lace) {
         print FH <<"EOF";
                 if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C6))
@@ -2144,6 +2281,11 @@ EOF
         if (lower && casemapsl[i].upper > wc)
             break;
     }
+EOF
+    } else {
+        unroll_casel();
+    }
+    print FH <<"EOF";
     for (i = 0; i < $SZ_PAIR; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
@@ -2343,16 +2485,16 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:       1037 [us]  100.00 %
-           my_excl:        713 [us]  145.44 %
-          my_low16:        813 [us]  127.55 %
-           my_bits:       1150 [us]   90.17 %
-        my_bsearch:        772 [us]  134.33 %
-       my_bsearchb:        630 [us]  164.60 %
-          my_table:        228 [us]  454.82 %
-          musl-new:        156 [us]  664.74 %	9 errors
-          musl-old:       1468 [us]   70.64 %	3 errors
-             glibc:        238 [us]  435.71 %	15 errors
+                my:       1182 [us]  100.00 %
+           my_excl:        801 [us]  147.57 %
+          my_low16:        892 [us]  132.51 %
+           my_bits:        886 [us]  133.41 %
+        my_bsearch:        622 [us]  190.03 %
+       my_bsearchb:        558 [us]  211.83 %
+          my_table:        150 [us]  788.00 %
+          musl-new:        145 [us]  815.17 %	9 errors
+          musl-old:       1271 [us]   93.00 %	3 errors
+             glibc:        148 [us]  798.65 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o

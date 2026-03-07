@@ -17,6 +17,12 @@
 #include "towctrans-bsearch-both.h"
 #elif defined BSEARCH
 #include "towctrans-bsearch.h"
+#elif defined UNROLL1
+#define UNROLL
+#include "towctrans-unroll1.h"
+#elif defined UNROLL2
+#define UNROLL
+#include "towctrans-unroll2.h"
 #else
 #include "towctrans.h"
 #endif

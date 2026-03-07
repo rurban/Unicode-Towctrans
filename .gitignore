@@ -25,12 +25,14 @@ cover_db/
 /pm_to_blib
 /towctrans.c.orig
 towctrans-*.h
-towctrans.h.*
+# towctrans.h.*
 t/t_towctrans
 t/t_low16
 t/t_bits
 t/t_bsearch
 t/t_bsearch_both
+t/t_unroll1
+t/t_unroll2
 t/c-if-tree-search_even
 t/c-if-tree-search_even.c
 t/c-if-tree-search_odd
