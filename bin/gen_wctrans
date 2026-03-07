@@ -1504,6 +1504,16 @@ if ( @PAIRL && @PAIRL > $UNROLL ) {
     warn scalar @PAIRL . " long PAIR entries\n" if $verbose;
 }
 elsif (@PAIRL) {
+    printf FH <<'EOF', scalar @PAIRL;
+/* unrolled pairl[%u] */
+#if 0
+EOF
+    for my $p (@PAIRL) {
+        my $cmt = sprintf( " /* '%c' -> '%c' */", $p->[0], $p->[1] );
+        printf FH "    {0x%05x, 0x%05x},%s\n", $p->[0], $p->[1], $cmt;
+    }
+    print FH "#endif\n";
+    # apparently unneded with -v 18
     warn scalar @PAIRL . " long PAIR entries unrolled\n";
 }
 else {
@@ -1565,7 +1575,7 @@ if ($bsearch_both) {
             printf FH "    %u,%s\n", $idx, $cmt;
         }
         print FH "};\n";
-    } elsif (@PAIRL_UPPER <= $UNROLL) {
+    } elsif (@PAIRL_UPPER && @PAIRL_UPPER <= $UNROLL) {
         warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries unrolled\n";
     } else {
         warn scalar @PAIRL_UPPER . " PAIRL_UPPER entries\n" if $verbose;
@@ -1773,6 +1783,7 @@ sub unroll_casel {
 EOF
     my %di_u = map {$_=>1} (0x1F3, 0x1CC, 0x1C6);
     my %di_l = map {$_=>1} (0x1F1, 0x1CA, 0x1C4);
+    # TODO: seperate lower from !lower
     for my $m (@CASEL_RAW) {
         my $upper = sprintf("0x%x", $m->[0]);
         my $lower = sprintf("%d", $m->[1]);
@@ -1830,7 +1841,7 @@ EOF
             }
             if ($m->[1] == 1) { # ie LACE lower == 1
                 print FH <<"EOF";
-            return wc + lower - ((wc - $upper) & 1);
+            return wc + 1 - ((wc - $upper) & 1);
         }
 EOF
             } else {
@@ -1859,7 +1870,7 @@ EOF
             }
             if ($m->[1] == 1) { # ie LACE lower == 1
                 print FH <<"EOF";
-            return wc + lower - ((wc - $upper) & 1);
+            return wc - ((wc - $upper) & 1);
         }
 EOF
             } else {
@@ -1888,6 +1899,14 @@ if ($bsearch) {
         if (pairl[0][1 - lower] == wc)
             return pairl[0][lower];
 EOF
+    }
+    elsif ( $SZ_PAIRL > 1 && $SZ_PAIRL <= $UNROLL ) {
+        $pairl_search = "        /* unrolled pairl[$SZ_PAIRL] */\n";
+        for my $p (@PAIRL) {
+            my $p0 = sprintf("0x%x", $p->[0]);
+            my $p1 = sprintf("0x%x", $p->[1]);
+            $pairl_search .= "        if ($p0 == wc)\n            return $p1;\n";
+        }
     }
     elsif ( $SZ_PAIRL > 1 ) {
         $pairl_search = <<"EOF";
@@ -2158,6 +2177,15 @@ EOF
             return pairl[0][lower];
 EOF
         }
+        elsif ( $SZ_PAIRL > 1 && $SZ_PAIRL <= $UNROLL ) {
+            my $id = "        ";
+            $pairl_search = "${id}/* unrolled pairl[$SZ_PAIRL] */\n";
+            for my $p (@PAIRL) {
+                my $p0 = sprintf("0x%x", $p->[0]);
+                my $p1 = sprintf("0x%x", $p->[1]);
+                $pairl_search .= "${id}if ($p1 == wc)\n${id}    return $p0;\n";
+            }
+        }
         elsif ( $SZ_PAIRL > 1 ) {
 
             # upper only
@@ -2319,6 +2347,37 @@ EOF
         print FH <<'EOF';
     if (pairl[0][1 - lower] == wc)
         return pairl[0][lower];
+EOF
+    }
+    elsif ( $SZ_PAIRL > 1 && $SZ_PAIRL <= $UNROLL ) {
+        # seperate lower from upper for less branches.
+        # not sure about a case statement or bounds checks, because those 5 checks
+        # are highly parallizable.
+        print FH <<"EOF";
+    /* unrolled pairl[$SZ_PAIRL] */
+    if (lower) {
+EOF
+        for my $p (@PAIRL) {
+            my $p0 = sprintf("0x%x", $p->[0]);
+            my $p1 = sprintf("0x%x", $p->[1]);
+            print FH <<"EOF";
+        if ($p0 == wc)
+            return $p1;
+EOF
+        }
+        print FH <<"EOF";
+    } else {
+EOF
+        for my $p (@PAIRL) {
+            my $p0 = sprintf("0x%x", $p->[0]);
+            my $p1 = sprintf("0x%x", $p->[1]);
+            print FH <<"EOF";
+        if ($p1 == wc)
+            return $p0;
+EOF
+        }
+        print FH <<"EOF";
+    }
 EOF
     }
     elsif ( $SZ_PAIRL > 1 ) {

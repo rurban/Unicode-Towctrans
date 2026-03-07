@@ -20,19 +20,24 @@
 #elif defined UNROLL1
 #define UNROLL
 #include "towctrans-unroll1.h"
+#define UDATA "UnicodeData.txt.16"
 #elif defined UNROLL2
 #define UNROLL
 #include "towctrans-unroll2.h"
+#define UDATA "UnicodeData.txt.16"
 #elif defined UNROLL3
 #define UNROLL
 #include "towctrans-unroll3.h"
+#define UDATA "UnicodeData.txt.16"
+#elif defined UNROLL4
+#define UNROLL
+#include "towctrans-unroll4.h"
+#define UDATA "UnicodeData.txt.18"
 #else
 #include "towctrans.h"
 #endif
 
-#ifdef UNROLL
-#define UDATA "UnicodeData.txt.18"
-#else
+#ifndef UDATA
 #define UDATA "UnicodeData.txt"
 #endif
 

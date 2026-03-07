@@ -4,6 +4,7 @@ our $is_mswin = $^O eq 'MSWin32';
 our $cc       = $Config{cc};
 
 chdir("..");
+unlink("towctrans-$suff.h");
 system("bin/gen_wctrans $opts");
 chdir("t");
 
@@ -12,6 +13,7 @@ my $prefix = $^O eq 'MSWin32' ? "" : "./";
 my $args   = "-D" . uc($suff) . " test_towctrans.c -I.. -o $exe";
 $args .= " -g" if $ENV{TEST_VERBOSE};
 
+unlink($exe);
 print "running $cc $args\n" if $ENV{TEST_VERBOSE};
 my $output = `$cc $args 2>&1`;
 if ( $? != 0 ) {
