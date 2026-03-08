@@ -1278,6 +1278,7 @@ my $max_lower = ( ( 2**$bits[1] ) - 1 ) >> 1;    # 16: 32767, 8: 128;
 my $min_lower = -( $max_lower - 1 );
 my $max_len   = ( 2**$bits[2] ) - 1;             # 8: 255;
 
+my $j = 0;
 for my $entry (@sorted_map) {
 
     if ( @$entry == 3 ) {
@@ -1314,8 +1315,8 @@ for my $entry (@sorted_map) {
         else {
             my $CASEMAP = "CASEMAP";
             $case_max = $m if $case_max->[0] < $m->[0];
-            my $cmt = sprintf " /* '%c'->'%c'..'%c' {, %d, %u} */",
-              $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
+            my $cmt = sprintf " /* [%u] '%c'->'%c'..'%c' {, %d, %u} */",
+              $j++, $m->[0], $m->[1], $m->[2], map_lower($m), map_len($m);
             my $s = sprintf "    $CASEMAP(0x%04x, 0x%04x, 0x%04x),%s\n",
               $m->[0],
               $m->[1], $m->[2], $cmt;
@@ -1358,8 +1359,8 @@ for my $entry (@sorted_map) {
             $case_min = $l unless @CASE;
             $case_max = $l if $case_max->[0] < $l->[0];
             my $spc = " " x 8;
-            my $cmt = sprintf( "%s/* '%c'->'%c' {, %d, %u} */",
-                " " x 8, $l->[0], $l->[1], $lower, $len );
+            my $cmt = sprintf( "%s/* [%u] '%c'->'%c' {, %d, %u} */",
+                " " x 8, $j++, $l->[0], $l->[1], $lower, $len );
             push @CASE,
               sprintf( "    CASELACE(0x%04x, 0x%04x),%s\n",
                 $l->[0], $l->[1], $cmt );
@@ -1885,8 +1886,6 @@ EOF
 
 if ($bsearch) {
 
-#my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
-#my $CASELOW = $use_bitfields ? "low" : "cm->lower";
     my $bits_ret =
       $use_bitfields
       ? "cm->sign ? wc - cm->lower : wc + cm->lower;\n"
@@ -2007,6 +2006,8 @@ $pairl_search
     } else {
 EOF
     if ($bsearch_both) {
+        my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
+        my $CASELOW = $use_bitfields ? "low" : "cm->lower";
 
         # binary search upper via index into lower tables
         my $pairl_upper_search = "";
@@ -2097,14 +2098,15 @@ EOF
             while (lo <= hi) {
                 const int mid = lo + (hi - lo) / 2;
                 const struct casemaps_s *cm = &casemaps[casemaps_upper[mid]];
-                uint32_t target = cm->upper + cm->lower;
+$low_decl
+                uint32_t target = cm->upper + $CASELOW;
                 uint32_t target_end = target + cm->len - 1;
                 if (wc < target)
                     hi = mid - 1;
                 else if (wc > target_end)
                     lo = mid + 1;
                 else {
-                    if (cm->lower == 1) {
+                    if ($CASELOW == 1) {
 EOF
         if ($case_has_digraph_lace) {
             print FH <<'EOF';
@@ -2114,10 +2116,10 @@ EOF
                             return wc - 2;
 EOF
         }
-        print FH <<'EOF';
+        print FH <<"EOF";
                         return wc - ((wc - cm->upper) & 1);
                     } else {
-                        return wc - cm->lower;
+                        return wc - $CASELOW;
                     }
                 }
             }
@@ -2565,16 +2567,16 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:       1182 [us]  100.00 %
-           my_excl:        801 [us]  147.57 %
-          my_low16:        892 [us]  132.51 %
-           my_bits:        886 [us]  133.41 %
-        my_bsearch:        622 [us]  190.03 %
-       my_bsearchb:        558 [us]  211.83 %
-          my_table:        150 [us]  788.00 %
-          musl-new:        145 [us]  815.17 %	9 errors
-          musl-old:       1271 [us]   93.00 %	3 errors
-             glibc:        148 [us]  798.65 %	15 errors
+                my:        585 [us]  100.00 %
+           my_excl:        455 [us]  128.57 %
+          my_low16:        646 [us]   90.56 %
+           my_bits:        647 [us]   90.42 %
+        my_bsearch:        457 [us]  128.01 %
+       my_bsearchb:        438 [us]  133.56 %
+          my_table:        102 [us]  573.53 %
+          musl-new:        107 [us]  546.73 %	9 errors
+          musl-old:        888 [us]   65.88 %	3 errors
+             glibc:         98 [us]  596.94 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o
