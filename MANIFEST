@@ -25,6 +25,7 @@ t/c-bits.t
 t/c-bsearch-both.t
 t/c-bsearch.t
 t/c-if-tree.t
+t/c-if-tree-range.t
 t/c-lower16.t
 t/c-table.t
 t/c-unroll.pl

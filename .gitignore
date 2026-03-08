@@ -36,6 +36,10 @@ t/c-if-tree-search_even
 t/c-if-tree-search_even.c
 t/c-if-tree-search_odd
 t/c-if-tree-search_odd.c
+t/c-if-range-search_even
+t/c-if-range-search_even.c
+t/c-if-range-search_odd
+t/c-if-range-search_odd.c
 /Unicode-Towctrans-*
 /diffs.log
 examples/bench

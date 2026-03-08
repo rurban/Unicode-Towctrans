@@ -290,9 +290,14 @@ sub map_range {
     return ( $m->[0], $m->[2] );
 }
 
-sub in_map_range {
+sub in_map_range { # lower only
     my ($wc, $m) = @_;
-    return ( $m->[0], $m->[2] );
+    return ($wc >= $m->[0]) && ($wc <= ($m->[0] + $m->[2]));
+}
+
+sub in_map_range_upper {
+    my ($wc, $m) = @_;
+    return ($wc >= ($m->[0] + $m->[1])) && ($wc <= ($m->[0] + $m->[1] + $m->[2]));
 }
 
 sub map_clashes {
