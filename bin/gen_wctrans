@@ -120,7 +120,8 @@ if ( !$v ) {
     my $full = Unicode::UCD::UnicodeVersion();
     ($v) = $full =~ /^(\d+)\./;
 }
-my ( $f_upper, $f_lower, $f_len, $use_bitfields, $f_sign, @bits );
+my ( $f_upper, $f_lower, $f_len, $use_bitfields, $f_sign, @bits,
+     $compressed, $compressedl );
 if ($bits) {
     @bits = split /:/, $bits;
     die "bits should be 3 colon-separated numbers for upper, lower and len"
@@ -1526,7 +1527,7 @@ else {
 # Choose the smallest index type that fits the array size.
 sub idx_type { $_[0] <= 256 ? "uint8_t" : "uint16_t" }
 
-my ( @PAIR_UPPER, @PAIRL_UPPER );
+my ( @CASEL_UPPER, @PAIR_UPPER, @PAIRL_UPPER );
 if ($bsearch_both) {
 
     # Build a lookup from [upper,lower] pair to index in @PAIR
@@ -1595,7 +1596,8 @@ if ($bsearch_both) {
     warn scalar @CASE_UPPER . " CASE_UPPER entries\n" if $verbose;
     if ( @CASE_UPPER && @CASE_UPPER > $UNROLL ) {
         printf FH
-          "/* indices into casemaps[], sorted by target (upper+lower) */\n";
+          "/* indices into casemaps[], sorted by target (upper+lower) */\n" .
+          "/* TODO compress */\n";
         printf FH "static const %s casemaps_upper[%u] = {\n"
           . "    /* target: 0x%x - 0x%x */\n",
           $case_idx_t,
@@ -1615,12 +1617,13 @@ if ($bsearch_both) {
     for my $ci ( 0 .. $#CASEL_RAW ) {
         push @CASEL_IDX, [ $ci, @{ $CASEL_RAW[$ci] } ];
     }
-    my @CASEL_UPPER =
+    @CASEL_UPPER =
       sort { ( $a->[1] + $a->[2] ) <=> ( $b->[1] + $b->[2] ) } @CASEL_IDX;
     warn scalar @CASEL_UPPER . " CASEL_UPPER entries\n" if $verbose;
     if ( @CASEL_UPPER && @CASEL_UPPER > $UNROLL ) {
         printf FH
-          "/* indices into casemapsl[], sorted by target (upper+lower) */\n";
+          "/* indices into casemapsl[], sorted by target (upper+lower) */\n" .
+          "/* TODO compress */\n";
         printf FH "static const %s casemapsl_upper[%u] = {\n"
           . "    /* target: 0x%x - 0x%x */\n",
           $casel_idx_t,
@@ -1637,6 +1640,32 @@ if ($bsearch_both) {
     }
 }
 print FH "\n";
+
+if ( $bsearch_both ) {
+    print FH <<'EOF';
+/* optional decompressors */
+static uint8_t _casemaps_upper(int mid) {
+EOF
+    if ($compressed) { # switch table
+    }
+    print FH <<'EOF';
+    return casemaps_upper[mid];
+}
+
+EOF
+    if (@CASEL_UPPER && @CASEL_UPPER > $UNROLL) {
+        print FH <<'EOF' ;
+static uint8_t _casemapsl_upper(int mid) {
+EOF
+        if ($compressedl) { # switch table
+        }
+        print FH <<'EOF';
+    return casemapsl_upper[mid];
+}
+
+EOF
+    }
+}
 
 printf FH "uint32_t %s(uint32_t wc, int lower) {
 ", $fn;
@@ -2097,7 +2126,7 @@ EOF
             hi = $SZ_CASE - 1;
             while (lo <= hi) {
                 const int mid = lo + (hi - lo) / 2;
-                const struct casemaps_s *cm = &casemaps[casemaps_upper[mid]];
+                const struct casemaps_s *cm = &casemaps[_casemaps_upper(mid)];
 $low_decl
                 uint32_t target = cm->upper + $CASELOW;
                 uint32_t target_end = target + cm->len - 1;
@@ -2133,7 +2162,7 @@ EOF
             hi = $SZ_CASEL - 1;
             while (lo <= hi) {
                 const int mid = lo + (hi - lo) / 2;
-                const struct casemapsl_s *cm = &casemapsl[casemapsl_upper[mid]];
+                const struct casemapsl_s *cm = &casemapsl[_casemapsl_upper(mid)];
                 uint32_t target = cm->upper + cm->lower;
                 uint32_t target_end = target + cm->len - 1;
                 if (wc < target)

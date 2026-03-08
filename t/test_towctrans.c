@@ -33,6 +33,8 @@
 #define UNROLL
 #include "towctrans-unroll4.h"
 #define UDATA "UnicodeData.txt.18"
+#elif defined COMPRESSED
+#include "towctrans-compressed.h"
 #else
 #include "towctrans.h"
 #endif
