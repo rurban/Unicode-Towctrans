@@ -28,7 +28,8 @@ my $clean = {
         glob('examples/bits-*.[ch]'), 'examples/bits.h',
         'examples/bench-bits',        'examples/bench-bits.h',
         't/c-if-tree-search_even',    't/c-if-tree-search_even.c',
-        't/c-if-tree-search_odd',     't/c-if-tree-search_odd.c'
+        't/c-if-tree-search_odd',     't/c-if-tree-search_odd.c',
+        glob('t/t_*'),
     ]
 };
 my $MM_VER = ExtUtils::MakeMaker->VERSION;

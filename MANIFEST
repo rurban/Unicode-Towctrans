@@ -32,6 +32,7 @@ t/c-unroll1.t
 t/c-unroll2.t
 t/c-unroll3.t
 t/c-unroll4.t
+t/c-unroll5.t
 t/c.t
 t/if-tree.t
 t/test_towctrans.c

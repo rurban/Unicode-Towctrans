@@ -114,23 +114,23 @@ PERFORMANCE
     Results with more various "--bits" size combinations. They need just
     some logical fixups for the 5 errors.
 
-    "--bits 16:10:8" and "--bits 12:12:8" being the most promising, the best
+    "--bits 16:10:8","--bits 12:12:8" and more being promising, the best
     being twice as fast as the default.
 
          ./bench-bits.sh
                                                     C  CL P  PL EX
-              16:8:8:        560 [us] 100.0 %       66 12 120 0 6
-             16:16:8:        462 [us] 121.2 %       72 6 120 0 6
-             16:10:8:        271 [us] 206.6 %       66 12 120 0 6
-            18:14:10:        237 [us] 236.3 %       76 2 120 0 6    5 errors
-             18:14:8:        257 [us] 217.9 %       76 2 120 0 6    5 errors
-            18:12:10:        349 [us] 160.5 %       75 3 120 0 6    5 errors
-             18:12:8:        225 [us] 248.9 %       75 3 120 0 6    5 errors
-             16:12:6:        167 [us] 335.3 %       66 12 120 0 6   5 errors
-             16:10:6:        252 [us] 222.2 %       66 12 120 0 6   5 errors
-             14:10:8:        237 [us] 236.3 %       60 18 120 0 6   5 errors
-             14:12:6:        244 [us] 229.5 %       56 22 120 0 6   5 errors
-             12:12:8:        238 [us] 235.3 %       33 45 120 0 6   5 errors
+              16:8:8:        316 [us] 100.0 %       66 12 120 0 6
+             16:16:8:        252 [us] 125.4 %       72 6 120 0 6
+             16:10:8:        190 [us] 166.3 %       66 12 120 0 6
+            18:14:10:        167 [us] 189.2 %       76 2 120 0 6    5 errors
+             18:14:8:        157 [us] 201.3 %       76 2 120 0 6    5 errors
+            18:12:10:        154 [us] 205.2 %       75 3 120 0 6    5 errors
+             18:12:8:        155 [us] 203.9 %       75 3 120 0 6    5 errors
+             16:12:6:        207 [us] 152.7 %       66 12 120 0 6   5 errors
+             16:10:6:        327 [us] 96.6 %        66 12 120 0 6   5 errors
+             14:10:8:        242 [us] 130.6 %       60 18 120 0 6   5 errors
+             14:12:6:        157 [us] 201.3 %       56 22 120 0 6   5 errors
+             12:12:8:        157 [us] 201.3 %       33 45 120 0 6   5 errors
 
          5248 towctrans-bmy.o (16:8:8)
          5320 towctrans-bmylow16.o (16:16:8)
