@@ -60,6 +60,15 @@ wint_t my_bsearchb_towupper(wint_t wc) { return _towcase_bsearchb(wc, 0); }
 char *my_bsearchb_stats(void) { STATS; }
 #endif
 
+#elif defined UNROLL
+
+#include "towctrans-unroll.h"
+wint_t my_unroll_towlower(wint_t wc) { return _towcase_unroll(wc, 1); }
+wint_t my_unroll_towupper(wint_t wc) { return _towcase_unroll(wc, 0); }
+#ifdef BITS_STATS
+char *my_unroll_stats(void) { STATS; }
+#endif
+
 #elif defined TABLE
 
 #include "towctrans-table.h"

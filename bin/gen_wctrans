@@ -2567,16 +2567,17 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        585 [us]  100.00 %
-           my_excl:        455 [us]  128.57 %
-          my_low16:        646 [us]   90.56 %
-           my_bits:        647 [us]   90.42 %
-        my_bsearch:        457 [us]  128.01 %
-       my_bsearchb:        438 [us]  133.56 %
-          my_table:        102 [us]  573.53 %
-          musl-new:        107 [us]  546.73 %	9 errors
-          musl-old:        888 [us]   65.88 %	3 errors
-             glibc:         98 [us]  596.94 %	15 errors
+                my:        648 [us]  100.00 %
+           my_excl:        459 [us]  141.18 %
+          my_low16:        521 [us]  124.38 %
+           my_bits:        543 [us]  119.34 %
+        my_bsearch:        415 [us]  156.14 %
+       my_bsearchb:        380 [us]  170.53 %
+         my_unroll:        412 [us]  157.28 %
+          my_table:         99 [us]  654.55 %
+          musl-new:         99 [us]  654.55 %	9 errors
+          musl-old:        819 [us]   79.12 %	3 errors
+             glibc:         97 [us]  668.04 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o
@@ -2585,6 +2586,7 @@ non-latin locales entirely.
       3920 towctrans-mybits.o
       3968 towctrans-mybsearch.o
       4864 towctrans-mybsearch-both.o
+      3944 towctrans-myunroll.o
       6816 towctrans-mytable.o
       6848 towctrans-musl-new.o
       3464 towctrans-musl-old.o
