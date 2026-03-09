@@ -21,6 +21,7 @@ DECL_BENCH("my_bits", my_bits);
 DECL_BENCH("my_bsearch", my_bsearch);
 DECL_BENCH("my_bsearchb", my_bsearchb);
 DECL_BENCH("my_unroll", my_unroll);
+DECL_BENCH("my_iftree", my_iftree);
 DECL_BENCH("my_table", my_table);
 DECL_BENCH("musl-new", musl);
 DECL_BENCH("musl-old", old);
@@ -104,6 +105,7 @@ int main(void) {
     BENCH("my_bsearch", my_bsearch);
     BENCH("my_bsearchb", my_bsearchb);
     BENCH("my_unroll", my_unroll);
+    BENCH("my_iftree", my_iftree);
     BENCH("my_table", my_table);
     t_my_table = t1;
     BENCH("musl-new", musl);

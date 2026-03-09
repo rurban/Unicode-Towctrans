@@ -17,6 +17,8 @@
 #include "towctrans-bsearch-both.h"
 #elif defined BSEARCH
 #include "towctrans-bsearch.h"
+#elif defined IF_TREE
+#include "towctrans-if-tree.h"
 #elif defined UNROLL1
 #define UNROLL
 #include "towctrans-unroll1.h"

@@ -1,5 +1,5 @@
 #!/usr/bin/env perl -s
-use Test::More import => [qw( is is_deeply plan diag )];
+use Test::More import => [qw( diag is is_deeply plan )];
 
 # use Data::Dump qw( dump );
 

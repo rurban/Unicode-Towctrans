@@ -88,17 +88,18 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        648 [us]  100.00 %
-               my_excl:        459 [us]  141.18 %
-              my_low16:        521 [us]  124.38 %
-               my_bits:        543 [us]  119.34 %
-            my_bsearch:        415 [us]  156.14 %
-           my_bsearchb:        380 [us]  170.53 %
-             my_unroll:        412 [us]  157.28 %
-              my_table:         99 [us]  654.55 %
-              musl-new:         99 [us]  654.55 %   9 errors
-              musl-old:        819 [us]   79.12 %   3 errors
-                 glibc:         97 [us]  668.04 %   15 errors
+                    my:        649 [us]  100.00 %
+               my_excl:        515 [us]  126.02 %
+              my_low16:        586 [us]  110.75 %
+               my_bits:        685 [us]   94.74 %
+            my_bsearch:        443 [us]  146.50 %
+           my_bsearchb:        402 [us]  161.44 %
+             my_unroll:        408 [us]  159.07 %
+             my_iftree:        344 [us]  188.66 %   652 errors
+              my_table:        100 [us]  649.00 %
+              musl-new:        100 [us]  649.00 %   9 errors
+              musl-old:        815 [us]   79.63 %   3 errors
+                 glibc:         98 [us]  662.24 %   15 errors
 
         wc -c towctrans-*.o
           3528 towctrans-my.o
@@ -108,6 +109,7 @@ PERFORMANCE
           3968 towctrans-mybsearch.o
           4864 towctrans-mybsearch-both.o
           3944 towctrans-myunroll.o
+          6224 towctrans-myiftree.o
           6816 towctrans-mytable.o
           6848 towctrans-musl-new.o
           3464 towctrans-musl-old.o

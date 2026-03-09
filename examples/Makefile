@@ -4,7 +4,8 @@ DEFINES = -DHAVE_LOCALE_TR
 CFLAGS_BENCH = -O2 -I. -DNDEBUG
 CFLAGS = -g -Wall -Wextra $(DEFINES)
 OBJ = towctrans-my.o towctrans-myexcl.o towctrans-mylow16.o towctrans-mybits.o \
-      towctrans-mybsearch.o towctrans-mybsearch-both.o towctrans-myunroll.o towctrans-mytable.o \
+      towctrans-mybsearch.o towctrans-mybsearch-both.o towctrans-myunroll.o \
+      towctrans-myiftree.o towctrans-mytable.o \
       towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
 SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
@@ -39,6 +40,8 @@ towctrans-bsearch-both.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --ud UnicodeData.txt.10
 towctrans-unroll.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch --unroll 20 --fn=_towcase_unroll -v 10 --out examples/$@ --ud UnicodeData.txt.10
+towctrans-if-tree.h :: ../UnicodeData.txt.10 Makefile
+	cd .. && $(GEN) --with-iswalpha --bsearch --if-tree --fn=_towcase_iftree -v 10 --out examples/$@ --ud UnicodeData.txt.10
 towctrans-table.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10
 
@@ -56,6 +59,8 @@ towctrans-mybsearch-both.o: towctrans-my.c towctrans-bsearch-both.h
 	$(CC) -c -DBSEARCH_BOTH $(CFLAGS_BENCH) $< -o $@
 towctrans-myunroll.o: towctrans-my.c towctrans-unroll.h
 	$(CC) -c -DUNROLL $(CFLAGS_BENCH) $< -o $@
+towctrans-myiftree.o: towctrans-my.c towctrans-if-tree.h
+	$(CC) -c -DIF_TREE $(CFLAGS_BENCH) $< -o $@
 towctrans-mytable.o: towctrans-my.c towctrans-table.h
 	$(CC) -c -DTABLE $(CFLAGS_BENCH) $< -o $@
 

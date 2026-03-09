@@ -69,6 +69,15 @@ wint_t my_unroll_towupper(wint_t wc) { return _towcase_unroll(wc, 0); }
 char *my_unroll_stats(void) { STATS; }
 #endif
 
+#elif defined IF_TREE
+
+#include "towctrans-if-tree.h"
+wint_t my_iftree_towlower(wint_t wc) { return _towcase_iftree(wc, 1); }
+wint_t my_iftree_towupper(wint_t wc) { return _towcase_iftree(wc, 0); }
+#ifdef BITS_STATS
+char *my_iftree_stats(void) { STATS; }
+#endif
+
 #elif defined TABLE
 
 #include "towctrans-table.h"
