@@ -29,6 +29,7 @@ jobs:
         uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
         with:
           install: |
+            LWP::UserAgent
             Test::MinimumVersion::Fast
             Perl::MinimumVersion::Fast
             YAML::Tiny

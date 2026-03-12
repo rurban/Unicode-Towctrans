@@ -48,7 +48,7 @@ use Getopt::Long;
 my (
     $v,     $lower16, $bits,    $help,         $verbose,
     $safec, $musl,    $bsearch, $bsearch_both, $if_tree,
-    $table
+    $table, $no_network
 );
 my $ud            = "UnicodeData.txt";
 my $out           = "towctrans.h";
@@ -73,6 +73,7 @@ GetOptions(
     "fn=s"          => \$fn,               # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
+    "n"             => \$no_network,       # flag
     "verbose"       => \$verbose,          # flag
     "help|h"        => \$help              # flag
 ) or die("Error in command line arguments\n");
@@ -97,6 +98,7 @@ OPTIONS
 --fn name             function name (default: _towcase)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
 --safec               create towctrans.c for safeclib, with LOCALE_TR
+-n                    no network access
 --verbose
 --help
 EOF
@@ -120,13 +122,22 @@ if ($musl) {
     $fn            = "__towcase";
 }
 if ($safec) {
-    die "cannot use --sace and --musl together\n" if $musl;
-    $out = "towctrans.c"                          if $out eq "towctrans.h";
+    die "cannot use --safec and --musl together\n" if $musl;
+    $out = "towctrans.c"                           if $out eq "towctrans.h";
 }
-if ( !$v ) {
-    use Unicode::UCD;
-    my $full = Unicode::UCD::UnicodeVersion();
-    ($v) = $full =~ /^(\d+)\./;
+if ( !$v ) { # checks now the latest version, not the installed perl UCD version
+    if ($no_network) { # take it from perl
+        use Unicode::UCD;
+        my $full = Unicode::UCD::UnicodeVersion();
+        ($v) = $full =~ /(\d+)\./;
+        print "Your perl Unicode version is $v\n";
+    } else {
+        require LWP::UserAgent;
+        my $ua = LWP::UserAgent->new(timeout => 3);
+        my $response = $ua->head('https://www.unicode.org/versions/latest/');
+        ($v) = ${$response->{_request}->{_uri}} =~ /\/Unicode(\d+)\./;
+        print "Latest Unicode version is $v\n";
+    }
 }
 my ( $f_upper, $f_lower, $f_len, $use_bitfields, $f_sign, @bits );
 if ($bits) {
@@ -2628,7 +2639,8 @@ EOF
         print FH <<"EOF";
                 /* Need this exception (wrong lace for titlecase digraphs).
                    Tested from Unicode 4 to 18. We search pairs later. */
-                if (!lower && (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C9 || wc == 0x1C6))
+                if (!lower &&
+                    (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C9 || wc == 0x1C6))
                     return wc - 2;
                 if (lower && (wc == 0x1F1 || wc == 0x1CA || wc == 0x1C4))
                     return wc + 2;
@@ -2809,6 +2821,7 @@ Unicode::Towctrans - Generate small case mapping tables
     gen_wctrans
     gen_wctrans --safec
     gen_wctrans --musl
+    gen_wctrans -n     # no network for default -v
     gen_wctrans -v 10
     gen_wctrans -v 10 --ud UnicodeData.txt.10 --out towctrans-10.h
     gen_wctrans --lower16
@@ -2859,6 +2872,13 @@ The range must be larger than the given threshold. Default is 2500.
 C<--unroll> sets the maximum array size for its loops to be unrolled
 and inlined. Default is 5.
 
+C<v> set the UnicodeData version to use or download.
+C<-n> sets the method the default UnicodeData version to the UCD version
+from perl (which is usually older than the version from
+https://www.unicode.org/versions/latest/).
+C--ud> set the name of the used F<UnicodeData.txt> file. Default: F<UnicodeData.txt>.
+C--out> sets the output filename, default: towctrans.h
+
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
 safeclib. As the single-byte C<towupper> and C<towlower> conversions
 are meaningless for many multi-byte unicode mappings, those with
@@ -2903,18 +2923,18 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        649 [us]  100.00 %
-           my_excl:        515 [us]  126.02 %
-          my_low16:        586 [us]  110.75 %
-           my_bits:        685 [us]   94.74 %
-        my_bsearch:        443 [us]  146.50 %
-       my_bsearchb:        402 [us]  161.44 %
-         my_unroll:        408 [us]  159.07 %
-         my_iftree:        344 [us]  188.66 %	652 errors
-          my_table:        100 [us]  649.00 %
-          musl-new:        100 [us]  649.00 %	9 errors
-          musl-old:        815 [us]   79.63 %	3 errors
-             glibc:         98 [us]  662.24 %	15 errors
+                my:        753 [us]  100.00 %
+           my_excl:        645 [us]  116.74 %
+          my_low16:        728 [us]  103.43 %
+           my_bits:        780 [us]   96.54 %
+        my_bsearch:        562 [us]  133.99 %
+       my_bsearchb:        500 [us]  150.60 %
+         my_unroll:        564 [us]  133.51 %
+         my_iftree:        479 [us]  157.20 %	86 errors
+          my_table:        172 [us]  437.79 %
+          musl-new:        188 [us]  400.53 %	9 errors
+          musl-old:       1248 [us]   60.34 %	3 errors
+             glibc:        166 [us]  453.61 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o
@@ -2924,7 +2944,7 @@ non-latin locales entirely.
       3968 towctrans-mybsearch.o
       4864 towctrans-mybsearch-both.o
       3944 towctrans-myunroll.o
-      6224 towctrans-myiftree.o
+     10816 towctrans-myiftree.o
       6816 towctrans-mytable.o
       6848 towctrans-musl-new.o
       3464 towctrans-musl-old.o

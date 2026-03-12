@@ -10,12 +10,12 @@ ENV WORK_DIR "/work"
 RUN uname -a
 RUN apt-get update -qq && \
   apt-get install -yq --no-install-suggests --no-install-recommends \
-  build-essential libperl-dev wget \
-  file \
+  build-essential libperl-dev wget libwww-perl libterm-readline-gnu-perl \
+  apt-utils file \
   gcc \
   make \
   git \
-  sudo \
+  sudo less locales \
   autotools-dev automake autoconf libtool pkg-config
 
 # Create test user and the environment

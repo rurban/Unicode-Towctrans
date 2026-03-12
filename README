@@ -5,6 +5,7 @@ SYNOPSIS
         gen_wctrans
         gen_wctrans --safec
         gen_wctrans --musl
+        gen_wctrans -n     # no network for default -v
         gen_wctrans -v 10
         gen_wctrans -v 10 --ud UnicodeData.txt.10 --out towctrans-10.h
         gen_wctrans --lower16
@@ -53,6 +54,13 @@ DESCRIPTION
     sets the maximum array size for its loops to be unrolled and inlined.
     Default is 5.
 
+    "v" set the UnicodeData version to use or download. "-n" sets the method
+    the default UnicodeData version to the UCD version from perl (which is
+    usually older than the version from
+    https://www.unicode.org/versions/latest/). C--ud> set the name of the
+    used UnicodeData.txt file. Default: UnicodeData.txt. C--out> sets the
+    output filename, default: towctrans.h
+
     Planned also for the multi-byte folding tables for wcsfc_s() for
     safeclib. As the single-byte "towupper" and "towlower" conversions are
     meaningless for many multi-byte unicode mappings, those with status F -
@@ -88,18 +96,18 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        649 [us]  100.00 %
-               my_excl:        515 [us]  126.02 %
-              my_low16:        586 [us]  110.75 %
-               my_bits:        685 [us]   94.74 %
-            my_bsearch:        443 [us]  146.50 %
-           my_bsearchb:        402 [us]  161.44 %
-             my_unroll:        408 [us]  159.07 %
-             my_iftree:        344 [us]  188.66 %   652 errors
-              my_table:        100 [us]  649.00 %
-              musl-new:        100 [us]  649.00 %   9 errors
-              musl-old:        815 [us]   79.63 %   3 errors
-                 glibc:         98 [us]  662.24 %   15 errors
+                    my:        753 [us]  100.00 %
+               my_excl:        645 [us]  116.74 %
+              my_low16:        728 [us]  103.43 %
+               my_bits:        780 [us]   96.54 %
+            my_bsearch:        562 [us]  133.99 %
+           my_bsearchb:        500 [us]  150.60 %
+             my_unroll:        564 [us]  133.51 %
+             my_iftree:        479 [us]  157.20 %   86 errors
+              my_table:        172 [us]  437.79 %
+              musl-new:        188 [us]  400.53 %   9 errors
+              musl-old:       1248 [us]   60.34 %   3 errors
+                 glibc:        166 [us]  453.61 %   15 errors
 
         wc -c towctrans-*.o
           3528 towctrans-my.o
@@ -109,7 +117,7 @@ PERFORMANCE
           3968 towctrans-mybsearch.o
           4864 towctrans-mybsearch-both.o
           3944 towctrans-myunroll.o
-          6224 towctrans-myiftree.o
+         10816 towctrans-myiftree.o
           6816 towctrans-mytable.o
           6848 towctrans-musl-new.o
           3464 towctrans-musl-old.o
