@@ -136,6 +136,10 @@ if ( !$v ) { # checks now the latest version, not the installed perl UCD version
         my $ua = LWP::UserAgent->new(timeout => 3);
         my $response = $ua->head('https://www.unicode.org/versions/latest/');
         ($v) = ${$response->{_request}->{_uri}} =~ /\/Unicode(\d+)\./;
+        unless ($v) {
+            warn "Failed to resolve https://www.unicode.org/versions/latest/\n";
+            $v = 17;
+        }
         print "Latest Unicode version is $v\n";
     }
 }
@@ -764,11 +768,9 @@ sub print_pairs_upper_ternary {
 
 if ( $v and !-s $ud ) {
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
-    `wget $url -O $ud`
-      or `wget --no-check-certificate $url -O $ud`;
-    unless ( -s $ud ) {
-        `curl --silent $url -O $ud`;
-    }
+    `wget $url -O $ud`;
+    `wget --no-check-certificate $url -O $ud` unless -s $ud;
+    `curl --silent $url -O $ud` unless -s $ud;
     unless ( -s $ud ) {
         require LWP::Simple;
         my $content = LWP::Simple::get($url);
@@ -2923,32 +2925,32 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        753 [us]  100.00 %
-           my_excl:        645 [us]  116.74 %
-          my_low16:        728 [us]  103.43 %
-           my_bits:        780 [us]   96.54 %
-        my_bsearch:        562 [us]  133.99 %
-       my_bsearchb:        500 [us]  150.60 %
-         my_unroll:        564 [us]  133.51 %
-         my_iftree:        479 [us]  157.20 %	86 errors
-          my_table:        172 [us]  437.79 %
-          musl-new:        188 [us]  400.53 %	9 errors
-          musl-old:       1248 [us]   60.34 %	3 errors
-             glibc:        166 [us]  453.61 %	15 errors
+                my:        967 [us]  100.00 %
+           my_excl:        864 [us]  111.92 %
+          my_low16:        813 [us]  118.94 %
+           my_bits:        793 [us]  121.94 %
+        my_bsearch:        581 [us]  166.44 %
+       my_bsearchb:        805 [us]  120.12 %
+         my_unroll:        721 [us]  134.12 %
+         my_iftree:        503 [us]  192.25 %	86 errors
+          my_table:        168 [us]  575.60 %
+          musl-new:        179 [us]  540.22 %	9 errors
+          musl-old:       1231 [us]   78.55 %	3 errors
+             glibc:        126 [us]  767.46 %	14 errors
 
     wc -c towctrans-*.o
-      3528 towctrans-my.o
-      3608 towctrans-myexcl.o
-      3632 towctrans-mylow16.o
-      3920 towctrans-mybits.o
-      3968 towctrans-mybsearch.o
-      4864 towctrans-mybsearch-both.o
-      3944 towctrans-myunroll.o
-     10816 towctrans-myiftree.o
-      6816 towctrans-mytable.o
-      6848 towctrans-musl-new.o
-      3464 towctrans-musl-old.o
-     97440 towctrans-glibc.o
+      3336 towctrans-my.o
+      3384 towctrans-myexcl.o
+      3424 towctrans-mylow16.o
+      3648 towctrans-mybits.o
+      3704 towctrans-mybsearch.o
+      4496 towctrans-mybsearch-both.o
+      3808 towctrans-myunroll.o
+     11000 towctrans-myiftree.o
+      6784 towctrans-mytable.o
+      6808 towctrans-musl-new.o
+      3416 towctrans-musl-old.o
+     97432 towctrans-glibc.o
 
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.

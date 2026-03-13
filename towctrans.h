@@ -124,7 +124,7 @@ static const struct casemaps_s {
     CASELACE(0xa796, 0xa7a8),        /* [63] 'Ꞗ'->'Ꞩ' {, 1, 19} */
     CASELACE(0xa7b4, 0xa7c2),        /* [64] 'Ꞵ'->'Ꟃ' {, 1, 15} */
     CASELACE(0xa7c7, 0xa7c9),        /* [65] 'Ꟈ'->'Ꟊ' {, 1, 3} */
-    CASELACE(0xa7d6, 0xa7da),        /* [66] 'Ꟗ'->'Ꟛ' {, 1, 5} */
+    CASELACE(0xa7cc, 0xa7da),        /* [66] 'Ꟍ'->'Ꟛ' {, 1, 15} */
     CASELACE(0xa7f5, 0xa7f5),        /* [67] 'Ꟶ'->'Ꟶ' {, 1, 1} */
     CASEMAP(0xff21, 0xff3a, 0xff41), /* [68] 'Ａ'->'Ｚ'..'ａ' {, 32, 26} */
 };
@@ -132,7 +132,7 @@ static const struct casemapsl_s {
     uint32_t upper; /* base */
     int lower;      /* distance from upper to lower. 1 with LACE */
     uint16_t len;   /* how many */
-} casemapsl[20] = {
+} casemapsl[21] = {
     /* upper: 0x189 - 0x1e900 */
     /* from, until, to */
     CASEMAP(0x00189, 0x0018a, 0x00256), /* 'Ɖ'->'Ɗ'..'ɖ' {, 205, 2} */
@@ -154,10 +154,11 @@ static const struct casemapsl_s {
     CASEMAP(0x10d50, 0x10d65, 0x10d70), /* '𐵐'->'𐵥'..'𐵰' {, 32, 22} */
     CASEMAP(0x118a0, 0x118bf, 0x118c0), /* '𑢠'->'𑢿'..'𑣀' {, 32, 32} */
     CASEMAP(0x16e40, 0x16e5f, 0x16e60), /* '𖹀'->'𖹟'..'𖹠' {, 32, 32} */
+    CASEMAP(0x16ea0, 0x16eb8, 0x16ebb), /* '𖺠'->'𖺸'..'𖺻' {, 27, 25} */
     CASEMAP(0x1e900, 0x1e921, 0x1e922), /* '𞤀'->'𞤡'..'𞤢' {, 34, 34} */
 };
 
-static const unsigned short pairs[128][2] = {
+static const unsigned short pairs[126][2] = {
     /* upper: 0x49 - 0xa7dc */
     /* upper, lower */
     {0x0049, 0x0131}, /* 'I' -> 'ı' */
@@ -285,8 +286,6 @@ static const unsigned short pairs[128][2] = {
     {0xa7c5, 0x0282}, /* 'Ʂ' -> 'ʂ' */
     {0xa7c6, 0x1d8e}, /* 'Ᶎ' -> 'ᶎ' */
     {0xa7cb, 0x0264}, /* 'Ɤ' -> 'ɤ' */
-    {0xa7cc, 0xa7cd}, /* 'Ꟍ' -> 'ꟍ' */
-    {0xa7d0, 0xa7d1}, /* 'Ꟑ' -> 'ꟑ' */
     {0xa7dc, 0x019b}, /* 'Ƛ' -> 'ƛ' */
 };
 
@@ -297,7 +296,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
 
     if (wc <= 0x40                           /* 64 */
         || wc > 0x1e943                      /* >125251 */
-        || wc - 0x16e80 <= 0x1e8ff - 0x16e80 /* 31360 */
+        || wc - 0x16ed4 <= 0x1e8ff - 0x16ed4 /* 31276 */
         || wc - 0x2d2e <= 0xa63f - 0x2d2e    /* 30994 */
         || wc - 0x118e0 <= 0x16e3f - 0x118e0 /* 21856 */
         || wc - 0xabc0 <= 0xff20 - 0xabc0    /* 21345 */
@@ -351,7 +350,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (lower && casemaps[i].upper > wc)
             break;
     }
-    for (i = 0; i < 20; i++) {
+    for (i = 0; i < 21; i++) {
         unsigned long base = casemapsl[i].upper + (lmask & casemapsl[i].lower);
         assert(i > 0 ? casemapsl[i].upper >= casemapsl[i - 1].upper : 1);
         if (wc - base < casemapsl[i].len) {
@@ -363,7 +362,7 @@ uint32_t _towcase(uint32_t wc, int lower) {
         if (lower && casemapsl[i].upper > wc)
             break;
     }
-    for (i = 0; i < 128; i++) {
+    for (i = 0; i < 126; i++) {
         assert(i > 0 ? pairs[i][0] >= pairs[i - 1][0] : 1);
         if (pairs[i][1 - lower] == wc)
             return pairs[i][lower];

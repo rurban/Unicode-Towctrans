@@ -124,8 +124,7 @@ README: bin/gen_wctrans
 	pod2text $< >$@
 tidy:
 	perltidy -b bin/gen_wctrans
-UnicodeData.txt:
-	 bin/gen_wctrans
+	chmod +x bin/gen_wctrans
 UnicodeData.txt.8 towctrans-8.h:
 	for v in `seq 5 18`; do $(FULLPERLRUN) bin/gen_wctrans --out towctrans-$$v.h -v $$v --ud UnicodeData.txt.$$v; done
 test-all : bin/gen_wctrans UnicodeData.txt.8 towctrans-8.h
@@ -136,8 +135,9 @@ test-all : bin/gen_wctrans UnicodeData.txt.8 towctrans-8.h
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans.h
 diffs : bin/gen_wctrans UnicodeData.txt.8
 	for v in `seq 5 17`; do n=$$(($$v + 1)); diff -bu towctrans-$$v.h towctrans-$$n.h; done
-towctrans.h: bin/gen_wctrans
+UnicodeData.txt:
 	$(FULLPERLRUN) bin/gen_wctrans
+towctrans.h: bin/gen_wctrans UnicodeData.txt
 UnicodeData.txt.10:
 	$(FULLPERLRUN) bin/gen_wctrans --out towctrans-10.h -v 10 --ud UnicodeData.txt.10
 towctrans-10.h: UnicodeData.txt.10
