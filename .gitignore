@@ -51,6 +51,9 @@ examples/test-[0-9]*
 examples/test-asan
 examples/test-bits
 examples/test-bsearch
+examples/test-bsearch-both
+examples/test-iftree
+examples/test-iftree-both
 examples/test-low16
 examples/test-glibc
 examples/test-iswalpha

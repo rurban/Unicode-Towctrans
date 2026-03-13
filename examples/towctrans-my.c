@@ -78,6 +78,15 @@ wint_t my_iftree_towupper(wint_t wc) { return _towcase_iftree(wc, 0); }
 char *my_iftree_stats(void) { STATS; }
 #endif
 
+#elif defined IF_TREE_BOTH
+
+#include "towctrans-if-tree-both.h"
+wint_t my_iftreeb_towlower(wint_t wc) { return _towcase_iftreeb(wc, 1); }
+wint_t my_iftreeb_towupper(wint_t wc) { return _towcase_iftreeb(wc, 0); }
+#ifdef BITS_STATS
+char *my_iftreeb_stats(void) { STATS; }
+#endif
+
 #elif defined TABLE
 
 #include "towctrans-table.h"

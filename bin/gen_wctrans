@@ -2181,8 +2181,10 @@ EOF
         $pairl_search = ""; # already inlined
         print FH <<'EOF';
     if (lower) {
-        uint32_t c1, c2, p1, p2;
+        uint32_t c1, p1;
 EOF
+        print FH "        uint32_t c2;\n" if @CASEL;
+        print FH "        uint32_t p2;\n" if @PAIRL;
         if ($case_has_digraph_lace) {
             print FH <<'EOF';
         /* Need this exception (wrong lace for titlecase digraphs).
@@ -2222,8 +2224,10 @@ EOF
         }
         print FH <<'EOF';
     } else { // upper
-        uint32_t c1, c2, p1, p2;
+        uint32_t c1, p1;
 EOF
+        print FH "        uint32_t c2;\n" if @CASEL;
+        print FH "        uint32_t p2;\n" if @PAIRL_UPPER;
         if ($case_has_digraph_lace) {
             print FH <<'EOF';
         /* Need this exception (wrong lace for titlecase digraphs).
