@@ -8,3 +8,4 @@
 Dockerfile
 examples/.gdbinit
 run-docker.sh
+UnicodeData.txt

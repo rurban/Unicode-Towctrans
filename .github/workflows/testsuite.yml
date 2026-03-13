@@ -24,12 +24,11 @@ jobs:
       - run: perl -V
       - run: |
           sudo apt update -y
-          sudo apt install -y libperl-dev wget aspell-en
+          sudo apt install -y libperl-dev wget aspell-en libwww-perl perltidy perlimports
       - name: install cpan deps
         uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
         with:
           install: |
-            LWP::UserAgent
             Test::MinimumVersion::Fast
             Perl::MinimumVersion::Fast
             YAML::Tiny
@@ -46,9 +45,11 @@ jobs:
             Text::CSV_XS
             List::MoreUtils
             Test::Kwalitee
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test || make test TEST_VERBOSE=1
+      - run: make -C examples
       - run: make xtest
       - run: make bench
 
@@ -92,9 +93,13 @@ jobs:
         with:
           perl-version: ${{ matrix.perl-version }}
       - run: perl -V
-      - run: |
-          sudo apt update -y
-          sudo apt install -y libperl-dev wget
+      - run: sudo apt install -y libperl-dev wget
+      - name: install cpan deps
+        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
+        with:
+          install: |
+            LWP::UserAgent
+            LWP::Simple
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test
@@ -117,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: perl -V
-      - run: bin/gen_wctrans
+      - run: bin/gen_wctrans -v 17
       - run: perl Makefile.PL
       - run: make test || make test TEST_VERBOSE=1
 
@@ -144,6 +149,7 @@ jobs:
         uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
         with:
           install: |
+            LWP::UserAgent
             LWP::Simple
       - run: perl bin/gen_wctrans
       - run: perl Makefile.PL

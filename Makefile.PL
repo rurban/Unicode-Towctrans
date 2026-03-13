@@ -104,7 +104,7 @@ all :: towctrans.h README
 ' . (   $^O eq 'MSWin32'
         ? ""
         : '
-.PHONY: test-precommit
+.PHONY: xt xtest test-precommit test-checkmake bench update-bench
 xt xtest :: test-precommit test-checkmake
 	prove xt/*.t
 test-checkmake :
@@ -148,7 +148,7 @@ update-bench:
 	make -C examples $@
 examples:
 	make -C examples
-release-test : test dist
+release-test : test examples dist
 	if test "$(shell git rev-parse --abbrev-ref HEAD)" != "master" || \
 	  test "$(shell git diff --raw)" != "" || \
 	  test "$(shell git diff --cached --raw)" != "" ; then \

@@ -42,8 +42,10 @@ musl
 fixups
 safeclib
 TODO
+towctrans
 towupper
 turkish
+UCD
 un
 unicode
 libunistring
