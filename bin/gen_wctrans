@@ -529,16 +529,16 @@ sub ternary_tree {
 # case is the casemaps array (or CASE_RAW?) with 3 elems
 # For range [upper, upper+len-1], emit:
 #   wc < upper ? left : wc - upper < len ? return_value : right
-sub print_casemap_lower_ternary {
+sub casemap_lower_ternary {
     my ( $tree, $case, $lvl, $has_digraph_lace, $bits_ret ) =
         @_;
     return "wc" unless defined $tree; # false case
-    my $ident = "\n          ";
+    my $ident = "\n             ";
     $ident .= "  " x $lvl;
     my ( $print_tree, $in_range, $lower, $result); # lambda's
     $print_tree = sub {
         my ($tree, $case, $lvl) = @_;
-        print_casemap_lower_ternary($tree, $case, $lvl,
+        casemap_lower_ternary($tree, $case, $lvl,
                                     $has_digraph_lace, $bits_ret);
     };
     $in_range = sub { # lower only
@@ -565,16 +565,16 @@ sub print_casemap_lower_ternary {
         if ( ref $m ) {
             return
                 ( $lvl ? $ident : "" )
-                . $print_tree->( $m, $case, $lvl + 1 ) . " ? "
-                . $lower->( $case->[$m->[0]] ) . "   ?"
-                . $print_tree->( $l, $case, $lvl + 1 ) . "   : "
+                . $print_tree->( $m, $case, $lvl + 1 ) . " ?\n$ident  "
+                . $lower->( $case->[$m->[0]] ) . " ? "
+                . $print_tree->( $l, $case, $lvl + 1 ) . " :\n$ident  "
                 . $print_tree->( $r, $case, $lvl + 1 )
                 . " : wc";
         } else {
             return
                 ( $lvl ? $ident : "" )
                 . $lower->( $case->[$m] ) . " ? "
-                . $print_tree->( $l, $case, $lvl + 1 ) . " : "
+                . $print_tree->( $l, $case, $lvl + 1 ) . " :\n$ident  "
                 . $in_range->( $case->[$m] ) . " ? "
                 . $result->( $case->[$m] ) . " : "
                 . $print_tree->( $r, $case, $lvl + 1 );
@@ -583,13 +583,14 @@ sub print_casemap_lower_ternary {
     else {
         # Leaf node: check match and return result
         return
-              $in_range->( $case->[$tree] ) . " ? "
+            ( $lvl ? $ident : "" )
+            . $in_range->( $case->[$tree] ) . " ? "
             . $result->( $case->[$tree] )
             . " : wc";
     }
 }
 
-sub print_pairs_lower_ternary {
+sub pairs_lower_ternary {
     my ( $tree, $pair, $lvl, $has_digraph_lace, $bits_ret ) =
         @_;
     return "wc" unless defined $tree; # false case
@@ -598,8 +599,8 @@ sub print_pairs_lower_ternary {
     my ( $print_tree, $equal, $lower, $result); # lambda's
     $print_tree = sub {
         my ($tree, $case, $lvl) = @_;
-        print_pairs_lower_ternary($tree, $case, $lvl,
-                                  $has_digraph_lace, $bits_ret);
+        pairs_lower_ternary($tree, $case, $lvl,
+                            $has_digraph_lace, $bits_ret);
     };
     $equal = sub {
         my ($p) = @_;
@@ -624,16 +625,16 @@ sub print_pairs_lower_ternary {
         if ( ref $m ) {
             return
                 ( $lvl ? $ident : "" )
-                . $print_tree->( $m, $pair, $lvl + 1 ) . " ? "
+                . $print_tree->( $m, $pair, $lvl + 1 ) . " ?\n$ident  "
                 . $lower->( $pair->[$m] ) . "   ?"
-                . $print_tree->( $l, $pair, $lvl + 1 ) . "   : "
+                . $print_tree->( $l, $pair, $lvl + 1 ) . " :\n$ident  "
                 . $print_tree->( $r, $pair, $lvl + 1 )
                 . " : wc";
         } else {
             return
                 ( $lvl ? $ident : "" )
                 . $lower->( $pair->[$m] ) . " ? "
-                . $print_tree->( $l, $pair, $lvl + 1 ) . " : "
+                . $print_tree->( $l, $pair, $lvl + 1 ) . " :\n$ident  "
                 . $equal->( $pair->[$m] ) . " ? "
                 . $result->( $pair->[$m] ) . " : "
                 . $print_tree->( $r, $pair, $lvl + 1 );
@@ -642,7 +643,8 @@ sub print_pairs_lower_ternary {
     else {
         # Leaf node: check match and return result
         return
-              $equal->( $pair->[$tree] ) . " ? "
+            ( $lvl ? $ident : "" )
+            . $equal->( $pair->[$tree] ) . " ? "
             . $result->( $pair->[$tree] )
             . " : wc";
     }
@@ -651,7 +653,7 @@ sub print_pairs_lower_ternary {
 # Emit right-associative ternary for casemaps upper direction (via index array).
 # For range [target, target+len-1] where target = upper+lower:
 #   wc < target ? left : wc - target < len ? return_value : right
-sub print_casemap_upper_ternary {
+sub casemap_upper_ternary {
     my ( $tree, $case, $lvl, $has_digraph_lace ) =  @_;
     return "wc" unless defined $tree; # false case
     my $ident = "\n          ";
@@ -659,7 +661,7 @@ sub print_casemap_upper_ternary {
     my ( $print_tree, $in_range, $lower, $result); # lambda's
     $print_tree = sub {
         my ($tree, $case, $lvl) = @_;
-        print_casemap_upper_ternary($tree, $case, $lvl, $has_digraph_lace);
+        casemap_upper_ternary($tree, $case, $lvl, $has_digraph_lace);
     };
     $in_range = sub { # upper: wc is in target range [upper+delta, upper+delta+len)
         my ($m) = @_;
@@ -685,16 +687,16 @@ sub print_casemap_upper_ternary {
         if ( ref $m ) {
             return
                 ( $lvl ? $ident : "" )
-                . $print_tree->( $m, $case, $lvl + 1 ) . " ? "
+                . $print_tree->( $m, $case, $lvl + 1 ) . " ? \n$ident  "
                 . $lower->( $case->[$m->[0]] ) . "   ?"
-                . $print_tree->( $l, $case, $lvl + 1 ) . "   : "
+                . $print_tree->( $l, $case, $lvl + 1 ) . " :\n$ident  "
                 . $print_tree->( $r, $case, $lvl + 1 )
                 . " : wc";
         } else {
             return
                 ( $lvl ? $ident : "" )
                 . $lower->( $case->[$m] ) . " ? "
-                . $print_tree->( $l, $case, $lvl + 1 ) . " : "
+                . $print_tree->( $l, $case, $lvl + 1 ) . " :\n$ident  "
                 . $in_range->( $case->[$m] ) . " ? "
                 . $result->( $case->[$m] ) . " : "
                 . $print_tree->( $r, $case, $lvl + 1 );
@@ -703,13 +705,14 @@ sub print_casemap_upper_ternary {
     else {
         # Leaf node: check match and return result
         return
-              $in_range->( $case->[$tree] ) . " ? "
+            ( $lvl ? "$ident" : "" )
+            . $in_range->( $case->[$tree] ) . " ? "
             . $result->( $case->[$tree] )
             . " : wc";
     }
 }
 
-sub print_pairs_upper_ternary {
+sub pairs_upper_ternary {
     my ( $tree, $pair, $lvl, $has_digraph_lace ) =  @_;
     return "wc" unless defined $tree; # false case
     my $ident = "\n          ";
@@ -717,7 +720,7 @@ sub print_pairs_upper_ternary {
     my ( $print_tree, $equal, $lower, $result); # lambda's
     $print_tree = sub {
         my ($tree, $pair, $lvl) = @_;
-        print_pairs_upper_ternary($tree, $pair, $lvl, $has_digraph_lace);
+        pairs_upper_ternary($tree, $pair, $lvl, $has_digraph_lace);
     };
     $equal = sub { # upper
         my ($p) = @_;
@@ -760,7 +763,8 @@ sub print_pairs_upper_ternary {
     else {
         # Leaf node: check match and return result
         return
-              $equal->( $pair->[$tree] ) . " ? "
+            ( $lvl ? "$ident" : "" )
+            . $equal->( $pair->[$tree] ) . " ? "
             . $result->( $pair->[$tree] )
             . " : wc";
     }
@@ -1704,6 +1708,7 @@ my (
     $TARGET_LAST, $TARGETL_LAST
 );
 if ( $bsearch || $bsearch_both ) {
+    $bsearch = 1;    # --bsearch-both implies --bsearch
     $MAP_FIRST  = $case_min->[0];
     $MAPL_FIRST = $casel_min->[0];
     $MAP_LAST   = $case_max->[0];
@@ -1716,7 +1721,6 @@ if ( $bsearch || $bsearch_both ) {
       : $casel_max->[1] - $casel_max->[0];
 }
 if ($bsearch_both) {
-    $bsearch = 1;    # --bsearch-both implies --bsearch
       # Sort casemaps raw data by target (upper + lower) for upper binary search
     my @case_by_target =
       sort { ( $a->[0] + $a->[1] ) <=> ( $b->[0] + $b->[1] ) } @CASE_RAW;
@@ -1924,36 +1928,6 @@ if ($if_tree) {
 }
 print FH "\n";
 
-printf FH "uint32_t %s(uint32_t wc, int lower) {
-", $fn;
-if ($if_tree) {
-    print FH <<'EOF';
-    int i;
-EOF
-}
-elsif ($bsearch) {
-    print FH <<'EOF';
-    int i;
-    int lo, hi;
-EOF
-}
-else {
-    print FH <<'EOF';
-    int i;
-    int lmul;  /* 1 for lower, -1 for upper */
-    int lmask; /* 0 for lower, -1/0xffff for upper */
-
-EOF
-}
-if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
-    print FH "    /* !iswalpha(wc) only works with musl. */\n";
-    print FH "    if (!iswalpha(wc)\n";
-}
-else {
-    # print larger exclusion ranges. iswalpha is useless with glibc
-    print FH "    if (";
-}
-
 # generate the excl ranges here, because it is more stable
 my %alpha;
 $alpha{$_}++ for keys %lower;
@@ -1990,24 +1964,68 @@ for my $i ( 1 .. $#excl ) {
 }
 warn scalar @new_excl . " exclusion entries\n" if $verbose;
 
-# sort ranges by size. GH #2
-printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
-  $excl[0]->[1]
-  unless $with_iswalpha;
+my $SZ_CASE        = scalar(@CASE);
+my $SZ_CASEL       = scalar(@CASEL);
+my $SZ_PAIR        = scalar(@PAIR);
+my $SZ_PAIRL       = scalar(@PAIRL);
+my $SZ_PAIR_UPPER  = scalar(@PAIR_UPPER);
+my $SZ_PAIRL_UPPER = scalar(@PAIRL_UPPER);
 
-# upper bound: everything above the last cased codepoint
-printf FH "        || wc > 0x%x                      /* >%u */\n", $last, $last;
-shift @new_excl;
-my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
-for my $e (@ex) {
-    my $s = sprintf( "        || wc - 0x%x <= 0x%x - 0x%x",
-        $e->[0], $e->[1], $e->[0] );
-    my $spc = 45 - length($s) > 0 ? " " x ( 45 - length($s) ) : " ";
-    printf FH "%s%s/* %u */\n", $s, $spc, $e->[1] - $e->[0] + 1;
+# calculated everything, now emit the parts
+# -----------------------------------------
+
+sub emit_func {
+    # function signature
+    printf FH "uint32_t %s(uint32_t wc, int lower) {\n", $fn;
+# used local vars prologue
+    if ($if_tree) {
+        ;
+    }
+    elsif ($bsearch) {
+        print FH "    int i;\n" unless $bsearch_both;
+        print FH "    int lo, hi;\n\n";
 }
-print FH "    )\n";
-print FH "        return wc;\n";
-print FH <<'EOF';
+    else {
+        print FH <<'EOF';
+    int i;
+    int lmul;  /* 1 for lower, -1 for upper */
+    int lmask; /* 0 for lower, -1/0xffff for upper */
+
+EOF
+    }
+}
+
+sub emit_excl {
+    if ($with_iswalpha) {    # if we have a working iswalpha (not with glibc)
+        print FH "    /* !iswalpha(wc) only works with musl. */\n";
+        print FH "    if (!iswalpha(wc)\n";
+    }
+    else {
+        # print larger exclusion ranges. iswalpha is useless with glibc
+        print FH "    if (";
+    }
+    # sort ranges by size. GH #2
+    printf FH "wc <= 0x%x                           /* %u */\n", $excl[0]->[1],
+        $excl[0]->[1]
+        unless $with_iswalpha;
+
+    # upper bound: everything above the last cased codepoint
+    printf FH "        || wc > 0x%x                      /* >%u */\n",
+        $last, $last;
+    shift @new_excl;
+    my @ex = sort { $b->[1] - $b->[0] <=> $a->[1] - $a->[0] } @new_excl;
+    for my $e (@ex) {
+        my $s = sprintf( "        || wc - 0x%x <= 0x%x - 0x%x",
+                         $e->[0], $e->[1], $e->[0] );
+        my $spc = 45 - length($s) > 0 ? " " x ( 45 - length($s) ) : " ";
+        printf FH "%s%s/* %u */\n", $s, $spc, $e->[1] - $e->[0] + 1;
+    }
+    print FH "    )\n";
+    print FH "        return wc;\n";
+}
+
+sub emit_locale_tr {
+    print FH <<'EOF';
 
 #ifdef HAVE_LOCALE_TR
     /* check for the 2 turkish mappings if we have a turkish locale. */
@@ -2031,13 +2049,12 @@ print FH <<'EOF';
 #endif
 
 EOF
+}
 
-my $SZ_CASE        = scalar(@CASE);
-my $SZ_CASEL       = scalar(@CASEL);
-my $SZ_PAIR        = scalar(@PAIR);
-my $SZ_PAIRL       = scalar(@PAIRL);
-my $SZ_PAIR_UPPER  = scalar(@PAIR_UPPER);
-my $SZ_PAIRL_UPPER = scalar(@PAIRL_UPPER);
+
+emit_func();
+emit_excl();
+emit_locale_tr();
 
 sub unroll_casel {
     my $opts = shift;
@@ -2147,8 +2164,28 @@ EOF
     } # for @CASEL
 }
 
+# this might be too short.
+sub unroll_pairl_lower {
+    my $s = "        /* unrolled pairl[$SZ_PAIRL] */\n";
+    for my $p (@PAIRL) {
+        my $p0 = sprintf("0x%x", $p->[0]);
+        my $p1 = sprintf("0x%x", $p->[1]);
+        $s .= "        if ($p0 == wc)\n            return $p1;\n";
+    }
+    return $s;
+}
+sub unroll_pairl_upper {
+    my $s = "        /* unrolled pairl[$SZ_PAIRL] */\n";
+    for my $p (@PAIRL) {
+        my $p0 = sprintf("0x%x", $p->[0]);
+        my $p1 = sprintf("0x%x", $p->[1]);
+        $s .= "        if ($p1 == wc)\n            return $p0;\n";
+    }
+    return $s;
+}
+
 my $pairl_search = "";
-if ($bsearch || $bsearch_both) {
+if ( $bsearch ) {
 
     # fast search lower pairl
     if ( $SZ_PAIRL == 1 ) {
@@ -2158,12 +2195,7 @@ if ($bsearch || $bsearch_both) {
 EOF
     }
     elsif ( $SZ_PAIRL > 1 && $SZ_PAIRL <= $UNROLL ) {
-        $pairl_search = "        /* unrolled pairl[$SZ_PAIRL] */\n";
-        for my $p (@PAIRL) {
-            my $p0 = sprintf("0x%x", $p->[0]);
-            my $p1 = sprintf("0x%x", $p->[1]);
-            $pairl_search .= "        if ($p0 == wc)\n            return $p1;\n";
-        }
+        $pairl_search = unroll_pairl_lower();
     }
     elsif ( $SZ_PAIRL > 1 ) {
         $pairl_search = <<"EOF";
@@ -2195,31 +2227,40 @@ EOF
         }
         my $tree = ternary_tree( 0, scalar @CASE_RAW - 1 );
         print FH <<'EOF';
-        /* search the casemaps ranges */
+        /* search the lower casemaps ranges */
 EOF
-        print FH "        c1 = "
-            . print_casemap_lower_ternary( $tree, \@CASE_RAW, 0, 0 )
+        my $s = "        c1 = "
+            . casemap_lower_ternary( $tree, \@CASE_RAW, 0, 0 )
             . ";\n";
+        $s =~ s/ $//mg;
+        $s =~ s/\n\n/\n/mg;
+        print FH $s;
         print FH "        if (c1 != wc) return c1;\n\n";
 
         if (@CASEL) {
             $tree = ternary_tree( 0, scalar @CASEL_RAW - 1 );
-            print FH "        c2 = "
-                . print_casemap_lower_ternary( $tree, \@CASEL_RAW, 0, 0 )
+            $s =  "        c2 = "
+                . casemap_lower_ternary( $tree, \@CASEL_RAW, 0, 0 )
                 . ";\n";
+            $s =~ s/ $//mg;
+            $s =~ s/\n\n/\n/mg;
+            print FH $s;
             print FH "        if (c2 != wc) return c2;\n\n";
         }
 
         $tree = ternary_tree( 0, scalar @PAIR - 1 );
-        print FH "        /* search the pairs */\n";
-        print FH "        p1 = "
-            . print_pairs_lower_ternary( $tree, \@PAIR, 0, 0 )
+        print FH "        /* search the lower pairs */\n";
+        $s = "        p1 = "
+            . pairs_lower_ternary( $tree, \@PAIR, 0, 0 )
             . ";\n";
+        $s =~ s/ $//mg;
+        $s =~ s/\n\n/\n/mg;
+        print FH $s;
         print FH "        if (p1 != wc) return p1;\n\n";
         if (@PAIRL) {
             $tree = ternary_tree( 0, scalar @PAIRL - 1 );
             print FH "        p2 = "
-                . print_pairs_lower_ternary( $tree, \@PAIRL, 0, 0 )
+                . pairs_lower_ternary( $tree, \@PAIRL, 0, 0 )
                 . ";\n        if (p2 != wc) return p2;\n";
         }
         print FH <<'EOF';
@@ -2237,31 +2278,43 @@ EOF
 EOF
         }
         $tree = ternary_tree( 0, scalar @CASE_UPPER - 1 );
-        print FH "        /* search the casemaps ranges */\n";
-        print FH "        c1 = "
-            . print_casemap_upper_ternary( $tree, \@CASE_UPPER, 0, 0 )
+        print FH "        /* search the upper casemaps ranges */\n";
+        $s = "        c1 = "
+            . casemap_upper_ternary( $tree, \@CASE_UPPER, 0, 0 )
             . ";\n";
+        $s =~ s/ $//mg;
+        $s =~ s/\n\n/\n/mg;
+        print FH $s;
         print FH "        if (c1 != wc) return c1;\n\n";
 
         if (@CASEL) {
             $tree = ternary_tree( 0, scalar @CASEL_RAW - 1 );
-            print FH "        c2 = "
-                . print_casemap_upper_ternary( $tree, \@CASEL_UPPER, 0, 0 )
+            $s = "        c2 = "
+                . casemap_upper_ternary( $tree, \@CASEL_UPPER, 0, 0 )
                 . ";\n";
+            $s =~ s/ $//mg;
+            $s =~ s/\n\n/\n/mg;
+            print FH $s;
             print FH "        if (c2 != wc) return c2;\n\n";
         }
 
         $tree = ternary_tree( 0, scalar @PAIR_UPPER - 1 );
-        print FH "        /* search the pairs */\n";
-        print FH "        p1 = "
-            . print_pairs_upper_ternary( $tree, \@PAIR_UPPER, 0, 0 )
+        print FH "        /* search the upper pairs */\n";
+        $s = "        p1 = "
+            . pairs_upper_ternary( $tree, \@PAIR_UPPER, 0, 0 )
             . ";\n";
+        $s =~ s/ $//mg;
+        $s =~ s/\n\n/\n/mg;
+        print FH $s;
         print FH "        if (p1 != wc) return p1;\n\n";
         if (@PAIRL_UPPER) {
             $tree = ternary_tree( 0, scalar @PAIRL_UPPER - 1 );
-            print FH "        p2 = "
-                . print_pairs_upper_ternary( $tree, \@PAIRL_UPPER, 0, 0 )
+            $s = "        p2 = "
+                . pairs_upper_ternary( $tree, \@PAIRL_UPPER, 0, 0 )
                 . ";\n        if (p2 != wc) return p2;\n";
+            $s =~ s/ $//mg;
+            $s =~ s/\n\n/\n/mg;
+            print FH $s;
         }
     } else {
 
@@ -2533,13 +2586,7 @@ EOF
 EOF
         }
         elsif ( $SZ_PAIRL > 1 && $SZ_PAIRL <= $UNROLL ) {
-            my $id = "        ";
-            $pairl_search = "${id}/* unrolled pairl[$SZ_PAIRL] */\n";
-            for my $p (@PAIRL) {
-                my $p0 = sprintf("0x%x", $p->[0]);
-                my $p1 = sprintf("0x%x", $p->[1]);
-                $pairl_search .= "${id}if ($p1 == wc)\n${id}    return $p0;\n";
-            }
+            $pairl_search = unroll_pairl_upper();
         }
         elsif ( $SZ_PAIRL > 1 ) {
 
@@ -2622,7 +2669,7 @@ EOF
 #undef CASEMAP
 #undef CASELACE
 EOF
-}
+} # FIXME really if-tree
 else {    # no bsearch
     my $low_decl =
       $use_bitfields
