@@ -33,6 +33,8 @@ t/t_bsearch
 t/t_bsearch_both
 t/t_if-tree
 t/t_if-tree.c
+t/t_if-tree_both
+t/t_if-tree_both.c
 t/t_unroll[1-5]
 t/c-if-tree-search_even
 t/c-if-tree-search_even.c

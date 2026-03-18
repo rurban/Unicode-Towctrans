@@ -24,6 +24,7 @@ t/c-asan.t
 t/c-bits.t
 t/c-bsearch-both.t
 t/c-bsearch.t
+t/c-if-tree-both.t
 t/c-if-tree-perl.t
 t/c-if-tree-range.t
 t/c-if-tree.t

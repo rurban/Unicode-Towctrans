@@ -1653,7 +1653,7 @@ for my $entry (@sorted_map) {
     }
 }
 
-if ($if_tree) {
+if ($if_tree and $bsearch_both) {
     print FH "#if 0\n";
 }
 print FH <<"EOF";
@@ -1720,7 +1720,7 @@ if ( $bsearch || $bsearch_both ) {
       ? map_len($casel_max)
       : $casel_max->[1] - $casel_max->[0];
 }
-if ($bsearch_both) {
+if ($bsearch_both or ($if_tree and $bsearch)) {
       # Sort casemaps raw data by target (upper + lower) for upper binary search
     my @case_by_target =
       sort { ( $a->[0] + $a->[1] ) <=> ( $b->[0] + $b->[1] ) } @CASE_RAW;
@@ -1923,7 +1923,7 @@ if ($bsearch_both || $if_tree) {
         print FH "};\n";
     }
 }
-if ($if_tree) {
+if ($if_tree and $bsearch_both) {
     print FH "#endif\n";
 }
 print FH "\n";
@@ -1978,13 +1978,13 @@ sub emit_func {
     # function signature
     printf FH "uint32_t %s(uint32_t wc, int lower) {\n", $fn;
 # used local vars prologue
-    if ($if_tree) {
+    if ($if_tree and $bsearch_both) {
         ;
     }
     elsif ($bsearch) {
         print FH "    int i;\n" unless $bsearch_both;
         print FH "    int lo, hi;\n\n";
-}
+    }
     else {
         print FH <<'EOF';
     int i;
@@ -2263,58 +2263,67 @@ EOF
                 . pairs_lower_ternary( $tree, \@PAIRL, 0, 0 )
                 . ";\n        if (p2 != wc) return p2;\n";
         }
-        print FH <<'EOF';
+
+        if ($bsearch_both) {
+            # if-tree upper also
+            print FH <<'EOF';
     } else { // upper
         uint32_t c1, p1;
 EOF
-        print FH "        uint32_t c2;\n" if @CASEL;
-        print FH "        uint32_t p2;\n" if @PAIRL_UPPER;
-        if ($case_has_digraph_lace) {
-            print FH <<'EOF';
+
+            print FH "        uint32_t c2;\n" if @CASEL;
+            print FH "        uint32_t p2;\n" if @PAIRL_UPPER;
+            if ($case_has_digraph_lace) {
+                print FH <<'EOF';
         /* Need this exception (wrong lace for titlecase digraphs).
            Tested from Unicode 4 to 18. We search pairs later. */
         if (wc == 0x1F3 || wc == 0x1CC || wc == 0x1C9 || wc == 0x1C6)
             return wc - 2;
 EOF
-        }
-        $tree = ternary_tree( 0, scalar @CASE_UPPER - 1 );
-        print FH "        /* search the upper casemaps ranges */\n";
-        $s = "        c1 = "
-            . casemap_upper_ternary( $tree, \@CASE_UPPER, 0, 0 )
-            . ";\n";
-        $s =~ s/ $//mg;
-        $s =~ s/\n\n/\n/mg;
-        print FH $s;
-        print FH "        if (c1 != wc) return c1;\n\n";
-
-        if (@CASEL) {
-            $tree = ternary_tree( 0, scalar @CASEL_RAW - 1 );
-            $s = "        c2 = "
-                . casemap_upper_ternary( $tree, \@CASEL_UPPER, 0, 0 )
+            }
+            $tree = ternary_tree( 0, scalar @CASE_UPPER - 1 );
+            print FH "        /* search the upper casemaps ranges */\n";
+            $s = "        c1 = "
+                . casemap_upper_ternary( $tree, \@CASE_UPPER, 0, 0 )
                 . ";\n";
             $s =~ s/ $//mg;
             $s =~ s/\n\n/\n/mg;
             print FH $s;
-            print FH "        if (c2 != wc) return c2;\n\n";
-        }
+            print FH "        if (c1 != wc) return c1;\n\n";
 
-        $tree = ternary_tree( 0, scalar @PAIR_UPPER - 1 );
-        print FH "        /* search the upper pairs */\n";
-        $s = "        p1 = "
-            . pairs_upper_ternary( $tree, \@PAIR_UPPER, 0, 0 )
-            . ";\n";
-        $s =~ s/ $//mg;
-        $s =~ s/\n\n/\n/mg;
-        print FH $s;
-        print FH "        if (p1 != wc) return p1;\n\n";
-        if (@PAIRL_UPPER) {
-            $tree = ternary_tree( 0, scalar @PAIRL_UPPER - 1 );
-            $s = "        p2 = "
-                . pairs_upper_ternary( $tree, \@PAIRL_UPPER, 0, 0 )
-                . ";\n        if (p2 != wc) return p2;\n";
+            if (@CASEL) {
+                $tree = ternary_tree( 0, scalar @CASEL_RAW - 1 );
+                $s = "        c2 = "
+                    . casemap_upper_ternary( $tree, \@CASEL_UPPER, 0, 0 )
+                    . ";\n";
+                $s =~ s/ $//mg;
+                $s =~ s/\n\n/\n/mg;
+                print FH $s;
+                print FH "        if (c2 != wc) return c2;\n\n";
+            }
+
+            $tree = ternary_tree( 0, scalar @PAIR_UPPER - 1 );
+            print FH "        /* search the upper pairs */\n";
+            $s = "        p1 = "
+                . pairs_upper_ternary( $tree, \@PAIR_UPPER, 0, 0 )
+                . ";\n";
             $s =~ s/ $//mg;
             $s =~ s/\n\n/\n/mg;
             print FH $s;
+            print FH "        if (p1 != wc) return p1;\n\n";
+            if (@PAIRL_UPPER) {
+                $tree = ternary_tree( 0, scalar @PAIRL_UPPER - 1 );
+                $s = "        p2 = "
+                    . pairs_upper_ternary( $tree, \@PAIRL_UPPER, 0, 0 )
+                    . ";\n        if (p2 != wc) return p2;\n";
+                $s =~ s/ $//mg;
+                $s =~ s/\n\n/\n/mg;
+                print FH $s;
+            }
+        } else { # bsearch upper
+        print FH <<'EOF';
+    } else { // upper bsearch
+EOF
         }
     } else {
 
@@ -2411,7 +2420,7 @@ $pairl_search
     } else {
 EOF
     }
-    if ($bsearch_both && !$if_tree) {
+    if (($bsearch_both && !$if_tree) or (!$bsearch_both && $if_tree)) {
         my $low_decl = $use_bitfields ? "        const int low = cm->sign ? -(cm->lower) : cm->lower;" : "";
         my $CASELOW = $use_bitfields ? "low" : "cm->lower";
 
@@ -2885,6 +2894,8 @@ Unicode::Towctrans - Generate small case mapping tables
     gen_wctrans --lower16
     gen_wctrans --bsearch
     gen_wctrans --bsearch-both
+    gen_wctrans --if-tree --bsearch
+    gen_wctrans --if-tree --bsearch-both
     gen_wctrans --table
 
 =head1 DESCRIPTION
@@ -2919,6 +2930,15 @@ With C<--table>, the musl-new style, the size is much bigger, as we
 have to store mappings for all blocks. The lookup is much faster
 though.
 
+With C<--if-tree> and C<--bsearch> the tolower check is done with an
+inlined binary search as ternary tree, the toupper check does a binary
+search.
+
+With C<--if-tree> and C<--bsearch-both> both lower and upper checks
+are done with an inlined binary search as ternary tree. It trades data
+for more code. It is the fastest of the non-table variants, but also
+the biggest.
+
 More tuning options are C<--min-excl> and C<--unroll>. C<--min-excl>
 gives a threshold for the size for the very first exclusion checks.
 The range must be larger than the given threshold. Default is 2500.
@@ -2929,7 +2949,8 @@ C<v> set the UnicodeData version to use or download.
 C<-n> sets the method the default UnicodeData version to the UCD version
 from perl (which is usually older than the version from
 https://www.unicode.org/versions/latest/).
-C--ud> set the name of the used F<UnicodeData.txt> file. Default: F<UnicodeData.txt>.
+C--ud> set the name of the used F<UnicodeData.txt> file.
+Default: F<UnicodeData.txt>.
 C--out> sets the output filename, default: towctrans.h
 
 Planned also for the multi-byte folding tables for C<wcsfc_s()> for
@@ -2940,9 +2961,9 @@ as safeclib C<wcsfc_s>, ICU C<u_strToUpper> or libunistring C<uc_toupper>.
 
 =head1 PERFORMANCE
 
-Currently it is still a bit un-optimized, but small and fast enough
-compared to the other implementations. And esp. correct compared to glibc,
-which ignores characters from other locales.
+Currently it is small and fast enough compared to the other
+implementations. And esp. correct compared to glibc, which ignores
+characters from other locales.
 
 The bench uses Unicode 10.0 data (C<-v 10>) so that our tables match
 the Unicode version compiled into musl-old.  Benchmark errors fall
@@ -2976,18 +2997,19 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        967 [us]  100.00 %
-           my_excl:        864 [us]  111.92 %
-          my_low16:        813 [us]  118.94 %
-           my_bits:        793 [us]  121.94 %
-        my_bsearch:        581 [us]  166.44 %
-       my_bsearchb:        805 [us]  120.12 %
-         my_unroll:        721 [us]  134.12 %
-         my_iftree:        503 [us]  192.25 %	86 errors
-          my_table:        168 [us]  575.60 %
-          musl-new:        179 [us]  540.22 %	9 errors
-          musl-old:       1231 [us]   78.55 %	3 errors
-             glibc:        126 [us]  767.46 %	14 errors
+                my:        571 [us]  100.00 %
+           my_excl:        534 [us]  106.93 %
+          my_low16:        592 [us]   96.45 %
+           my_bits:        597 [us]   95.64 %
+        my_bsearch:        514 [us]  111.09 %
+       my_bsearchb:        440 [us]  129.77 %
+         my_unroll:        463 [us]  123.33 %
+         my_iftree:        413 [us]  138.26 %	42 errors
+        my_iftreeb:        389 [us]  146.79 %	86 errors
+          my_table:        113 [us]  505.31 %
+          musl-new:        123 [us]  464.23 %	9 errors
+          musl-old:        793 [us]   72.01 %	3 errors
+             glibc:         87 [us]  656.32 %	14 errors
 
     wc -c towctrans-*.o
       3336 towctrans-my.o
@@ -2997,7 +3019,8 @@ non-latin locales entirely.
       3704 towctrans-mybsearch.o
       4496 towctrans-mybsearch-both.o
       3808 towctrans-myunroll.o
-     11000 towctrans-myiftree.o
+      8264 towctrans-myiftree.o
+     11008 towctrans-myiftree-both.o
       6784 towctrans-mytable.o
       6808 towctrans-musl-new.o
       3416 towctrans-musl-old.o

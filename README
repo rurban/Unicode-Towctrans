@@ -16,6 +16,8 @@ SYNOPSIS
         gen_wctrans --lower16
         gen_wctrans --bsearch
         gen_wctrans --bsearch-both
+        gen_wctrans --if-tree --bsearch
+        gen_wctrans --if-tree --bsearch-both
         gen_wctrans --table
 
 DESCRIPTION
@@ -48,6 +50,15 @@ DESCRIPTION
     With "--table", the musl-new style, the size is much bigger, as we have
     to store mappings for all blocks. The lookup is much faster though.
 
+    With "--if-tree" and "--bsearch" the tolower check is done with an
+    inlined binary search as ternary tree, the toupper check does a binary
+    search.
+
+    With "--if-tree" and "--bsearch-both" both lower and upper checks are
+    done with an inlined binary search as ternary tree. It trades data for
+    more code. It is the fastest of the non-table variants, but also the
+    biggest.
+
     More tuning options are "--min-excl" and "--unroll". "--min-excl" gives
     a threshold for the size for the very first exclusion checks. The range
     must be larger than the given threshold. Default is 2500. "--unroll"
@@ -68,9 +79,9 @@ DESCRIPTION
     "wcsfc_s", ICU "u_strToUpper" or libunistring "uc_toupper".
 
 PERFORMANCE
-    Currently it is still a bit un-optimized, but small and fast enough
-    compared to the other implementations. And esp. correct compared to
-    glibc, which ignores characters from other locales.
+    Currently it is small and fast enough compared to the other
+    implementations. And esp. correct compared to glibc, which ignores
+    characters from other locales.
 
     The bench uses Unicode 10.0 data ("-v 10") so that our tables match the
     Unicode version compiled into musl-old. Benchmark errors fall into three
@@ -96,18 +107,19 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        967 [us]  100.00 %
-               my_excl:        864 [us]  111.92 %
-              my_low16:        813 [us]  118.94 %
-               my_bits:        793 [us]  121.94 %
-            my_bsearch:        581 [us]  166.44 %
-           my_bsearchb:        805 [us]  120.12 %
-             my_unroll:        721 [us]  134.12 %
-             my_iftree:        503 [us]  192.25 %   86 errors
-              my_table:        168 [us]  575.60 %
-              musl-new:        179 [us]  540.22 %   9 errors
-              musl-old:       1231 [us]   78.55 %   3 errors
-                 glibc:        126 [us]  767.46 %   14 errors
+                    my:        571 [us]  100.00 %
+               my_excl:        534 [us]  106.93 %
+              my_low16:        592 [us]   96.45 %
+               my_bits:        597 [us]   95.64 %
+            my_bsearch:        514 [us]  111.09 %
+           my_bsearchb:        440 [us]  129.77 %
+             my_unroll:        463 [us]  123.33 %
+             my_iftree:        413 [us]  138.26 %   42 errors
+            my_iftreeb:        389 [us]  146.79 %   86 errors
+              my_table:        113 [us]  505.31 %
+              musl-new:        123 [us]  464.23 %   9 errors
+              musl-old:        793 [us]   72.01 %   3 errors
+                 glibc:         87 [us]  656.32 %   14 errors
 
         wc -c towctrans-*.o
           3336 towctrans-my.o
@@ -117,7 +129,8 @@ PERFORMANCE
           3704 towctrans-mybsearch.o
           4496 towctrans-mybsearch-both.o
           3808 towctrans-myunroll.o
-         11000 towctrans-myiftree.o
+          8264 towctrans-myiftree.o
+         11008 towctrans-myiftree-both.o
           6784 towctrans-mytable.o
           6808 towctrans-musl-new.o
           3416 towctrans-musl-old.o
