@@ -994,6 +994,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 EOF
 
+if ( $safec ) {
+    print FH <<'EOF'
+#ifdef FOR_DOXYGEN
+#include "safe_str_lib.h"
+#else
+#include "safeclib_private.h"
+#endif
+EOF
+}
+
 if ($table) {
 
     # --table: generate musl-new style two-level base-6 tables
@@ -1500,7 +1510,7 @@ EOF
     elsif ($safec) {
         print FH <<"EOF";
 
-EXPORT uint32_t _towupper(uint32_t wc) {
+static uint32_t _towupper(uint32_t wc) {
     return wc < 128 ? (uint32_t)toupper(wc) : (uint32_t)$fn(wc, 1);
 }
 #ifndef HAVE_TOWUPPER
