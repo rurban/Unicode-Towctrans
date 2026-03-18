@@ -76,31 +76,31 @@ test-glibc: test-glibc.c towctrans-glibc.o
 test: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-low16.h: ../$(GEN)
-	../$(GEN) --lower16 --fn=_towcase_low16 -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --lower16 --fn=_towcase_low16 --out $@
 test-low16: test.c ../towctrans-low16.h
 	$(CC) $(CFLAGS) -DLOW16 -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bits.h: ../$(GEN)
-	../$(GEN) --bits 16:10:6 --fn=_towcase_bits -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --bits 16:10:6 --fn=_towcase_bits --out $@
 test-bits: test.c ../towctrans-bits.h
 	$(CC) $(CFLAGS) -DBITS -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bsearch.h: ../$(GEN)
-	../$(GEN) --bsearch --fn=_towcase_bsearch -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --bsearch --fn=_towcase_bsearch --out $@
 test-bsearch: test.c ../towctrans-bsearch.h
 	$(CC) $(CFLAGS) -DBSEARCH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bsearch-both.h: ../$(GEN)
-	../$(GEN) --bsearch-both --fn=_towcase_bsearchb -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --bsearch-both --fn=_towcase_bsearchb --out $@
 test-bsearch-both: test.c ../towctrans-bsearch-both.h
 	$(CC) $(CFLAGS) -DBSEARCH_BOTH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-if-tree.h: ../$(GEN)
-	../$(GEN) --bsearch --if-tree --fn=_towcase_iftree -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --bsearch --if-tree --fn=_towcase_iftree --out $@
 test-iftree: test.c ../towctrans-if-tree.h
 	$(CC) $(CFLAGS) -DIF_TREE -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-if-tree-both.h: ../$(GEN)
-	../$(GEN) --bsearch-both --if-tree --fn=_towcase_iftreeb -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --bsearch-both --if-tree --fn=_towcase_iftreeb --out $@
 test-iftree-both: test.c ../towctrans-if-tree-both.h
 	$(CC) $(CFLAGS) -DIF_TREE_BOTH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-table.h: ../$(GEN)
-	../$(GEN) --table --fn=_towcase_table -v 10 --out $@ --ud ../UnicodeData.txt.10
+	../$(GEN) --table --fn=_towcase_table --out $@
 test-table: test.c ../towctrans-table.h
 	$(CC) $(CFLAGS) -DTABLE -UHAVE_LOCALE_TR -o $@ test.c
 
