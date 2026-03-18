@@ -149,6 +149,7 @@ update-bench:
 examples:
 	make -C examples
 release-test : test examples dist
+	echo "release-test for $(VERSION)"
 	if test "$(shell git rev-parse --abbrev-ref HEAD)" != "master" || \
 	  test "$(shell git diff --raw)" != "" || \
 	  test "$(shell git diff --cached --raw)" != "" ; then \

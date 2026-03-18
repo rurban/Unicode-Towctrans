@@ -42,7 +42,7 @@ BEGIN {
     }
 }
 our $PACKAGE = 'Unicode::Towctrans';
-$Unicode::Towctrans::VERSION = '0.04';
+$Unicode::Towctrans::VERSION = '0.05';
 
 use Getopt::Long;
 my (
@@ -1992,7 +1992,12 @@ sub emit_func {
         ;
     }
     elsif ($bsearch) {
-        print FH "    int i;\n" unless $bsearch_both;
+        # not needed with if-tree bsearch, and neither for $bsearch_both
+        if (($if_tree && !$bsearch_both) or (!$if_tree && $bsearch_both)) {
+            ;
+        } else {
+            print FH "    int i;\n";
+        }
         print FH "    int lo, hi;\n\n";
     }
     else {
@@ -3007,34 +3012,34 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        571 [us]  100.00 %
-           my_excl:        534 [us]  106.93 %
-          my_low16:        592 [us]   96.45 %
-           my_bits:        597 [us]   95.64 %
-        my_bsearch:        514 [us]  111.09 %
-       my_bsearchb:        440 [us]  129.77 %
-         my_unroll:        463 [us]  123.33 %
-         my_iftree:        413 [us]  138.26 %	42 errors
-        my_iftreeb:        389 [us]  146.79 %	86 errors
-          my_table:        113 [us]  505.31 %
-          musl-new:        123 [us]  464.23 %	9 errors
-          musl-old:        793 [us]   72.01 %	3 errors
-             glibc:         87 [us]  656.32 %	14 errors
+                my:        592 [us]  100.00 %
+           my_excl:        451 [us]  131.26 %
+          my_low16:        636 [us]   93.08 %
+           my_bits:        569 [us]  104.04 %
+        my_bsearch:        408 [us]  145.10 %
+       my_bsearchb:        464 [us]  127.59 %
+         my_unroll:        418 [us]  141.63 %
+         my_iftree:        361 [us]  163.99 %	42 errors
+        my_iftreeb:        351 [us]  168.66 %	86 errors
+          my_table:         99 [us]  597.98 %
+          musl-new:        100 [us]  592.00 %	9 errors
+          musl-old:        868 [us]   68.20 %	3 errors
+             glibc:         98 [us]  604.08 %	15 errors
 
     wc -c towctrans-*.o
-      3336 towctrans-my.o
-      3384 towctrans-myexcl.o
-      3424 towctrans-mylow16.o
-      3648 towctrans-mybits.o
-      3704 towctrans-mybsearch.o
-      4496 towctrans-mybsearch-both.o
-      3808 towctrans-myunroll.o
-      8264 towctrans-myiftree.o
-     11008 towctrans-myiftree-both.o
-      6784 towctrans-mytable.o
-      6808 towctrans-musl-new.o
-      3416 towctrans-musl-old.o
-     97432 towctrans-glibc.o
+      3528 towctrans-my.o
+      3608 towctrans-myexcl.o
+      3632 towctrans-mylow16.o
+      3920 towctrans-mybits.o
+      3968 towctrans-mybsearch.o
+      4864 towctrans-mybsearch-both.o
+      3944 towctrans-myunroll.o
+      8296 towctrans-myiftree.o
+     10824 towctrans-myiftree-both.o
+      6816 towctrans-mytable.o
+      6848 towctrans-musl-new.o
+      3464 towctrans-musl-old.o
+     97440 towctrans-glibc.o
 
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.
@@ -3072,7 +3077,7 @@ the best being twice as fast as the default.
 
 =head1 INSTALLATION
 
-Perl 5.12 or later is required.
+Perl 5.12 or later is required. Also the LWP::UserAgent cpan module.
 
 This module does not need to be installed. Running gen_wctrans is enough.
 However for full testing and global installation run this:
@@ -3082,6 +3087,12 @@ However for full testing and global installation run this:
    make test
    make test-all
    sudo make install
+
+or
+
+   sudo apt install wget / sudo dnf install wget / ...
+   sudo cp bin/gen_wctrans /usr/local/bin/
+   cpan LWP::UserAgent / sudo apt install libwww-perl / ...
 
 =head1 DEPENDENCIES
 

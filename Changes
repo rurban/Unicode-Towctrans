@@ -1,5 +1,23 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.05	2026-03-18
+
+Finished optimizations, cannot think of any more.
+
+    - add --if-tree code generator mode (for --bsearch and
+      --bsearch-both), with dedicated tests. Fast, but big.
+    - add --unroll tunable for generated loops and optimize linear PAIRL
+      handling for unrolled code paths. Default to 5.
+    - fix --bsearch-both generation with custom --bits layouts.
+    - resolve latest Unicode version from the net. requires now LWP::UserAgent.
+    - add -n/--no-network mode to resolve Unicode version from perl UCD
+      without network access.
+    - avoid duplicate UnicodeData.txt downloads in generator workflow.
+    - update examples/test to use the current generated version.
+    - improve test and CI coverage: move extra tests to xt/, add xtest,
+      add examples and pre-commit checks in CI, and harden c-asan test.
+    - tested ok with safeclib.
+
 0.04	2026-03-04
     - replace CaseFolding.txt (--cf) with UnicodeData.txt (--ud) for
       correct case mappings. CaseFolding.txt provides case folding
@@ -34,5 +52,6 @@ Revision history for the Perl package Unicode::Towctrans.
       if there's a chance the user will be on a turkish or azeri locale
       for the turkish i rule.
     - added pre-commit checks
+
 0.01	2026-02-17
     - first version; created from scratch
