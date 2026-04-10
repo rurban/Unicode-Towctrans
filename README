@@ -107,34 +107,34 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        592 [us]  100.00 %
-               my_excl:        451 [us]  131.26 %
-              my_low16:        636 [us]   93.08 %
-               my_bits:        569 [us]  104.04 %
-            my_bsearch:        408 [us]  145.10 %
-           my_bsearchb:        464 [us]  127.59 %
-             my_unroll:        418 [us]  141.63 %
-             my_iftree:        361 [us]  163.99 %   42 errors
-            my_iftreeb:        351 [us]  168.66 %   86 errors
-              my_table:         99 [us]  597.98 %
-              musl-new:        100 [us]  592.00 %   9 errors
-              musl-old:        868 [us]   68.20 %   3 errors
-                 glibc:         98 [us]  604.08 %   15 errors
+                    my:        765 [us]  100,00 %
+               my_excl:        578 [us]  132,35 %
+              my_low16:        875 [us]   87,43 %
+               my_bits:        966 [us]   79,19 %
+            my_bsearch:        564 [us]  135,64 %
+           my_bsearchb:        441 [us]  173,47 %
+             my_unroll:        490 [us]  156,12 %
+             my_iftree:        448 [us]  170,76 %   42 errors
+            my_iftreeb:        509 [us]  150,29 %   86 errors
+              my_table:        132 [us]  579,55 %
+              musl-new:        118 [us]  648,31 %   9 errors
+              musl-old:        856 [us]   89,37 %   3 errors
+                 glibc:        103 [us]  742,72 %   14 errors
 
         wc -c towctrans-*.o
-          3528 towctrans-my.o
-          3608 towctrans-myexcl.o
-          3632 towctrans-mylow16.o
-          3920 towctrans-mybits.o
-          3968 towctrans-mybsearch.o
-          4864 towctrans-mybsearch-both.o
-          3944 towctrans-myunroll.o
-          8296 towctrans-myiftree.o
-         10824 towctrans-myiftree-both.o
-          6816 towctrans-mytable.o
-          6848 towctrans-musl-new.o
-          3464 towctrans-musl-old.o
-         97440 towctrans-glibc.o
+          3336 towctrans-my.o
+          3384 towctrans-myexcl.o
+          3424 towctrans-mylow16.o
+          3648 towctrans-mybits.o
+          3704 towctrans-mybsearch.o
+          4496 towctrans-mybsearch-both.o
+          3808 towctrans-myunroll.o
+          8264 towctrans-myiftree.o
+         11008 towctrans-myiftree-both.o
+          6784 towctrans-mytable.o
+          6808 towctrans-musl-new.o
+          3416 towctrans-musl-old.o
+         97432 towctrans-glibc.o
 
     Results with more various "--bits" size combinations. They need just
     some logical fixups for the 5 errors.

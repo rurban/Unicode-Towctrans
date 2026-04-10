@@ -49,30 +49,32 @@ towctrans-table.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10
 
 towctrans-my.o: towctrans-my.c towctrans-10.h
-	$(CC) -c $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-myexcl.o: towctrans-my.c towctrans-excl.h
-	$(CC) -c -DEXCL $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DEXCL $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-mylow16.o: towctrans-my.c towctrans-low16.h
-	$(CC) -c -DLOW16 $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DLOW16 $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-mybits.o: towctrans-my.c towctrans-bits.h
-	$(CC) -c -DBITS $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DBITS $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-mybsearch.o: towctrans-my.c towctrans-bsearch.h
-	$(CC) -c -DBSEARCH $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DBSEARCH $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-mybsearch-both.o: towctrans-my.c towctrans-bsearch-both.h
-	$(CC) -c -DBSEARCH_BOTH $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DBSEARCH_BOTH $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-myunroll.o: towctrans-my.c towctrans-unroll.h
-	$(CC) -c -DUNROLL $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DUNROLL $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-myiftree.o: towctrans-my.c towctrans-if-tree.h
-	$(CC) -c -DIF_TREE $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DIF_TREE $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-myiftree-both.o: towctrans-my.c towctrans-if-tree-both.h
-	$(CC) -c -DIF_TREE_BOTH $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DIF_TREE_BOTH $(CFLAGS_BENCH) towctrans-my.c -o $@
 towctrans-mytable.o: towctrans-my.c towctrans-table.h
-	$(CC) -c -DTABLE $(CFLAGS_BENCH) $< -o $@
+	$(CC) -c -DTABLE $(CFLAGS_BENCH) towctrans-my.c -o $@
 
 test-iswalpha: test-iswalpha.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-glibc: test-glibc.c towctrans-glibc.o
 	$(CC) $(CFLAGS) -I. -o $@ $^
+../towctrans.h: ../$(GEN)
+	../$(GEN) --out $@
 test: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-low16.h: ../$(GEN)
@@ -130,8 +132,8 @@ test-17: test.c towctrans-17.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
 test-18: test.c towctrans-18.c
 	$(CC) $(CFLAGS) -I. -o $@ $^
-test-asan: test.c towctrans-18.c
-	$(CC) $(CFLAGS) -DASAN -fsanitize=address,undefined -I. -o $@ $^
+test-asan: test.c ../towctrans.h
+	$(CC) $(CFLAGS) -DUSE_GLOBAL -DASAN -fsanitize=address,undefined -I. -o $@ test.c
 towctrans-5.c: ../$(GEN)
 	cd .. && $(GEN) -v 7 --out examples/towctrans-5.c --ud UnicodeData.txt.5
 towctrans-6.c: ../$(GEN)

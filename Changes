@@ -1,5 +1,10 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.06	2026-04-10
+
+    - Makefile GNUisms: BSD fixes for make bench
+    - fix C99 isms, no loop init vars in bench.c
+
 0.05	2026-03-18
 
 Finished optimizations, cannot think of any more.

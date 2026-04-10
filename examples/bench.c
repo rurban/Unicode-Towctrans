@@ -44,15 +44,15 @@ static inline long TEST_TIME(void) { return GetTickCount(); }
 #endif
 
 int main(void) {
-    int i;
+    int i, j;
     wint_t *ws, *lw, *up;
-    setlocale(LC_ALL, "");
     wint_t *ps;
     long t0, t1;
     int errs = 0, perf_errs = 0;
     long t, t_my = 0, t_my_table;
     double perc;
 
+    setlocale(LC_ALL, "");
     srandom(0U);
     /* prep */
     ws = malloc(SIZE * sizeof(wint_t));
@@ -73,7 +73,7 @@ int main(void) {
 #define BENCH(name, fn)                                                        \
     t0 = TEST_TIME();                                                          \
     errs = 0;                                                                  \
-    for (int j = 0; j < RETRIES; j++) {                                        \
+    for (j = 0; j < RETRIES; j++) {                                            \
         for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
             wint_t n = JOIN(fn, _towlower)(wc);                                \
@@ -81,7 +81,7 @@ int main(void) {
                 errs++;                                                        \
         }                                                                      \
     }                                                                          \
-    for (int j = 0; j < RETRIES; j++) {                                        \
+    for (j = 0; j < RETRIES; j++) {                                            \
         for (i = 0; i < SIZE; i++) {                                           \
             wint_t wc = ws[i];                                                 \
             wint_t n = JOIN(fn, _towupper)(wc);                                \
