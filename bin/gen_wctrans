@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 #
-# This script creates a towctrans.h header (or C source) file, musl old-style,
+# This script creates a "towctrans.h" header (or C source) file, musl old-style,
 # for simple case mapping as implemented in towlower() and towupper().
 # Used for building musl and safeclib for fast and small upper/lowercasing
 # tables for towlower() and towupper() and its secure variants
-# towupper_s() and towlower_s(). Planned also for the multi-byte
-# folding tables for towfc().
+# towupper_s() and towlower_s().
+# It also creates multi-byte folding tables for iswfc() and towfc().
 #
 # The generated code is licensed under the MIT.
 #
@@ -17,7 +17,7 @@
 #
 # Output files:
 #    towctrans.h or towctrans.c
-#    towfc.h (later)
+#    towfc.h
 
 use 5.012;
 use strict;
@@ -52,7 +52,9 @@ my (
 );
 my $ud            = "UnicodeData.txt";
 my $out           = "towctrans.h";
+my $fc            = "towfc.h";
 my $fn            = "_towcase";
+my $fcfn          = "_towfc"; # just the prefix
 my $with_iswalpha = 0;
 my $cmdline_args  = join( " ", @ARGV );
 $cmdline_args = " $cmdline_args" if $cmdline_args;
@@ -61,6 +63,7 @@ GetOptions(
     "v=i"           => \$v,                # numeric
     "ud=s"          => \$ud,               # string (UnicodeData.txt)
     "out|o=s"       => \$out,              # string
+    "fc=s"          => \$fc,               # string
     "with-iswalpha" => \$with_iswalpha,    # flag
     "min-excl=i"    => \$MIN_ECXL,         # numeric
     "unroll=i"      => \$UNROLL,           # numeric
@@ -71,6 +74,7 @@ GetOptions(
     "if-tree"       => \$if_tree,          # flag
     "table"         => \$table,            # flag
     "fn=s"          => \$fn,               # string
+    "fcfn=s"        => \$fcfn,             # string
     "musl"          => \$musl,             # flag
     "safec"         => \$safec,            # flag
     "n"             => \$no_network,       # flag
@@ -85,7 +89,8 @@ OPTIONS
 -v NUM                for Unicode major version number
 --ud UnicodeData.txt  input filename. default: UnicodeData.txt
                       Downloaded if not found.
---out filename        default: towctrans.h
+--out filename        Single-byte wctrans header. default: towctrans.h
+--fc filename         Multi-byte folding case header. default: towfc.h
 --with-iswalpha       if you can trust iswalpha. not with glibc, only musl.
 --min-excl NUM        exclude ranges lower than NUM (default: 2500)
 --lower16             use 16bit shorts for casemap.lower instead of 8.
@@ -95,9 +100,10 @@ OPTIONS
 --bsearch-both        binary search the towupper tables also (bigger)
 --if-tree             emit static binary search trees as nested ternary operators
 --table               use the musl-new style two-level base-6 tables (bigger)
---fn name             function name (default: _towcase)
+--fn name             wctrans function name (default: _towcase)
+--fcfn name           towfc function names prefix (default: _towfc)
 --musl                create towctrans.c for musl. with iswalpha and LOCALE_TR
---safec               create towctrans.c for safeclib, with LOCALE_TR
+--safec               create towctrans.c and towfc.h for safeclib, with LOCALE_TR
 -n                    no network access
 --verbose
 --help
@@ -2900,9 +2906,10 @@ Unicode::Towctrans - Generate small case mapping tables
     gen_wctrans --musl
     gen_wctrans -n     # no network for default -v
     gen_wctrans -v 10
-    gen_wctrans -v 10 --ud UnicodeData.txt.10 --out towctrans-10.h
-    gen_wctrans --lower16
+    gen_wctrans -v 18 --ud UnicodeData.txt.18 --out towctrans-18.h
+    gen_wctrans --out towctrans.h --fc towfc.h --fn towcase --fcfn _towfc
     gen_wctrans --fn __towcase
+    gen_wctrans --lower16
     gen_wctrans --min-excl 10000
     gen_wctrans --unroll 6
     gen_wctrans --bits 18:14:10
@@ -2919,6 +2926,14 @@ F<gen_wctrans> generates a F<towctrans.h> header file, which is used by C<musl>
 and C<safeclib> to generate small and efficient case mapping tables, to
 build the libc C<towupper()> and C<towlower()> functions and its secure
 variants C<towupper_s()> and C<towlower_s()>.
+
+It also creates a second header F<towcf.h> with the multi-byte full
+folding cases unprocessable by C<_towcase>, ie.
+C<towupper()>/C<towlower()>. It creates C<iswfc()>, checking an
+uppercase character for a mapping to foldcase, returning the number of
+new wide character codepoints needed, 0-3. And C<towfc()> to foldcase
+a character into a multi-byte destination buffer.
+Use C<--fc /dev/null> to skip this step.
 
 If the code may run on a system with the turkish or azeri locale, you
 need to define C<-DHAVE_LOCALE_TR> to check for the special turkish i
@@ -2968,11 +2983,12 @@ C--ud> set the name of the used F<UnicodeData.txt> file.
 Default: F<UnicodeData.txt>.
 C--out> sets the output filename, default: towctrans.h
 
-Planned also for the multi-byte folding tables for C<wcsfc_s()> for
-safeclib. As the single-byte C<towupper> and C<towlower> conversions
-are meaningless for many multi-byte unicode mappings, those with
-status B<F> - full folding. Use a full string foldcasing function instead,
-as safeclib C<wcsfc_s>, ICU C<u_strToUpper> or libunistring C<uc_toupper>.
+Now with the F<towfc.h> header to handle multi-byte folding tables, for
+C<wcsfc_s()> for safeclib. As the single-byte C<towupper> and
+C<towlower> conversions are meaningless for many multi-byte unicode
+mappings, those with status B<F> - full folding. Use a full string
+foldcasing function instead, as safeclib C<wcsfc_s>, ICU
+C<u_strToUpper> or libunistring C<uc_toupper>.
 
 =head1 PERFORMANCE
 
@@ -3012,19 +3028,19 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        738 [us]  100,00 %
-           my_excl:        818 [us]   90,22 %
-          my_low16:        733 [us]  100,68 %
-           my_bits:        681 [us]  108,37 %
-        my_bsearch:        576 [us]  128,12 %
-       my_bsearchb:        575 [us]  128,35 %
-         my_unroll:        554 [us]  133,21 %
-         my_iftree:        479 [us]  154,07 %	42 errors
-        my_iftreeb:        489 [us]  150,92 %	86 errors
-          my_table:        131 [us]  563,36 %
-          musl-new:        149 [us]  495,30 %	9 errors
-          musl-old:        970 [us]   76,08 %	3 errors
-             glibc:        135 [us]  546,67 %	14 errors
+                my:        765 [us]  100,00 %
+           my_excl:        578 [us]  132,35 %
+          my_low16:        875 [us]   87,43 %
+           my_bits:        966 [us]   79,19 %
+        my_bsearch:        564 [us]  135,64 %
+       my_bsearchb:        441 [us]  173,47 %
+         my_unroll:        490 [us]  156,12 %
+         my_iftree:        448 [us]  170,76 %	42 errors
+        my_iftreeb:        509 [us]  150,29 %	86 errors
+          my_table:        132 [us]  579,55 %
+          musl-new:        118 [us]  648,31 %	9 errors
+          musl-old:        856 [us]   89,37 %	3 errors
+             glibc:        103 [us]  742,72 %	14 errors
 
     wc -c towctrans-*.o
       3336 towctrans-my.o
@@ -3123,6 +3139,10 @@ The generated files are MIT licensed. See the generated files headers.
 =item L<https://git.musl-libc.org/cgit/musl/tree/src/ctype/towctrans.c?id=e8aba58ab19a18f83d7f78e80d5e4f51e7e4e8a9>
 
 =item L<https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c>
+
+=item L<https://github.com/rurban/safeclib/blob/master/src/extwchar/towfc_s.c>
+
+=item L<https://github.com/rurban/safeclib/blob/master/src/extwchar/wcsfc_s.c>
 
 =item L<https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
 

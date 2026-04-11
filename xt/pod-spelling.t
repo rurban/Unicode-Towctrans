@@ -35,7 +35,9 @@ Reini
 UnicodeData
 azeri
 casefolding
+foldcase
 foldcasing
+ie
 latin
 libc
 musl
@@ -48,5 +50,6 @@ turkish
 UCD
 un
 unicode
+unprocessable
 libunistring
 wget
