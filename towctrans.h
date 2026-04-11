@@ -9,7 +9,6 @@
 /*
 Copyright (c) 2005-2014 Rich Felker, et al.
 Copyright (c) 2018,2020,2026 Reini Urban
-
 --------------------------------------------------------------
 This code is licensed under the following standard MIT license
 --------------------------------------------------------------

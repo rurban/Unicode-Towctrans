@@ -40,6 +40,7 @@ t/c.t
 t/if-tree.t
 t/test_towctrans.c
 towctrans.h
+towfc.h
 xt/changes.t
 xt/kwalitee.t
 xt/manifest.t

@@ -51,6 +51,7 @@ my (
     $table, $no_network
 );
 my $ud            = "UnicodeData.txt";
+my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $fc            = "towfc.h";
 my $fn            = "_towcase";
@@ -62,6 +63,7 @@ $cmdline_args = " $cmdline_args" if $cmdline_args;
 GetOptions(
     "v=i"           => \$v,                # numeric
     "ud=s"          => \$ud,               # string (UnicodeData.txt)
+    "cf=s"          => \$cf,               # string (CaseFolding.txt)
     "out|o=s"       => \$out,              # string
     "fc=s"          => \$fc,               # string
     "with-iswalpha" => \$with_iswalpha,    # flag
@@ -88,6 +90,7 @@ Generate wide-char case mapping C header file
 OPTIONS
 -v NUM                for Unicode major version number
 --ud UnicodeData.txt  input filename. default: UnicodeData.txt
+--cf CaseFolding.txt  input filename for fold case. default: CaseFolding.txt
                       Downloaded if not found.
 --out filename        Single-byte wctrans header. default: towctrans.h
 --fc filename         Multi-byte folding case header. default: towfc.h
@@ -131,6 +134,9 @@ if ($safec) {
     die "cannot use --safec and --musl together\n" if $musl;
     $out = "towctrans.c"                           if $out eq "towctrans.h";
 }
+if ($fc eq '/dev/null' ) {
+    $fc = ''; # disable towfc output
+}
 if ( !$v ) { # checks now the latest version, not the installed perl UCD version
     if ($no_network) { # take it from perl
         use Unicode::UCD;
@@ -172,7 +178,7 @@ my @cmt = (
 $cmt[$_] = ( $bits[$_] >= 10 ? "" : " " ) . $cmt[$_] for 0 .. 2;
 if ($use_bitfields) {
     $f_upper = sprintf( "unsigned upper : %u; %s", $bits[0], $cmt[0] );
-    $f_sign  = sprintf("unsigned sign  : 1;  /* if negative */");
+    $f_sign  = sprintf( "unsigned sign  : 1;  /* if negative */");
     $f_lower = sprintf( "unsigned lower : %u; %s", $bits[1], $cmt[1] );
     $f_len   = sprintf( "unsigned len : %u;   %s", $bits[2], $cmt[2] );
 }
@@ -776,7 +782,11 @@ sub pairs_upper_ternary {
     }
 }
 
+if ( $v and !-s $ud and $ud eq "UnicodeData.txt" and -s "UnicodeData.txt.$v" ) {
+    $ud = "UnicodeData.txt.$v";
+}
 if ( $v and !-s $ud ) {
+    $ud = "UnicodeData.txt.$v" if $ud eq "UnicodeData.txt";
     my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
     `wget $url -O $ud`;
     `wget --no-check-certificate $url -O $ud` unless -s $ud;
@@ -836,6 +846,90 @@ warn sprintf(
     scalar keys %upper,
     scalar keys %lower
 ) if $verbose;
+
+# Read CaseFolding.txt for full (F) and common (C) fold case mappings.
+# F entries map to 2 or 3 codepoints, C entries map to 1 codepoint.
+# We need F for tbl2/tbl3, and C where fc differs from lc for _towfc_single.
+my ( @fc2, @fc3, @fc_common );
+
+if ( $fc ) {
+    # If the default CaseFolding.txt exists, check its version header.
+    # Fall back to CaseFolding.txt.$v if wrong version or missing.
+    if ( $v and $cf eq "CaseFolding.txt" ) {
+        if ( -s $cf ) {
+            open my $fh, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
+            my $line1 = <$fh>;
+            close $fh;
+            if ( $line1 && $line1 =~ /CaseFolding-(\d+)\./ && $1 != $v ) {
+                warn "CaseFolding.txt is version $1, need $v\n" if $verbose;
+                $cf = "CaseFolding.txt.$v";
+            }
+        }
+        else {
+            $cf = "CaseFolding.txt.$v";
+        }
+    }
+    if ( $v and !-s $cf ) {
+        my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
+        warn "Downloading $url to $cf\n" if $verbose;
+        `wget $url -O $cf`;
+        `wget --no-check-certificate $url -O $cf` unless -s $cf;
+        `curl --silent $url -o $cf` unless -s $cf;
+        unless ( -s $cf ) {
+            require LWP::Simple;
+            my $content = LWP::Simple::get($url);
+            open my $fh, ">", $cf or die "$PACKAGE: failed to download $url";
+            print $fh $content;
+            close $fh;
+        }
+        unless ( -s $cf ) {
+            die "$PACKAGE: failed to download $url: $!" unless -s $cf;
+        }
+    }
+    open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
+
+    while ( my $l = <$CF> ) {
+        chomp $l;
+        next if $l =~ /^\s*#/;
+        next if $l =~ /^\s*$/;
+        # format: <code>; <status>; <mapping>; # <name>
+        my ( $code, $status, $mapping, $name ) = split /\s*;\s*/, $l, 4;
+        my $cp = hex($code);
+        $name =~ s/^#\s*// if $name;
+        my @targets = map { hex($_) } split /\s+/, $mapping;
+
+        if ( $status eq 'F' ) {
+            if ( @targets == 2 ) {
+                push @fc2, [ $cp, @targets, $name || '' ];
+            }
+            elsif ( @targets == 3 ) {
+                push @fc3, [ $cp, @targets, $name || '' ];
+            }
+            else {
+                warn sprintf( "CaseFolding.txt: unexpected F mapping length %d for U+%04X\n",
+                    scalar @targets, $cp );
+            }
+        }
+        elsif ( $status eq 'C' ) {
+            # Common single-char fold. We only need those where fc != lc.
+            my $fc_cp = $targets[0];
+            my $lc_cp = exists $upper{$cp} ? $upper{$cp} : $cp;
+            if ( $fc_cp != $lc_cp ) {
+                push @fc_common, [ $cp, $fc_cp, $name || '' ];
+            }
+        }
+    }
+    close $CF;
+
+    @fc2 = sort { $a->[0] <=> $b->[0] } @fc2;
+    @fc3 = sort { $a->[0] <=> $b->[0] } @fc3;
+    @fc_common = sort { $a->[0] <=> $b->[0] } @fc_common;
+
+    warn sprintf(
+        "CaseFolding.txt: %d full-2, %d full-3, %d common (fc!=lc) mappings\n",
+        scalar @fc2, scalar @fc3, scalar @fc_common
+    ) if $verbose;
+}
 
 # Build @map, @pair from %upper (uppercase->lowercase mappings).
 # Process in codepoint order, detecting consecutive ranges (maps, laces)
@@ -945,7 +1039,12 @@ if ( !-w $out ) {
     chmod 0644, $out;
 }
 open FH, ">:utf8", $out or croak "$PACKAGE: $out can't be written $!";
-printf FH <<'EOF', @h_args;
+my $do_fc;
+if ( $fc and $fc ne $out ) {
+    open FC, ">:utf8", $fc or croak "$PACKAGE: $out can't be written $!";
+    $do_fc = 1;
+}
+my $header = sprintf <<'EOF', @h_args;
 /* ex: set ro ft=c: -*- buffer-read-only: t -*-
  *
  * !!!!!!!   DO NOT EDIT THIS FILE   !!!!!!!
@@ -955,16 +1054,26 @@ printf FH <<'EOF', @h_args;
  * Any changes here will be lost!
  */
 EOF
+print FH $header;
+print FC $header if $do_fc;
 
 if ( $musl or $safec ) {
     print FH "#define HAVE_LOCALE_TR\n";
+    #print FC "#define HAVE_LOCALE_TR\n" if $do_fc;
 }
 
 print FH <<'EOF';
 /*
 Copyright (c) 2005-2014 Rich Felker, et al.
 Copyright (c) 2018,2020,2026 Reini Urban
+EOF
 
+print FC <<'EOF' if $do_fc;
+/*
+Copyright (c) 2017,2027 Reini Urban
+EOF
+
+$header = <<'EOF';
 --------------------------------------------------------------
 This code is licensed under the following standard MIT license
 --------------------------------------------------------------
@@ -993,6 +1102,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 #include <stdint.h>
 #include <wctype.h>
+EOF
+
+print FH $header;
+if ($do_fc) {
+    # FC needs string.h unconditionally (for memset etc.), and the shared
+    # header only emits it inside HAVE_LOCALE_TR.  Splice it in.
+    (my $fc_header = $header) =~ s{#include <stdint.h>\n}{#include <stdint.h>\n#include <string.h>\n};
+    print FC $fc_header;
+}
+
+print FH <<'EOF';
 #ifdef HAVE_LOCALE_TR
 #include <locale.h>
 #include <string.h>
@@ -1001,13 +1121,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 EOF
 
 if ( $safec ) {
-    print FH <<'EOF'
+    my $s = <<'EOF';
 #ifdef FOR_DOXYGEN
 #include "safe_str_lib.h"
 #else
 #include "safeclib_private.h"
 #endif
 EOF
+    print FH $s;
+    print FC $s if $do_fc;
 }
 
 if ($table) {
@@ -1565,6 +1687,278 @@ printf FH <<'EOF', ( $ucd_version, $v );
 #define TOWCTRANS_UNICODE_VERSION %u
 
 EOF
+printf FC <<'EOF', ( $ucd_version, $v ) if $do_fc;
+/* for Unicode %s */
+#define TOWFC_UNICODE_VERSION %u
+
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+#if defined(__GNUC__) || __has_builtin(__builtin_expect)
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#define likely(x) (x)
+#define unlikely(x) (x)
+#endif
+
+EOF
+
+# Generate fold case tables and functions for towfc.h
+if ($do_fc) {
+    my $total_fc = scalar @fc2 + scalar @fc3;
+    my $n_single = scalar @fc_common;
+
+    printf FC "/* Unicode %s has %d code points for which the fold case mapping is not to\n",
+        $ucd_version, $total_fc + $n_single;
+    printf FC " * itself, or to tolower(), %d of it return length 1, the rest %d map to 2 or\n",
+        $n_single, $total_fc;
+    printf FC " * 3 and are handled below.\n */\n\n";
+
+    # --- tbl2[] ---
+    print FC "static const struct {\n";
+    print FC "    unsigned short upper;\n";
+    print FC "    unsigned short lower1;\n";
+    print FC "    unsigned short lower2;\n";
+    print FC "} tbl2[] = {\n";
+    print FC "    // clang-format off\n";
+    for my $e (@fc2) {
+        my ( $cp, $t1, $t2, $name ) = @$e;
+        printf FC "    {0x%04X, 0x%04X, 0x%04X}, /* %s */\n",
+            $cp, $t1, $t2, $name;
+    }
+    print FC "    {0, 0, 0}\n";
+    print FC "    // clang-format on\n";
+    print FC "};\n\n";
+
+    # --- tbl3[] ---
+    print FC "static const struct {\n";
+    print FC "    unsigned short upper;\n";
+    print FC "    unsigned short lower1;\n";
+    print FC "    unsigned short lower2;\n";
+    print FC "    unsigned short lower3;\n";
+    print FC "} tbl3[] = {\n";
+    print FC "    // clang-format off\n";
+    for my $e (@fc3) {
+        my ( $cp, $t1, $t2, $t3, $name ) = @$e;
+        printf FC "    {0x%04X, 0x%04X, 0x%04X, 0x%04X}, /* %s */\n",
+            $cp, $t1, $t2, $t3, $name;
+    }
+    print FC "    {0, 0, 0, 0}\n";
+    print FC "    // clang-format on\n";
+    print FC "};\n\n";
+
+    # --- iswfc() ---
+    # Generate a fast hardcoded check function.
+    # Returns 0 if no fold, 1 if single, 2 or 3 for multi.
+    print FC <<'EOF';
+/* Return the number of wide lower-case characters needed to full fold-case
+   the given uppercase character. Returns 0, 1, 2 or 3.
+   0 if the character stays the same, 1 if one character changes,
+   2 or 3 if the character will be replaced with 2 or 3.
+
+   Note that accents expand to more characters than 1 via NFD decomposition.
+   iswfc only matches towfc_s, but not wcsfc_s which does NFD decomposition
+   also.
+*/
+EOF
+    printf FC "int iswfc(const uint32_t wc) {\n";
+    printf FC "    int i;\n";
+    printf FC "    for (i = 0; tbl2[i].upper; i++) {\n";
+    printf FC "        if (tbl2[i].upper == wc)\n";
+    printf FC "            return 2;\n";
+    printf FC "        if (tbl2[i].upper > wc)\n";
+    printf FC "            break;\n";
+    printf FC "    }\n";
+    printf FC "    for (i = 0; tbl3[i].upper; i++) {\n";
+    printf FC "        if (tbl3[i].upper == wc)\n";
+    printf FC "            return 3;\n";
+    printf FC "        if (tbl3[i].upper > wc)\n";
+    printf FC "            break;\n";
+    printf FC "    }\n";
+    printf FC "    return iswupper(wc) ? 1 : 0;\n";
+    printf FC "}\n\n";
+
+    # --- _towfc_single() ---
+    # fc exceptions where fc is a single char different from tolower.
+    printf FC "/* The %d single fc chars where fc is different to lc.\n", $n_single;
+    print FC <<'EOF';
+   Must only be called when we know for sure that the length is 1!
+   Returns 1 if fc is different to lc, else -1.
+   May return 2 on sizeof(wchar_t)==2 if >0xffff, i.e. converted to surrogate
+   pair
+ */
+EOF
+    printf FC "int %s_single(wchar_t *restrict dest, const uint32_t src) {\n", $fcfn;
+    print  FC "    /* fc exceptions: not towlower */\n";
+    print  FC "    dest[1] = L'\\0';\n";
+
+    # Group @fc_common into switch-friendly ranges, detecting arithmetic
+    # sequences (same delta between consecutive codepoints) to emit compact
+    # range checks instead of huge switches.
+    if (@fc_common) {
+        my $first = $fc_common[0][0];
+        printf FC "    if (src < 0x%x)\n", $first;
+        print  FC "        goto single;\n";
+
+        # Split into proximity groups (gap > 0x200 starts a new group)
+        my @groups;
+        my @cur_group;
+        my $prev_cp = -0x300;
+        for my $e (@fc_common) {
+            my ($cp, $fc_cp, $name) = @$e;
+            if ($cp - $prev_cp > 0x200 && @cur_group) {
+                push @groups, [@cur_group];
+                @cur_group = ();
+            }
+            push @cur_group, $e;
+            $prev_cp = $cp;
+        }
+        push @groups, [@cur_group] if @cur_group;
+
+        for my $gi (0 .. $#groups) {
+            my $g = $groups[$gi];
+            my $gfirst = $g->[0][0];
+            my $glast  = $g->[-1][0];
+
+            # Detect if this entire group is an arithmetic sequence
+            my $is_arith = (@$g > 4);
+            if ($is_arith) {
+                my $delta = $g->[0][1] - $g->[0][0];
+                for my $i (1 .. $#$g) {
+                    if ($g->[$i][0] != $g->[$i-1][0] + 1
+                        || $g->[$i][1] - $g->[$i][0] != $delta) {
+                        $is_arith = 0;
+                        last;
+                    }
+                }
+                if ($is_arith) {
+                    my $cond = $gi > 0 ? "    else if" : "    if";
+                    my $unlikely = $gi > 0 ? "unlikely" : "";
+                    if ($unlikely) {
+                        printf FC "%s (%s(src >= 0x%x && src <= 0x%x)) {\n",
+                            $cond, $unlikely, $gfirst, $glast;
+                    } else {
+                        printf FC "%s (src >= 0x%x && src <= 0x%x) {\n",
+                            $cond, $gfirst, $glast;
+                    }
+                    if ($delta > 0) {
+                        printf FC "        dest[0] = src + %d;\n", $delta;
+                    } elsif ($delta < 0) {
+                        my $nd = -$delta;
+                        if ($nd > 255) {
+                            printf FC "        dest[0] = src - (0x%x - 0x%x);\n",
+                                $gfirst, $g->[0][1];
+                        } else {
+                            printf FC "        dest[0] = src - %d;\n", $nd;
+                        }
+                    } else {
+                        print  FC "        dest[0] = src;\n";
+                    }
+                    printf FC "        return 1;\n";
+                    print  FC "    }\n";
+                    next;
+                }
+            }
+
+            # Non-arithmetic group: emit a switch
+            if ($gi > 0) {
+                printf FC "    else if (unlikely(src >= 0x%x && src <= 0x%x)) {\n",
+                    $gfirst, $glast;
+            } else {
+                printf FC "    if (src >= 0x%x && src <= 0x%x) {\n",
+                    $gfirst, $glast;
+            }
+            print  FC "        switch (src) {\n";
+            for my $e (@$g) {
+                my ($cp, $fc_cp, $name) = @$e;
+                printf FC "        case 0x%x:\n", $cp;
+                printf FC "            dest[0] = 0x%x;\n", $fc_cp;
+                printf FC "            return 1; /* lc=%x */\n", $cp;
+            }
+            print  FC "        default:\n";
+            print  FC "            break;\n";
+            print  FC "        }\n";
+            print  FC "        goto single;\n";
+            print  FC "    }\n";
+        }
+    }
+
+    print FC "\nsingle:\n";
+    print FC "#if SIZEOF_WCHAR_T > 2\n";
+    printf FC "    dest[0] = src < 128 ? (wchar_t)tolower(src) : (wchar_t)%s(src, 1);\n", $fn;
+    print FC "    return (uint32_t)dest[0] == src ? -1 : 1;\n";
+    print FC "#else\n";
+    print FC "{\n";
+    printf FC "    uint32_t cp = src < 128 ? (uint32_t)tolower(src) : %s(src, 1);\n", $fn;
+    print FC "    if (unlikely(cp > 0xffff)) {\n";
+    print FC "        dest[0] = 0xd800 + ((cp >> 10) & 0x3ff);\n";
+    print FC "        dest[1] = 0xdc00 + (cp & 0x3ff);\n";
+    print FC "        dest[2] = 0;\n";
+    print FC "        return cp == src ? -1 : 2;\n";
+    print FC "    } else {\n";
+    print FC "        dest[0] = cp;\n";
+    print FC "        return cp == src ? -1 : 1;\n";
+    print FC "    }\n";
+    print FC "}\n";
+    print FC "#endif\n";
+    print FC "}\n\n";
+
+    # --- towfc() ---
+    print FC <<'EOF';
+/* Writes the fold-cased wide string to dest from the given uppercase wide
+   character. dmax should be 4 (3 wchar's + \0).
+   Returns the number of replaced wide characters, or -1 if not
+   replaced.
+*/
+EOF
+    printf FC "int towfc(wchar_t *restrict dest, size_t dmax, const uint32_t src) {\n";
+    print  FC "    int i;\n";
+    print  FC "    const size_t destsz = dmax * sizeof(wchar_t);\n\n";
+    print  FC "    if (unlikely(dest == NULL)) {\n";
+    print  FC "        return -2;\n";
+    print  FC "    }\n";
+    print  FC "    if (unlikely(dmax < 4)) {\n";
+    print  FC "        return -3;\n";
+    print  FC "    }\n";
+    print  FC "    dest[0] = L'\\0';\n";
+    print  FC "    if (unlikely(dmax > 0x7fff)) {\n";
+    print  FC "        return -4;\n";
+    print  FC "    }\n\n";
+    print  FC "    if (src < 128) {\n";
+    print  FC "        dest[1] = L'\\0';\n";
+    print  FC "        dest[0] = tolower(src);\n";
+    print  FC "        return (uint32_t)dest[0] == src ? -1 : 1;\n";
+    print  FC "    }\n\n";
+    print  FC "    for (i = 0; tbl2[i].upper; i++) {\n";
+    print  FC "        if (tbl2[i].upper == src) {\n";
+    print  FC "            dest[0] = tbl2[i].lower1;\n";
+    print  FC "            dest[1] = tbl2[i].lower2;\n";
+    print  FC "            dest[2] = L'\\0';\n";
+    print  FC "            return 2;\n";
+    print  FC "        }\n";
+    print  FC "        if (tbl2[i].upper > src)\n";
+    print  FC "            break;\n";
+    print  FC "    }\n";
+    print  FC "    for (i = 0; tbl3[i].upper; i++) {\n";
+    print  FC "        if (tbl3[i].upper == src) {\n";
+    print  FC "            dest[0] = tbl3[i].lower1;\n";
+    print  FC "            dest[1] = tbl3[i].lower2;\n";
+    print  FC "            dest[2] = tbl3[i].lower3;\n";
+    print  FC "            dest[3] = L'\\0';\n";
+    print  FC "            return 3;\n";
+    print  FC "        }\n";
+    print  FC "        if (tbl3[i].upper > src)\n";
+    print  FC "            break;\n";
+    print  FC "    }\n\n";
+    print  FC "    /* fc exceptions: not towlower, for c == 1 */\n";
+    printf FC "    return %s_single(dest, src);\n", $fcfn;
+    print  FC "}\n";
+
+    close FC;
+    chmod 0444, $fc;
+    warn "Wrote $fc\n" if $verbose;
+}
 
 # iterate @map (3-member maps and 2-member laces interleaved), sorted by base
 my @sorted_map = sort { $a->[0] <=> $b->[0] } @map;
@@ -3028,34 +3422,34 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        765 [us]  100,00 %
-           my_excl:        578 [us]  132,35 %
-          my_low16:        875 [us]   87,43 %
-           my_bits:        966 [us]   79,19 %
-        my_bsearch:        564 [us]  135,64 %
-       my_bsearchb:        441 [us]  173,47 %
-         my_unroll:        490 [us]  156,12 %
-         my_iftree:        448 [us]  170,76 %	42 errors
-        my_iftreeb:        509 [us]  150,29 %	86 errors
-          my_table:        132 [us]  579,55 %
-          musl-new:        118 [us]  648,31 %	9 errors
-          musl-old:        856 [us]   89,37 %	3 errors
-             glibc:        103 [us]  742,72 %	14 errors
+                my:        817 [us]  100.00 %
+           my_excl:        594 [us]  137.54 %
+          my_low16:        704 [us]  116.05 %
+           my_bits:        760 [us]  107.50 %
+        my_bsearch:        466 [us]  175.32 %
+       my_bsearchb:        681 [us]  119.97 %
+         my_unroll:        468 [us]  174.57 %
+         my_iftree:        519 [us]  157.42 %	42 errors
+        my_iftreeb:        557 [us]  146.68 %	86 errors
+          my_table:        161 [us]  507.45 %
+          musl-new:        133 [us]  614.29 %	9 errors
+          musl-old:       1130 [us]   72.30 %	3 errors
+             glibc:        123 [us]  664.23 %	15 errors
 
     wc -c towctrans-*.o
-      3336 towctrans-my.o
-      3384 towctrans-myexcl.o
-      3424 towctrans-mylow16.o
-      3648 towctrans-mybits.o
-      3704 towctrans-mybsearch.o
-      4496 towctrans-mybsearch-both.o
-      3808 towctrans-myunroll.o
-      8264 towctrans-myiftree.o
-     11008 towctrans-myiftree-both.o
-      6784 towctrans-mytable.o
-      6808 towctrans-musl-new.o
-      3416 towctrans-musl-old.o
-     97432 towctrans-glibc.o
+      3528 towctrans-my.o
+      3608 towctrans-myexcl.o
+      3632 towctrans-mylow16.o
+      3920 towctrans-mybits.o
+      3968 towctrans-mybsearch.o
+      4864 towctrans-mybsearch-both.o
+      3944 towctrans-myunroll.o
+      8296 towctrans-myiftree.o
+     10824 towctrans-myiftree-both.o
+      6816 towctrans-mytable.o
+      6848 towctrans-musl-new.o
+      3464 towctrans-musl-old.o
+     97440 towctrans-glibc.o
 
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.
