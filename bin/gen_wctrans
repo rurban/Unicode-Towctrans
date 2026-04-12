@@ -55,7 +55,7 @@ my $cf            = "CaseFolding.txt";
 my $out           = "towctrans.h";
 my $fc            = "towfc.h";
 my $fn            = "_towcase";
-my $fcfn          = "_towfc"; # just the prefix
+my $fcfn          = "_towfc"; # just the prefix for _single. but we create also iswfc and towfc
 my $with_iswalpha = 0;
 my $cmdline_args  = join( " ", @ARGV );
 $cmdline_args = " $cmdline_args" if $cmdline_args;
@@ -137,6 +137,32 @@ if ($safec) {
 if ($fc eq '/dev/null' ) {
     $fc = ''; # disable towfc output
 }
+
+sub download {
+    my ($fn, $v) = @_;
+    $fn =~ s/txt\.\d+$/txt/;
+    my $url = "https://www.unicode.org/Public/$v.0.0/ucd/$fn";
+    if ($fn eq "UnicodeData.txt") {
+        $fn = "UnicodeData.txt.$v";
+    } else {
+        $fn = "CaseFolding.txt.$v";
+    }
+    `wget $url -O $fn`;
+    `wget --no-check-certificate $url -O $fn` unless -s $fn;
+    `curl --silent $url -O $fn` unless -s $fn;
+    unless ( -s $fn ) {
+        require LWP::Simple;
+        my $content = LWP::Simple::get($url);
+        open my $fh, ">", $fn or die "$PACKAGE: failed to download $url";
+        print $fh $content;
+        close $fh;
+    }
+    unless ( -s $fn ) {
+        die "$PACKAGE: failed to download $url: $!" unless -s $fn;
+    }
+    return $fn;
+}
+
 if ( !$v ) { # checks now the latest version, not the installed perl UCD version
     if ($no_network) { # take it from perl
         use Unicode::UCD;
@@ -786,21 +812,7 @@ if ( $v and !-s $ud and $ud eq "UnicodeData.txt" and -s "UnicodeData.txt.$v" ) {
     $ud = "UnicodeData.txt.$v";
 }
 if ( $v and !-s $ud ) {
-    $ud = "UnicodeData.txt.$v" if $ud eq "UnicodeData.txt";
-    my $url = "https://www.unicode.org/Public/$v.0.0/ucd/UnicodeData.txt";
-    `wget $url -O $ud`;
-    `wget --no-check-certificate $url -O $ud` unless -s $ud;
-    `curl --silent $url -O $ud` unless -s $ud;
-    unless ( -s $ud ) {
-        require LWP::Simple;
-        my $content = LWP::Simple::get($url);
-        open my $fh, ">", $ud or die "$PACKAGE: failed to download $url";
-        print $fh $content;
-        close $fh;
-    }
-    unless ( -s $ud ) {
-        die "$PACKAGE: failed to download $url: $!" unless -s $ud;
-    }
+    $ud = download ($ud, $v);
 }
 open my $UD, "<", $ud or croak "$PACKAGE: $ud can't be read $!";
 
@@ -870,21 +882,7 @@ if ( $fc ) {
         }
     }
     if ( $v and !-s $cf ) {
-        my $url = "https://www.unicode.org/Public/$v.0.0/ucd/CaseFolding.txt";
-        warn "Downloading $url to $cf\n" if $verbose;
-        `wget $url -O $cf`;
-        `wget --no-check-certificate $url -O $cf` unless -s $cf;
-        `curl --silent $url -o $cf` unless -s $cf;
-        unless ( -s $cf ) {
-            require LWP::Simple;
-            my $content = LWP::Simple::get($url);
-            open my $fh, ">", $cf or die "$PACKAGE: failed to download $url";
-            print $fh $content;
-            close $fh;
-        }
-        unless ( -s $cf ) {
-            die "$PACKAGE: failed to download $url: $!" unless -s $cf;
-        }
+        $cf = download ($cf, $v);
     }
     open my $CF, "<", $cf or croak "$PACKAGE: $cf can't be read $!";
 
@@ -1041,6 +1039,9 @@ if ( !-w $out ) {
 open FH, ">:utf8", $out or croak "$PACKAGE: $out can't be written $!";
 my $do_fc;
 if ( $fc and $fc ne $out ) {
+    if ( !-w $fc ) {
+        chmod 0644, $fc;
+    }
     open FC, ">:utf8", $fc or croak "$PACKAGE: $out can't be written $!";
     $do_fc = 1;
 }

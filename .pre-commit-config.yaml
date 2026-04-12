@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-        exclude: towctrans\.h|README
+        exclude: towctrans\.h|towfc\.h|README
       - id: check-yaml
       - id: check-added-large-files
   - repo: https://github.com/pre-commit/mirrors-clang-format

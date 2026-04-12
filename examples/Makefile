@@ -26,25 +26,25 @@ update-bench:
 .c.o:
 	$(CC) -c $(CFLAGS_BENCH) $<
 ../UnicodeData.txt.10 :: ../$(GEN)
-	cd .. && $(GEN) --with-iswalpha -v 10 --out examples/towctrans-10.h --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha -v 10 --out examples/towctrans-10.h --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-10.h :: ../UnicodeData.txt.10
 # Note: the 3 bench objects merge different UnicodeData.txt.10 together. serialize them
 towctrans-low16.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --lower16 --fn=_towcase_low16 -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-bits.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-excl.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --min-excl 1000 --fn=_towcase_excl -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --min-excl 1000 --fn=_towcase_excl -v 10 --out examples/$@ --fc /dev/null --ud UnicodeData.txt.10
 towctrans-bsearch.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --fc /dev/null --ud UnicodeData.txt.10
 towctrans-bsearch-both.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-unroll.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch --unroll 20 --fn=_towcase_unroll -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch --unroll 20 --fn=_towcase_unroll -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-if-tree.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch --if-tree --fn=_towcase_iftree -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch --if-tree --fn=_towcase_iftree -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-if-tree-both.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch-both --if-tree --fn=_towcase_iftreeb -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch-both --if-tree --fn=_towcase_iftreeb -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-table.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10
 
@@ -107,59 +107,59 @@ test-table: test.c ../towctrans-table.h
 	$(CC) $(CFLAGS) -DTABLE -UHAVE_LOCALE_TR -o $@ test.c
 
 test-5: test.c towctrans-5.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-6: test.c towctrans-6.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-7: test.c towctrans-7.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-8: test.c towctrans-8.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-9: test.c towctrans-9.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-10: test.c towctrans-10.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-11: test.c towctrans-11.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-12: test.c towctrans-12.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-13: test.c towctrans-13.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-15: test.c towctrans-15.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-16: test.c towctrans-16.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-17: test.c towctrans-17.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-18: test.c towctrans-18.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test.c
 test-asan: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -DASAN -fsanitize=address,undefined -I. -o $@ test.c
 towctrans-5.c: ../$(GEN)
-	cd .. && $(GEN) -v 7 --out examples/towctrans-5.c --ud UnicodeData.txt.5
+	cd .. && $(GEN) -v 7 --out examples/towctrans-5.c --fc examples/towfc-5.c --ud UnicodeData.txt.5 --cf CaseFolding.txt.5
 towctrans-6.c: ../$(GEN)
-	cd .. && $(GEN) -v 6 --out examples/towctrans-6.c --ud UnicodeData.txt.6
+	cd .. && $(GEN) -v 6 --out examples/towctrans-6.c --fc examples/towfc-6.c --ud UnicodeData.txt.6 --cf CaseFolding.txt.6
 towctrans-7.c: ../$(GEN)
-	cd .. && $(GEN) -v 7 --out examples/towctrans-7.c --ud UnicodeData.txt.7
+	cd .. && $(GEN) -v 7 --out examples/towctrans-7.c --fc examples/towfc-7.c --ud UnicodeData.txt.7 --cf CaseFolding.txt.7
 towctrans-8.c: ../$(GEN)
-	cd .. && $(GEN) -v 8 --out examples/towctrans-8.c --ud UnicodeData.txt.8
+	cd .. && $(GEN) -v 8 --out examples/towctrans-8.c --fc examples/towfc-8.c --ud UnicodeData.txt.8 --cf CaseFolding.txt.8
 towctrans-9.c: ../$(GEN)
-	cd .. && $(GEN) -v 9 --out examples/towctrans-9.c --ud UnicodeData.txt.9
+	cd .. && $(GEN) -v 9 --out examples/towctrans-9.c --fc examples/towfc-9.c --ud UnicodeData.txt.9 --cf CaseFolding.txt.9
 towctrans-10.c: ../$(GEN)
-	cd .. && $(GEN) -v 10 --out examples/towctrans-10.c --ud UnicodeData.txt.10
+	cd .. && $(GEN) -v 10 --out examples/towctrans-10.c --fc examples/towfc-10.c --ud UnicodeData.txt.10 --cf CaseFolding.txt.10
 towctrans-11.c: ../$(GEN)
-	cd .. && $(GEN) -v 11 --out examples/towctrans-11.c --ud UnicodeData.txt.11
+	cd .. && $(GEN) -v 11 --out examples/towctrans-11.c --fc examples/towfc-11.c --ud UnicodeData.txt.11 --cf CaseFolding.txt.11
 towctrans-12.c: ../$(GEN)
-	cd .. && $(GEN) -v 12 --out examples/towctrans-12.c --ud UnicodeData.txt.12
+	cd .. && $(GEN) -v 12 --out examples/towctrans-12.c --fc examples/towfc-12.c --ud UnicodeData.txt.12 --cf CaseFolding.txt.12
 towctrans-13.c: ../$(GEN)
-	cd .. && $(GEN) -v 13 --out examples/towctrans-13.c --ud UnicodeData.txt.13
+	cd .. && $(GEN) -v 13 --out examples/towctrans-13.c --fc examples/towfc-13.c --ud UnicodeData.txt.13 --cf CaseFolding.txt.13
 towctrans-15.c: ../$(GEN)
-	cd .. && $(GEN) -v 15 --out examples/towctrans-15.c --ud UnicodeData.txt.15
+	cd .. && $(GEN) -v 15 --out examples/towctrans-15.c --fc examples/towfc-15.c --ud UnicodeData.txt.15 --cf CaseFolding.txt.15
 towctrans-16.c: ../$(GEN)
-	cd .. && $(GEN) -v 16 --out examples/towctrans-16.c --ud UnicodeData.txt.16
+	cd .. && $(GEN) -v 16 --out examples/towctrans-16.c --fc examples/towfc-16.c --ud UnicodeData.txt.16 --cf CaseFolding.txt.16
 towctrans-17.c: ../$(GEN)
-	cd .. && $(GEN) -v 17 --out examples/towctrans-17.c --ud UnicodeData.txt.17
+	cd .. && $(GEN) -v 17 --out examples/towctrans-17.c --fc examples/towfc-17.c --ud UnicodeData.txt.17 --cf CaseFolding.txt.17
 towctrans-18.c: ../$(GEN)
-	cd .. && $(GEN) -v 18 --out examples/towctrans-18.c --ud UnicodeData.txt.18
+	cd .. && $(GEN) -v 18 --out examples/towctrans-18.c --fc examples/towfc-18.c --ud UnicodeData.txt.18 --cf CaseFolding.txt.18
 
 clean:
 	rm -f bench $(OBJ) $(TESTS) towctrans-[0-9][0-9]?.c towctrans-*.h \
