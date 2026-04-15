@@ -111,6 +111,13 @@ int main(void) {
     }
 
     printf("1..%u\n", tests);
+#if defined(_WIN32)
+    printf("# sizeof(wchar_t)=%d (Windows)\n", SIZEOF_WCHAR_T);
+#elif defined(__sun)
+    printf("# sizeof(wchar_t)=%d (Solaris)\n", SIZEOF_WCHAR_T);
+#else
+    printf("# sizeof(wchar_t)=%d\n", SIZEOF_WCHAR_T);
+#endif
     fseek(f, 0, SEEK_SET);
 
     /* Second pass: run tests */
