@@ -37,8 +37,10 @@ t/c-unroll3.t
 t/c-unroll4.t
 t/c-unroll5.t
 t/c.t
+t/c_fc.t
 t/if-tree.t
 t/test_towctrans.c
+t/test_towfc.c
 towctrans.h
 towfc.h
 xt/changes.t
