@@ -1703,6 +1703,17 @@ printf FC <<'EOF', ( $ucd_version, $v ) if $do_fc;
 #define unlikely(x) (x)
 #endif
 
+/* wchar_t is 2 bytes on Windows, 4 bytes everywhere else */
+#ifndef SIZEOF_WCHAR_T
+#if defined(_WIN32) || defined(__CYGWIN__)
+#define SIZEOF_WCHAR_T 2
+#elif defined(__SIZEOF_WCHAR_T__)
+#define SIZEOF_WCHAR_T __SIZEOF_WCHAR_T__
+#else
+#define SIZEOF_WCHAR_T 4
+#endif
+#endif
+
 EOF
 
 # Generate fold case tables and functions for towfc.h

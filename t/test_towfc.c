@@ -7,16 +7,6 @@
 #include <wctype.h>
 
 #include "towctrans.h"
-
-/* Ensure SIZEOF_WCHAR_T is set before including towfc.h */
-#ifndef SIZEOF_WCHAR_T
-#ifdef __SIZEOF_WCHAR_T__
-#define SIZEOF_WCHAR_T __SIZEOF_WCHAR_T__
-#else
-#define SIZEOF_WCHAR_T 4
-#endif
-#endif
-
 #include "towfc.h"
 
 /* Build versioned filename after towfc.h defines TOWFC_UNICODE_VERSION */
@@ -80,10 +70,10 @@ int main(void) {
     f = fopen("../" CFDATA, "r");
     if (!f) {
         char url[256];
-        snprintf(
-            url, 255,
-            "wget -q -O ../%s https://www.unicode.org/Public/%d.0.0/ucd/%s",
-            CFDATA, TOWFC_UNICODE_VERSION, CFDATA);
+        snprintf(url, 255,
+                 "wget -q -O ../%s "
+                 "https://www.unicode.org/Public/%d.0.0/ucd/CaseFolding.txt",
+                 CFDATA, TOWFC_UNICODE_VERSION);
         printf("# downloading %s ...", CFDATA);
         fflush(stdout);
         if (system(url) == 0) {

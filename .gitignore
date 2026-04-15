@@ -27,6 +27,7 @@ cover_db/
 towctrans-*.h
 # towctrans.h.*
 t/t_towctrans
+t/t_towctrans_asan
 t/t_low16
 t/t_bits
 t/t_bsearch

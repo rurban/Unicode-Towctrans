@@ -43,6 +43,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define unlikely(x) (x)
 #endif
 
+/* wchar_t is 2 bytes on Windows and Solaris, 4 bytes everywhere else */
+#ifndef SIZEOF_WCHAR_T
+#if defined(_WIN32) || defined(__sun)
+#define SIZEOF_WCHAR_T 2
+#elif defined(__SIZEOF_WCHAR_T__)
+#define SIZEOF_WCHAR_T __SIZEOF_WCHAR_T__
+#else
+#define SIZEOF_WCHAR_T 4
+#endif
+#endif
+
 /* Unicode 17.0.0 has 212 code points for which the fold case mapping is not to
  * itself, or to tolower(), 108 of it return length 1, the rest 104 map to 2 or
  * 3 and are handled below.
