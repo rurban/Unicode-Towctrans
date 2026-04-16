@@ -5,7 +5,7 @@ our $cc       = $Config{cc};
 
 chdir("..");
 unlink("towctrans-$suff.h");
-system("bin/gen_wctrans $opts");
+system("bin/gen_wctrans $opts --fc /dev/null");
 chdir("t");
 
 my $exe    = "t_$suff" . ( $^O eq 'MSWin32' ? ".exe" : "" );

@@ -9,7 +9,7 @@ use Test::More import => [qw( diag )];
 
 chdir("..");
 system(
-    "$Config{perlpath} bin/gen_wctrans --bsearch-both --out towctrans-bsearch-both.h"
+    "$Config{perlpath} bin/gen_wctrans --bsearch-both --out towctrans-bsearch-both.h --fc /dev/null"
 );
 chdir("t");
 

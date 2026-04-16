@@ -34,9 +34,9 @@ towctrans-low16.h :: ../UnicodeData.txt.10 Makefile
 towctrans-bits.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bits 16:10:6 --fn=_towcase_bits -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-excl.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --min-excl 1000 --fn=_towcase_excl -v 10 --out examples/$@ --fc /dev/null --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --min-excl 1000 --fn=_towcase_excl -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-bsearch.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --fc /dev/null --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --bsearch --fn=_towcase_bsearch -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-bsearch-both.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch-both --fn=_towcase_bsearchb -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-unroll.h :: ../UnicodeData.txt.10 Makefile
@@ -46,7 +46,7 @@ towctrans-if-tree.h :: ../UnicodeData.txt.10 Makefile
 towctrans-if-tree-both.h :: ../UnicodeData.txt.10 Makefile
 	cd .. && $(GEN) --with-iswalpha --bsearch-both --if-tree --fn=_towcase_iftreeb -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 towctrans-table.h :: ../UnicodeData.txt.10 Makefile
-	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10
+	cd .. && $(GEN) --with-iswalpha --table --fn=_towcase_table -v 10 --out examples/$@ --ud UnicodeData.txt.10 --fc /dev/null
 
 towctrans-my.o: towctrans-my.c towctrans-10.h
 	$(CC) -c $(CFLAGS_BENCH) towctrans-my.c -o $@
@@ -78,31 +78,31 @@ test-glibc: test-glibc.c towctrans-glibc.o
 test: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-low16.h: ../$(GEN)
-	../$(GEN) --lower16 --fn=_towcase_low16 --out $@
+	../$(GEN) --lower16 --fn=_towcase_low16 --out $@ --fc /dev/null
 test-low16: test.c ../towctrans-low16.h
 	$(CC) $(CFLAGS) -DLOW16 -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bits.h: ../$(GEN)
-	../$(GEN) --bits 16:10:6 --fn=_towcase_bits --out $@
+	../$(GEN) --bits 16:10:6 --fn=_towcase_bits --out $@ --fc /dev/null
 test-bits: test.c ../towctrans-bits.h
 	$(CC) $(CFLAGS) -DBITS -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bsearch.h: ../$(GEN)
-	../$(GEN) --bsearch --fn=_towcase_bsearch --out $@
+	../$(GEN) --bsearch --fn=_towcase_bsearch --out $@ --fc /dev/null
 test-bsearch: test.c ../towctrans-bsearch.h
 	$(CC) $(CFLAGS) -DBSEARCH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-bsearch-both.h: ../$(GEN)
-	../$(GEN) --bsearch-both --fn=_towcase_bsearchb --out $@
+	../$(GEN) --bsearch-both --fn=_towcase_bsearchb --out $@ --fc /dev/null
 test-bsearch-both: test.c ../towctrans-bsearch-both.h
 	$(CC) $(CFLAGS) -DBSEARCH_BOTH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-if-tree.h: ../$(GEN)
-	../$(GEN) --bsearch --if-tree --fn=_towcase_iftree --out $@
+	../$(GEN) --bsearch --if-tree --fn=_towcase_iftree --out $@ --fc /dev/null
 test-iftree: test.c ../towctrans-if-tree.h
 	$(CC) $(CFLAGS) -DIF_TREE -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-if-tree-both.h: ../$(GEN)
-	../$(GEN) --bsearch-both --if-tree --fn=_towcase_iftreeb --out $@
+	../$(GEN) --bsearch-both --if-tree --fn=_towcase_iftreeb --out $@ --fc /dev/null
 test-iftree-both: test.c ../towctrans-if-tree-both.h
 	$(CC) $(CFLAGS) -DIF_TREE_BOTH -UHAVE_LOCALE_TR -o $@ test.c
 ../towctrans-table.h: ../$(GEN)
-	../$(GEN) --table --fn=_towcase_table --out $@
+	../$(GEN) --table --fn=_towcase_table --out $@ --fc /dev/null
 test-table: test.c ../towctrans-table.h
 	$(CC) $(CFLAGS) -DTABLE -UHAVE_LOCALE_TR -o $@ test.c
 

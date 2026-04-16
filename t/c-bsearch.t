@@ -9,7 +9,8 @@ use Test::More import => [qw( diag )];
 
 chdir("..");
 system(
-    "$Config{perlpath} bin/gen_wctrans --bsearch --out towctrans-bsearch.h");
+    "$Config{perlpath} bin/gen_wctrans --bsearch --out towctrans-bsearch.h --fc /dev/null"
+);
 chdir("t");
 
 my $is_mswin = $^O eq 'MSWin32';

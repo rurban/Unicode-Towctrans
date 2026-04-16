@@ -10,7 +10,8 @@ my $hdr = "towctrans-if-tree-both.h";
 
 chdir("..");
 system(
-    "$Config{perlpath} bin/gen_wctrans --bsearch-both --if-tree --out $hdr");
+    "$Config{perlpath} bin/gen_wctrans --bsearch-both --if-tree --out $hdr --fc /dev/null"
+);
 chdir("t");
 
 my $is_mswin = $^O eq 'MSWin32';
