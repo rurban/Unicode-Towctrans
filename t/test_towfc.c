@@ -69,6 +69,23 @@ int main(void) {
 
     f = fopen("../" CFDATA, "r");
     if (!f) {
+        /* Fall back to unversioned CaseFolding.txt if it has the right version.
+           gen_wctrans may have downloaded it without the version suffix. */
+        FILE *fc = fopen("../CaseFolding.txt", "r");
+        if (fc) {
+            char hdr[128];
+            int ver = 0;
+            if (fgets(hdr, sizeof(hdr), fc) &&
+                sscanf(hdr, "# CaseFolding-%d.", &ver) == 1 &&
+                ver == TOWFC_UNICODE_VERSION) {
+                f = fc;
+                printf("# using CaseFolding.txt (version %d)\n", ver);
+            } else {
+                fclose(fc);
+            }
+        }
+    }
+    if (!f) {
         char url[256];
         snprintf(url, 255,
                  "wget -q -O ../%s "
