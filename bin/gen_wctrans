@@ -1845,7 +1845,7 @@ EOF
                     }
                 }
                 if ($is_arith) {
-                    my $cond = $gi > 0 ? "    else if" : "    if";
+                    my $cond = $gi > 0 ? " else if" : "    if";
                     my $unlikely = $gi > 0 ? "unlikely" : "";
                     if ($unlikely) {
                         printf FC "%s (%s(src >= 0x%x && src <= 0x%x)) {\n",
@@ -1868,14 +1868,14 @@ EOF
                         print  FC "        dest[0] = src;\n";
                     }
                     printf FC "        return 1;\n";
-                    print  FC "    }\n";
+                    print FC ( $gi < $#groups ? "    }" : "    }\n" );
                     next;
                 }
             }
 
             # Non-arithmetic group: emit a switch
             if ($gi > 0) {
-                printf FC "    else if (unlikely(src >= 0x%x && src <= 0x%x)) {\n",
+                printf FC " else if (unlikely(src >= 0x%x && src <= 0x%x)) {\n",
                     $gfirst, $glast;
             } else {
                 printf FC "    if (src >= 0x%x && src <= 0x%x) {\n",
@@ -1892,7 +1892,7 @@ EOF
             print  FC "            break;\n";
             print  FC "        }\n";
             print  FC "        goto single;\n";
-            print  FC "    }\n";
+            print FC ( $gi < $#groups ? "    }" : "    }\n" );
         }
     }
 
@@ -3434,19 +3434,19 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        817 [us]  100.00 %
-           my_excl:        594 [us]  137.54 %
-          my_low16:        704 [us]  116.05 %
-           my_bits:        760 [us]  107.50 %
-        my_bsearch:        466 [us]  175.32 %
-       my_bsearchb:        681 [us]  119.97 %
-         my_unroll:        468 [us]  174.57 %
-         my_iftree:        519 [us]  157.42 %	42 errors
-        my_iftreeb:        557 [us]  146.68 %	86 errors
-          my_table:        161 [us]  507.45 %
-          musl-new:        133 [us]  614.29 %	9 errors
-          musl-old:       1130 [us]   72.30 %	3 errors
-             glibc:        123 [us]  664.23 %	15 errors
+                my:        644 [us]  100.00 %
+           my_excl:        520 [us]  123.85 %
+          my_low16:        722 [us]   89.20 %
+           my_bits:        662 [us]   97.28 %
+        my_bsearch:        417 [us]  154.44 %
+       my_bsearchb:        386 [us]  166.84 %
+         my_unroll:        411 [us]  156.69 %
+         my_iftree:        372 [us]  173.12 %	42 errors
+        my_iftreeb:        350 [us]  184.00 %	86 errors
+          my_table:         99 [us]  650.51 %
+          musl-new:         99 [us]  650.51 %	9 errors
+          musl-old:        844 [us]   76.30 %	3 errors
+             glibc:         99 [us]  650.51 %	15 errors
 
     wc -c towctrans-*.o
       3528 towctrans-my.o

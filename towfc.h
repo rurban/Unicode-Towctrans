@@ -43,9 +43,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define unlikely(x) (x)
 #endif
 
-/* wchar_t is 2 bytes on Windows and Solaris, 4 bytes everywhere else */
+/* wchar_t is 2 bytes on Windows, 4 bytes everywhere else */
 #ifndef SIZEOF_WCHAR_T
-#if defined(_WIN32) || defined(__sun)
+#if defined(_WIN32) || defined(__CYGWIN__)
 #define SIZEOF_WCHAR_T 2
 #elif defined(__SIZEOF_WCHAR_T__)
 #define SIZEOF_WCHAR_T __SIZEOF_WCHAR_T__
