@@ -106,32 +106,8 @@ test-iftree-both: test.c ../towctrans-if-tree-both.h
 test-table: test.c ../towctrans-table.h
 	$(CC) $(CFLAGS) -DTABLE -UHAVE_LOCALE_TR -o $@ test.c
 
-test-5: test.c towctrans-5.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-6: test.c towctrans-6.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-7: test.c towctrans-7.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-8: test.c towctrans-8.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-9: test.c towctrans-9.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-10: test.c towctrans-10.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-11: test.c towctrans-11.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-12: test.c towctrans-12.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-13: test.c towctrans-13.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-15: test.c towctrans-15.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-16: test.c towctrans-16.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-17: test.c towctrans-17.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
-test-18: test.c towctrans-18.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c
+test-%: test.c towctrans-%.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-$*.c
 test-asan: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -DASAN -fsanitize=address,undefined -I. -o $@ test.c
 towctrans-5.c: ../$(GEN)
