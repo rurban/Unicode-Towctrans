@@ -121,7 +121,7 @@ README: bin/gen_wctrans
 	if ! cmp towctrans.h towctrans.h.bak 2>/dev/null; then \
 	  make -C examples update-bench; fi
 	rm -f towctrans.h.bak
-	pod2text $< >$@
+	pod2text bin/gen_wctrans >$@
 tidy:
 	perltidy -b bin/gen_wctrans
 	chmod +x bin/gen_wctrans
