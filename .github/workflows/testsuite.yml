@@ -94,12 +94,10 @@ jobs:
           perl-version: ${{ matrix.perl-version }}
       - run: perl -V
       - run: sudo apt install -y libperl-dev wget
+      - name: install cpanm
+        run: curl -sL https://cpanmin.us | perl - App::cpanminus
       - name: install cpan deps
-        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
-        with:
-          install: |
-            LWP::UserAgent
-            LWP::Simple
+        run: cpanm --notest LWP::UserAgent LWP::Simple
       - run: bin/gen_wctrans
       - run: perl Makefile.PL
       - run: make test
