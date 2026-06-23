@@ -1,5 +1,11 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.07	2026-06-23
+
+    - Update to latest Unicode 17
+    - Makefile GNUisms: more BSD fixes for README
+    - CI: replace cpm with cpanm for linux matrix
+
 0.06	2026-04-10
 
     - Makefile GNUisms: BSD fixes for make bench
