@@ -1868,7 +1868,7 @@ EOF
                         print  FC "        dest[0] = src;\n";
                     }
                     printf FC "        return 1;\n";
-                    print FC ( $gi < $#groups ? "    }" : "    }\n" );
+                    print FC ( $gi < $#groups && $gi > 0 ? "    }" : "    }\n" );
                     next;
                 }
             }
@@ -3434,34 +3434,34 @@ non-latin locales entirely.
 
     make -C examples
     ./bench
-                my:        644 [us]  100.00 %
-           my_excl:        520 [us]  123.85 %
-          my_low16:        722 [us]   89.20 %
-           my_bits:        662 [us]   97.28 %
-        my_bsearch:        417 [us]  154.44 %
-       my_bsearchb:        386 [us]  166.84 %
-         my_unroll:        411 [us]  156.69 %
-         my_iftree:        372 [us]  173.12 %	42 errors
-        my_iftreeb:        350 [us]  184.00 %	86 errors
-          my_table:         99 [us]  650.51 %
-          musl-new:         99 [us]  650.51 %	9 errors
-          musl-old:        844 [us]   76.30 %	3 errors
-             glibc:         99 [us]  650.51 %	15 errors
+                my:        711 [us]  100,00 %
+           my_excl:        574 [us]  123,87 %
+          my_low16:        618 [us]  115,05 %
+           my_bits:        723 [us]   98,34 %
+        my_bsearch:        602 [us]  118,11 %
+       my_bsearchb:        557 [us]  127,65 %
+         my_unroll:        696 [us]  102,16 %
+         my_iftree:        477 [us]  149,06 %	42 errors
+        my_iftreeb:        743 [us]   95,69 %	86 errors
+          my_table:        314 [us]  226,43 %
+          musl-new:        309 [us]  230,10 %	9 errors
+          musl-old:       1440 [us]   49,38 %	3 errors
+             glibc:        106 [us]  670,75 %	14 errors
 
     wc -c towctrans-*.o
-      3528 towctrans-my.o
-      3608 towctrans-myexcl.o
-      3632 towctrans-mylow16.o
-      3920 towctrans-mybits.o
-      3968 towctrans-mybsearch.o
-      4864 towctrans-mybsearch-both.o
-      3944 towctrans-myunroll.o
-      8296 towctrans-myiftree.o
-     10824 towctrans-myiftree-both.o
-      6816 towctrans-mytable.o
-      6848 towctrans-musl-new.o
-      3464 towctrans-musl-old.o
-     97440 towctrans-glibc.o
+      3336 towctrans-my.o
+      3384 towctrans-myexcl.o
+      3424 towctrans-mylow16.o
+      3648 towctrans-mybits.o
+      3704 towctrans-mybsearch.o
+      4496 towctrans-mybsearch-both.o
+      3808 towctrans-myunroll.o
+      8264 towctrans-myiftree.o
+     11008 towctrans-myiftree-both.o
+      6784 towctrans-mytable.o
+      6808 towctrans-musl-new.o
+      3416 towctrans-musl-old.o
+     97432 towctrans-glibc.o
 
 Results with more various C<--bits> size combinations. They need just some
 logical fixups for the 5 errors.

@@ -7,9 +7,10 @@ SYNOPSIS
         gen_wctrans --musl
         gen_wctrans -n     # no network for default -v
         gen_wctrans -v 10
-        gen_wctrans -v 10 --ud UnicodeData.txt.10 --out towctrans-10.h
-        gen_wctrans --lower16
+        gen_wctrans -v 18 --ud UnicodeData.txt.18 --out towctrans-18.h
+        gen_wctrans --out towctrans.h --fc towfc.h --fn towcase --fcfn _towfc
         gen_wctrans --fn __towcase
+        gen_wctrans --lower16
         gen_wctrans --min-excl 10000
         gen_wctrans --unroll 6
         gen_wctrans --bits 18:14:10
@@ -25,6 +26,13 @@ DESCRIPTION
     and "safeclib" to generate small and efficient case mapping tables, to
     build the libc towupper() and towlower() functions and its secure
     variants towupper_s() and towlower_s().
+
+    It also creates a second header towcf.h with the multi-byte full folding
+    cases unprocessable by "_towcase", ie. towupper()/towlower(). It creates
+    iswfc(), checking an uppercase character for a mapping to foldcase,
+    returning the number of new wide character codepoints needed, 0-3. And
+    towfc() to foldcase a character into a multi-byte destination buffer.
+    Use "--fc /dev/null" to skip this step.
 
     If the code may run on a system with the turkish or azeri locale, you
     need to define "-DHAVE_LOCALE_TR" to check for the special turkish i
@@ -72,11 +80,12 @@ DESCRIPTION
     used UnicodeData.txt file. Default: UnicodeData.txt. C--out> sets the
     output filename, default: towctrans.h
 
-    Planned also for the multi-byte folding tables for wcsfc_s() for
-    safeclib. As the single-byte "towupper" and "towlower" conversions are
-    meaningless for many multi-byte unicode mappings, those with status F -
-    full folding. Use a full string foldcasing function instead, as safeclib
-    "wcsfc_s", ICU "u_strToUpper" or libunistring "uc_toupper".
+    Now with the towfc.h header to handle multi-byte folding tables, for
+    wcsfc_s() for safeclib. As the single-byte "towupper" and "towlower"
+    conversions are meaningless for many multi-byte unicode mappings, those
+    with status F - full folding. Use a full string foldcasing function
+    instead, as safeclib "wcsfc_s", ICU "u_strToUpper" or libunistring
+    "uc_toupper".
 
 PERFORMANCE
     Currently it is small and fast enough compared to the other
@@ -107,19 +116,19 @@ PERFORMANCE
 
         make -C examples
         ./bench
-                    my:        644 [us]  100.00 %
-               my_excl:        520 [us]  123.85 %
-              my_low16:        722 [us]   89.20 %
-               my_bits:        662 [us]   97.28 %
-            my_bsearch:        417 [us]  154.44 %
-           my_bsearchb:        386 [us]  166.84 %
-             my_unroll:        411 [us]  156.69 %
-             my_iftree:        372 [us]  173.12 %   42 errors
-            my_iftreeb:        350 [us]  184.00 %   86 errors
-              my_table:         99 [us]  650.51 %
-              musl-new:         99 [us]  650.51 %   9 errors
-              musl-old:        844 [us]   76.30 %   3 errors
-                 glibc:         99 [us]  650.51 %   15 errors
+                    my:        711 [us]  100,00 %
+               my_excl:        574 [us]  123,87 %
+              my_low16:        618 [us]  115,05 %
+               my_bits:        723 [us]   98,34 %
+            my_bsearch:        602 [us]  118,11 %
+           my_bsearchb:        557 [us]  127,65 %
+             my_unroll:        696 [us]  102,16 %
+             my_iftree:        477 [us]  149,06 %   42 errors
+            my_iftreeb:        743 [us]   95,69 %   86 errors
+              my_table:        314 [us]  226,43 %
+              musl-new:        309 [us]  230,10 %   9 errors
+              musl-old:       1440 [us]   49,38 %   3 errors
+                 glibc:        106 [us]  670,75 %   14 errors
 
         wc -c towctrans-*.o
           3336 towctrans-my.o
@@ -210,5 +219,7 @@ SEE ALSO
     58ab19a18f83d7f78e80d5e4f51e7e4e8a9>
     <https://github.com/rurban/safeclib/blob/master/src/extwchar/towctrans.c
     >
+    <https://github.com/rurban/safeclib/blob/master/src/extwchar/towfc_s.c>
+    <https://github.com/rurban/safeclib/blob/master/src/extwchar/wcsfc_s.c>
     <https://sourceware.org/git/?p=glibc.git;a=tree;f=wctype;;hb=HEAD>
 
