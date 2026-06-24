@@ -44,6 +44,24 @@ static int parse_cf_fields(char *buf, char *fields[], int maxfields) {
     return nf;
 }
 
+/* On Windows wchar_t is 16-bit UTF-16. Decode a surrogate pair into
+   a full 32-bit codepoint. Returns the codepoint (strips surrogates
+   when possible), and sets *units to the number of wchar_t consumed
+   (1 or 2). On !Windows or non-surrogate, just returns wc and sets
+   *units = 1. */
+static uint32_t wchar_to_u32(wchar_t wc, const wchar_t *next, int *units) {
+    uint32_t c = (uint32_t)wc;
+#if SIZEOF_WCHAR_T == 2
+    if (c >= 0xd800 && c <= 0xdbff && next && *next >= 0xdc00 &&
+        *next <= 0xdfff) {
+        *units = 2;
+        return 0x10000 + ((c - 0xd800) << 10) + ((uint32_t)*next - 0xdc00);
+    }
+#endif
+    *units = 1;
+    return c;
+}
+
 /* Extract name from comment field (strips leading "# " if present) */
 static const char *cf_name(const char *field) {
     if (!field)
@@ -188,11 +206,15 @@ int main(void) {
         ret = towfc(dest, 4, (uint32_t)cp);
 
         if (type == 'C') {
-            /* Expect single-char result matching mapped[0] */
-            if (ret != 1 || (uint32_t)dest[0] != mapped[0]) {
+            /* Expect single-char result matching mapped[0].
+               On Windows (wchar_t=16bit) supplementary-plane results
+               are encoded as surrogate pairs: ret=2, dest={hi,lo}. */
+            int units;
+            uint32_t got = wchar_to_u32(dest[0], &dest[1], &units);
+            if (ret != units || got != mapped[0]) {
                 printf("not ok %u Error towfc(U+%04X) => {U+%04X} ret=%d, "
                        "expected {U+%04X} name=%s\n",
-                       i++, cp, (unsigned)dest[0], ret, mapped[0], name);
+                       i++, cp, (unsigned)got, ret, mapped[0], name);
                 errs++;
             } else {
                 printf("ok %u towfc(U+%04X) => U+%04X name=%s\n", i++, cp,
@@ -201,27 +223,35 @@ int main(void) {
         } else {
             /* F entry: expect multi-char result */
             int ok = 1;
-            if (ret != nmapped)
+            uint32_t got[3];
+            int total_units = 0;
+            for (int j = 0; j < nmapped; j++) {
+                int u;
+                got[j] =
+                    wchar_to_u32(dest[total_units], &dest[total_units + 1], &u);
+                total_units += u;
+            }
+            if (ret != total_units)
                 ok = 0;
-            if (ok && (uint32_t)dest[0] != mapped[0])
+            if (ok && got[0] != mapped[0])
                 ok = 0;
-            if (ok && nmapped >= 2 && (uint32_t)dest[1] != mapped[1])
+            if (ok && nmapped >= 2 && got[1] != mapped[1])
                 ok = 0;
-            if (ok && nmapped >= 3 && (uint32_t)dest[2] != mapped[2])
+            if (ok && nmapped >= 3 && got[2] != mapped[2])
                 ok = 0;
 
             if (!ok) {
                 if (nmapped == 2)
                     printf("not ok %u Error towfc(U+%04X) => {U+%04X,U+%04X}"
                            " ret=%d, expected {U+%04X,U+%04X} name=%s\n",
-                           i++, cp, (unsigned)dest[0], (unsigned)dest[1], ret,
+                           i++, cp, (unsigned)got[0], (unsigned)got[1], ret,
                            mapped[0], mapped[1], name);
                 else
                     printf("not ok %u Error towfc(U+%04X) => "
                            "{U+%04X,U+%04X,U+%04X} ret=%d, expected "
                            "{U+%04X,U+%04X,U+%04X} name=%s\n",
-                           i++, cp, (unsigned)dest[0], (unsigned)dest[1],
-                           (unsigned)dest[2], ret, mapped[0], mapped[1],
+                           i++, cp, (unsigned)got[0], (unsigned)got[1],
+                           (unsigned)got[2], ret, mapped[0], mapped[1],
                            mapped[2], name);
                 errs++;
             } else {

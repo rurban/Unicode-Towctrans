@@ -1788,7 +1788,15 @@ EOF
     printf FC "        if (tbl3[i].upper > wc)\n";
     printf FC "            break;\n";
     printf FC "    }\n";
+    printf FC "#if SIZEOF_WCHAR_T > 2\n";
     printf FC "    return iswupper(wc) ? 1 : 0;\n";
+    printf FC "#else\n";
+    printf FC "    if (wc > 0xffff) {\n";
+    printf FC "        uint32_t lc = _towcase(wc, 1);\n";
+    printf FC "        return (lc != wc) ? 1 : 0;\n";
+    printf FC "    }\n";
+    printf FC "    return iswupper((wint_t)wc) ? 1 : 0;\n";
+    printf FC "#endif\n";
     printf FC "}\n\n";
 
     # --- _towfc_single() ---
@@ -1904,7 +1912,7 @@ EOF
     print FC "{\n";
     printf FC "    uint32_t cp = src < 128 ? (uint32_t)tolower(src) : %s(src, 1);\n", $fn;
     print FC "    if (unlikely(cp > 0xffff)) {\n";
-    print FC "        dest[0] = 0xd800 + ((cp >> 10) & 0x3ff);\n";
+    print FC "        dest[0] = 0xd800 + (((cp - 0x10000) >> 10) & 0x3ff);\n";
     print FC "        dest[1] = 0xdc00 + (cp & 0x3ff);\n";
     print FC "        dest[2] = 0;\n";
     print FC "        return cp == src ? -1 : 2;\n";

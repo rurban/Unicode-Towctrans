@@ -215,7 +215,15 @@ int iswfc(const uint32_t wc) {
         if (tbl3[i].upper > wc)
             break;
     }
+#if SIZEOF_WCHAR_T > 2
     return iswupper(wc) ? 1 : 0;
+#else
+    if (wc > 0xffff) {
+        uint32_t lc = _towcase(wc, 1);
+        return (lc != wc) ? 1 : 0;
+    }
+    return iswupper((wint_t)wc) ? 1 : 0;
+#endif
 }
 
 /* The 108 single fc chars where fc is different to lc.
@@ -329,7 +337,7 @@ single:
 {
     uint32_t cp = src < 128 ? (uint32_t)tolower(src) : _towcase(src, 1);
     if (unlikely(cp > 0xffff)) {
-        dest[0] = 0xd800 + ((cp >> 10) & 0x3ff);
+        dest[0] = 0xd800 + (((cp - 0x10000) >> 10) & 0x3ff);
         dest[1] = 0xdc00 + (cp & 0x3ff);
         dest[2] = 0;
         return cp == src ? -1 : 2;
