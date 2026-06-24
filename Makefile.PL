@@ -52,6 +52,7 @@ WriteMakefile(
         Unicode::UCD   => 0,
         LWP::UserAgent => 0,
         LWP::Simple    => 0,
+        Clone          => 0,
     },
     ( $MM_VER < 6.48 ? () : MIN_PERL_VERSION => 5.6.0 ),
     (   $MM_VER < 6.46

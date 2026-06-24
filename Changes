@@ -1,5 +1,9 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.08	2026-06-24
+
+    - Add Clone PREREQ_PM for openbsd
+
 0.07	2026-06-23
 
     - Update to latest Unicode 17
