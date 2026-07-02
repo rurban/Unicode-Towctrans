@@ -1,5 +1,16 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.09	2026-07-02
+
+    - Generate towfc.h from CaseFolding.txt for case folding (iswfc/towfc).
+      Add --fc option to gen_wctrans; SIZEOF_WCHAR_T in generated towfc.h.
+    - Add t/c_fc.t and t/test_towfc.c tests for iswfc and towfc.
+    - Fix gen_wctrans to emit clang-format-compliant towfc.h.
+    - Fix Windows CI: handle wchar_t=16 surrogate pairs in towfc test.
+    - Fix test_towfc download: check CaseFolding.txt version before download.
+    - Fix examples/Makefile test-N rules to link towctrans-$N.c.
+    - Fix clang-formatting and xt/manifest.t.
+
 0.08	2026-06-24
 
     - Add Clone PREREQ_PM for openbsd

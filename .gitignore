@@ -6,6 +6,7 @@ CaseFolding.txt*
 UnicodeData.txt
 UnicodeData.txt.[0-9]*
 .opencode/
+.codewhale/
 session-ses_*.md
 cover_db/
 /Debian_CPANTS.txt

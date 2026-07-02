@@ -10,3 +10,5 @@ examples/.gdbinit
 run-docker.sh
 UnicodeData.txt
 CaseFolding.txt
+MANIFEST.bak
+towfc-10.h
