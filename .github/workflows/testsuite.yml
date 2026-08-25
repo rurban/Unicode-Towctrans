@@ -20,13 +20,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: perl -V
       - run: |
           sudo apt update -y
           sudo apt install -y libperl-dev wget aspell-en libwww-perl perltidy perlimports
       - name: install cpan deps
-        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
+        uses: perl-actions/install-with-cpm@b7eeb5ea204d9c9bd434e01162ae97629cf7fa36 # v2.4
         with:
           install: |
             Test::MinimumVersion::Fast
@@ -69,6 +69,7 @@ jobs:
       matrix:
         perl-version:
           [
+            "5.44",
             "5.42",
             "5.40",
             "5.38",
@@ -88,8 +89,8 @@ jobs:
           ]
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: shogo82148/actions-setup-perl@b6cfc127f1b0a63ac98797800f641494d80f42f8 # v1.37.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shogo82148/actions-setup-perl@53e33bb27be492a926eee378e8a5f7ff6618b061 # v1.43.1
         with:
           perl-version: ${{ matrix.perl-version }}
       - run: perl -V
@@ -118,7 +119,7 @@ jobs:
         perl-version: [latest]
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: perl -V
       - run: bin/gen_wctrans -v 17
       - run: perl Makefile.PL
@@ -141,10 +142,10 @@ jobs:
         perl-version: [latest]
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: perl -V
       - name: install cpan deps
-        uses: perl-actions/install-with-cpm@8b1a9840b26cc3885ae2889749a48629be2501b0 # v1.9
+        uses: perl-actions/install-with-cpm@b7eeb5ea204d9c9bd434e01162ae97629cf7fa36 # v2.4
         with:
           install: |
             LWP::UserAgent
@@ -154,7 +155,7 @@ jobs:
       - run: make test TEST_VERBOSE=1 2>&1 | tee make.log
         # continue-on-error: true
       - name: Upload Failure
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
           name: artifacts
