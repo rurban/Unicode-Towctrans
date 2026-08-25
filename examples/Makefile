@@ -7,7 +7,6 @@ OBJ = towctrans-my.o towctrans-myexcl.o towctrans-mylow16.o towctrans-mybits.o \
       towctrans-mybsearch.o towctrans-mybsearch-both.o towctrans-myunroll.o \
       towctrans-myiftree.o towctrans-myiftree-both.o towctrans-mytable.o \
       towctrans-musl-new.o towctrans-musl-old.o towctrans-glibc.o
-SRC := $(OBJ:.o=.c)
 GEN = bin/gen_wctrans
 TESTS = test test-low16 test-bits test-bsearch test-asan test-glibc \
 	test-bsearch test-bsearch-both test-iftree test-iftree-both \
@@ -20,8 +19,8 @@ bench: bench.c $(OBJ) Makefile
 	./$@
 	wc -c $(OBJ)
 update-bench:
-	$(MAKE) -B bench > bench.log
-	./update-bench.pl ../$(GEN) bench.log #&& rm bench.log
+	rm -f bench $(OBJ) towctrans-*.h
+	$(MAKE) bench > bench.log
 	../$(GEN)
 .c.o:
 	$(CC) -c $(CFLAGS_BENCH) $<
@@ -70,9 +69,9 @@ towctrans-mytable.o: towctrans-my.c towctrans-table.h
 	$(CC) -c -DTABLE $(CFLAGS_BENCH) towctrans-my.c -o $@
 
 test-iswalpha: test-iswalpha.c
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test-iswalpha.c
 test-glibc: test-glibc.c towctrans-glibc.o
-	$(CC) $(CFLAGS) -I. -o $@ $^
+	$(CC) $(CFLAGS) -I. -o $@ test-glibc.c towctrans-glibc.o
 ../towctrans.h: ../$(GEN)
 	../$(GEN) --out $@
 test: test.c ../towctrans.h
@@ -106,8 +105,32 @@ test-iftree-both: test.c ../towctrans-if-tree-both.h
 test-table: test.c ../towctrans-table.h
 	$(CC) $(CFLAGS) -DTABLE -UHAVE_LOCALE_TR -o $@ test.c
 
-test-%: test.c towctrans-%.c
-	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-$*.c
+test-5: test.c towctrans-5.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-5.c
+test-6: test.c towctrans-6.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-6.c
+test-7: test.c towctrans-7.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-7.c
+test-8: test.c towctrans-8.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-8.c
+test-9: test.c towctrans-9.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-9.c
+test-10: test.c towctrans-10.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-10.c
+test-11: test.c towctrans-11.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-11.c
+test-12: test.c towctrans-12.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-12.c
+test-13: test.c towctrans-13.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-13.c
+test-15: test.c towctrans-15.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-15.c
+test-16: test.c towctrans-16.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-16.c
+test-17: test.c towctrans-17.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-17.c
+test-18: test.c towctrans-18.c
+	$(CC) $(CFLAGS) -I. -o $@ test.c towctrans-18.c
 test-asan: test.c ../towctrans.h
 	$(CC) $(CFLAGS) -DUSE_GLOBAL -DASAN -fsanitize=address,undefined -I. -o $@ test.c
 towctrans-5.c: ../$(GEN)
