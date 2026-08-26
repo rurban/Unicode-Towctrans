@@ -178,8 +178,9 @@ EOF
     printf $fh $c;
     print $fh <<"EOF";
 int main() {
+  int i;
   /* these must be found */
-  for (int i = 0; i < $sz_pairs; i++) {
+  for (i = 0; i < $sz_pairs; i++) {
     if ($name(pairs[i][0]) != pairs[i][1]) {
       printf("not ok %u\\n", i + 1 + $off);
       return 1;

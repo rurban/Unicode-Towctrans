@@ -51,6 +51,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define unlikely(x) (x)
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define RESTRICT restrict
+#elif defined(__GNUC__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT
+#endif
+
 /* wchar_t is 2 bytes on Windows, 4 bytes everywhere else */
 #ifndef SIZEOF_WCHAR_T
 #if defined(_WIN32) || defined(__CYGWIN__)
@@ -232,7 +240,7 @@ int iswfc(const uint32_t wc) {
    May return 2 on sizeof(wchar_t)==2 if >0xffff, i.e. converted to surrogate
    pair
  */
-int _towfc_single(wchar_t *restrict dest, const uint32_t src) {
+int _towfc_single(wchar_t *RESTRICT dest, const uint32_t src) {
     /* fc exceptions: not towlower */
     dest[1] = L'\0';
     if (src < 0xb5)
@@ -354,7 +362,7 @@ single:
    Returns the number of replaced wide characters, or -1 if not
    replaced.
 */
-int towfc(wchar_t *restrict dest, size_t dmax, const uint32_t src) {
+int towfc(wchar_t *RESTRICT dest, size_t dmax, const uint32_t src) {
     int i;
     const size_t destsz = dmax * sizeof(wchar_t);
 

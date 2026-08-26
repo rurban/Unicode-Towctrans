@@ -1,5 +1,13 @@
 Revision history for the Perl package Unicode::Towctrans.
 
+0.11	2026-08-26
+
+    - Fix C89/gnu89 build: no `for (int i = ...)` loop-scoped declarations
+      in generated t/c-if-tree-*.c test harnesses.
+    - Fix C89/gnu89 build: gen_wctrans emitted C99 `restrict` in generated
+      towfc.h (_towfc_single/towfc signatures); add RESTRICT compat macro
+      (restrict on C99+, __restrict__ on GNU C89, else empty).
+
 0.10	2026-08-25
 
     - Fix Makefile GNU-isms.

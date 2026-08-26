@@ -189,10 +189,10 @@ EOF
     printf $fh $c;
     print $fh <<"EOF";
 int main() {
-  int j = 0;
+  int i, len, j = 0;
   /* these must be found */
-  for (int i = 0; i < $sz_case; i++) {
-    for (int len = 0; len < casemaps[i][2]; len++) {
+  for (i = 0; i < $sz_case; i++) {
+    for (len = 0; len < casemaps[i][2]; len++) {
       unsigned wc = casemaps[i][0] + len;
       if ($name(wc) == wc) {
         printf("not ok %u - not found $name(%u)\\n", $off + j++, wc);

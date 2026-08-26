@@ -1703,6 +1703,14 @@ printf FC <<'EOF', ( $ucd_version, $v ) if $do_fc;
 #define unlikely(x) (x)
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define RESTRICT restrict
+#elif defined(__GNUC__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT
+#endif
+
 /* wchar_t is 2 bytes on Windows, 4 bytes everywhere else */
 #ifndef SIZEOF_WCHAR_T
 #if defined(_WIN32) || defined(__CYGWIN__)
@@ -1809,7 +1817,7 @@ EOF
    pair
  */
 EOF
-    printf FC "int %s_single(wchar_t *restrict dest, const uint32_t src) {\n", $fcfn;
+    printf FC "int %s_single(wchar_t *RESTRICT dest, const uint32_t src) {\n", $fcfn;
     print  FC "    /* fc exceptions: not towlower */\n";
     print  FC "    dest[1] = L'\\0';\n";
 
@@ -1932,7 +1940,7 @@ EOF
    replaced.
 */
 EOF
-    printf FC "int towfc(wchar_t *restrict dest, size_t dmax, const uint32_t src) {\n";
+    print  FC "int towfc(wchar_t *RESTRICT dest, size_t dmax, const uint32_t src) {\n";
     print  FC "    int i;\n";
     print  FC "    const size_t destsz = dmax * sizeof(wchar_t);\n\n";
     print  FC "    if (unlikely(dest == NULL)) {\n";
