@@ -65,6 +65,7 @@ examples/test-iswalpha
 examples/towctrans-[0-9]*.c
 examples/towctrans.h
 examples/towctrans*.h
+examples/towfc-*.c
 examples/towfc*.h
 examples/towfc.h
 examples/UnicodeData.txt
